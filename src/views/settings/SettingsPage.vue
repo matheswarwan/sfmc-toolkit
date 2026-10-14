@@ -9,6 +9,7 @@ import { disabledRules, setRuleDisabled, onLintSettingsChange } from '@/editor/l
 import { buildBackup, backupFileName, parseBackup, planImport, describeImport } from '@/utils/backup.js'
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
+import { useApiConsole } from '@/composables/useApiConsole.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
@@ -23,6 +24,7 @@ const stopLint = onLintSettingsChange((set) => { offRules.value = [...set].sort(
 onUnmounted(stopLint)
 
 const showFeedback = ref(false)
+const { enabled: apiConsoleOn, setEnabled: setApiConsole } = useApiConsole()
 const version = computed(() => {
   try { return chrome.runtime.getManifest().version } catch { return '' }
 })
@@ -119,6 +121,17 @@ function setDebounce(e) {
             <button class="h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="setRuleDisabled(code, false)">Turn on</button>
           </li>
         </ul>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-border bg-card p-4">
+      <h2 class="text-sm font-semibold mb-3">Troubleshooting</h2>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">API console</div>
+          <p class="text-xs text-muted-foreground">Shows every SFMC API call and its response in a panel at the bottom of the app. Useful when something fails.</p>
+        </div>
+        <Switch :model-value="apiConsoleOn" aria-label="API console" @update:model-value="setApiConsole" />
       </div>
     </section>
 

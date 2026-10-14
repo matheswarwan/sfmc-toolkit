@@ -8,6 +8,7 @@ const PAGES = {
   '/queries/saved': () => import('../views/queries/SavedQueriesPage.vue'),
   '/queries/workspace': () => import('../views/queries/WorkspacePage.vue'),
   '/queries/builder': () => import('../views/queries/BuilderPage.vue'),
+  '/emails': () => import('../views/emails/EmailsPage.vue'),
 }
 
 export const routes = [
@@ -17,6 +18,11 @@ export const routes = [
     component: PAGES[item.path] || Placeholder,
     meta: { title: item.name, group: item.group, step: item.step },
   })),
+  {
+    path: '/emails/:id',
+    component: () => import('../views/emails/EmailDetailPage.vue'),
+    meta: { title: 'Emails', group: 'Content' },
+  },
   { path: '/settings', component: () => import('../views/settings/SettingsPage.vue'), meta: { title: 'Settings' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

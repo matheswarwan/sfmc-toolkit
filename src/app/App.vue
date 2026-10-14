@@ -6,6 +6,7 @@ import AppSidebar from '@/components/shell/AppSidebar.vue'
 import ConnectionMenu from '@/components/shell/ConnectionMenu.vue'
 import CommandPalette from '@/components/shell/CommandPalette.vue'
 import ToastHost from '@/components/shell/ToastHost.vue'
+import ApiConsole from '@/components/shell/ApiConsole.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import { useTheme } from '@/composables/useTheme.js'
@@ -63,6 +64,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           </KeepAlive>
         </RouterView>
       </main>
+      <ApiConsole />
     </div>
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <ToastHost />
