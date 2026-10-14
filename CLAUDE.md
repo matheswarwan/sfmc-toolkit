@@ -9,7 +9,7 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 - **Never call SFMC from an extension page.** Pages use `sfmcFetch`/`proxyFetch` in `src/utils/sfmcApi.js`, which sends `SFMC_FETCH` to the service worker. Errors keep Query Saver's text (`SFMC API error <status>: ...`, "DE not found", "session expired") since callers match on it; replies also carry `code` (`SFMC_LOGIN_REQUIRED`, `SFMC_SESSION_UNAVAILABLE`) and `status`.
 - **Storage keys stay Query Saver's** (`sql_*`, `email_*`, `workspace_*`, `_emailSaverEnabled`, `_emailSaveDebounce`, `_reuseQueryDE`, `sfmcqs_theme`, `lintDisabledRules`, `stackOverride`, `sfmcStack`), so a Query Saver backup imports as is.
 - **Theme:** the `.dark` class from `useTheme.js` drives the colour tokens; components set text colour explicitly (`text-foreground`, ...), never from a `prefers-color-scheme` media query (Query Saver's Bug 8).
-- **Toolbar icon:** no `default_popup`; `chrome.action.onClicked` opens or focuses `app.html`.
+- **Toolbar icon:** no `default_popup`; `chrome.action.onClicked` opens a new `app.html` tab on every click. Several tabs can be open: `src/utils/tabClaims.js` (BroadcastChannel) keeps two tabs from reopening the same workspace or Query Builder query.
 - **Writing:** plain prose, no em dashes, no emoji.
 
 ## Auth (src/background)

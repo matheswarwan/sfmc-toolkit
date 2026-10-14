@@ -1,4 +1,5 @@
 import { ref, computed, watch } from 'vue'
+import { claim, release, isClaimedElsewhere } from '@/utils/tabClaims.js'
 
 export const MAX_PANELS = 6
 export const LAYOUT_PRESETS = [
@@ -97,8 +98,14 @@ export function useWorkspace() {
 
   // The workspace shown when the section opens: the one asked for, else the last one
   // used (kept under LAST_WORKSPACE_KEY), else a new one.
+  // The last workspace is skipped when another tab has it open, so two tabs never
+  // save over each other's panels.
   async function restore(wsId) {
-    const id = wsId || (await storageGet(LAST_WORKSPACE_KEY))
+    let id = wsId
+    if (!id) {
+      const last = await storageGet(LAST_WORKSPACE_KEY)
+      id = last && !(await isClaimedElsewhere(last)) ? last : null
+    }
     const data = id ? await storageGet(id) : null
     if (data?.panels?.length) {
       workspaceId.value = id
@@ -112,6 +119,7 @@ export function useWorkspace() {
       panels.value = [{ queryId: newQueryId() }]
       await saveWorkspace()
     }
+    claim(workspaceId.value)
     chrome.storage.local.set({ [LAST_WORKSPACE_KEY]: workspaceId.value })
   }
 
@@ -152,11 +160,13 @@ export function useWorkspace() {
   }
 
   async function newWorkspace() {
+    release(workspaceId.value)
     workspaceId.value = `workspace_${Date.now()}`
     layoutRows.value = 1
     layoutCols.value = 1
     panels.value = [{ queryId: newQueryId() }]
     await saveWorkspace()
+    claim(workspaceId.value)
     chrome.storage.local.set({ [LAST_WORKSPACE_KEY]: workspaceId.value })
   }
 
