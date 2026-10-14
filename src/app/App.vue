@@ -5,6 +5,7 @@ import { Search, MessageSquare } from 'lucide-vue-next'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
 import ConnectionMenu from '@/components/shell/ConnectionMenu.vue'
 import CommandPalette from '@/components/shell/CommandPalette.vue'
+import ToastHost from '@/components/shell/ToastHost.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import { useTheme } from '@/composables/useTheme.js'
@@ -54,10 +55,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         <ThemeSwitcher />
       </header>
       <main class="flex-1 min-h-0 overflow-auto">
-        <RouterView />
+        <!-- Workspace and Query Builder stay alive in the background, so a running
+             query or a half-built join survives a visit to another section. -->
+        <RouterView v-slot="{ Component }">
+          <KeepAlive :include="['WorkspacePage', 'BuilderPage']">
+            <component :is="Component" />
+          </KeepAlive>
+        </RouterView>
       </main>
     </div>
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
+    <ToastHost />
     <FeedbackModal v-if="showFeedback" :screen="route.path" @close="showFeedback = false" />
   </div>
 </template>

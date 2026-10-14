@@ -8,6 +8,12 @@ export const LAYOUT_PRESETS = [
   { rows: 2, cols: 3, label: '2×3' },
 ]
 
+export const LAST_WORKSPACE_KEY = 'toolkit_lastWorkspace'
+
+function storageGet(key) {
+  return new Promise((resolve) => chrome.storage.local.get(key, (r) => resolve(r?.[key] ?? null)))
+}
+
 function newQueryId() {
   return `sql_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 }
@@ -89,46 +95,69 @@ export function useWorkspace() {
     })
   }
 
-  async function loadFromUrl() {
-    const params = new URLSearchParams(window.location.search)
-    const ws     = params.get('ws')
-    const queryId = params.get('id')
-    const sql    = params.get('sql')
-
-    if (ws && ws !== 'new') {
-      workspaceId.value = ws
-      const data = await new Promise((resolve) => {
-        chrome.storage.local.get(ws, (r) => resolve(r[ws] || null))
-      })
-      if (data?.panels?.length) {
-        layoutRows.value = data.layout?.rows ?? 1
-        layoutCols.value = data.layout?.cols ?? 1
-        panels.value = data.panels.map(p => ({ queryId: p.queryId }))
-        return
-      }
-    }
-
-    workspaceId.value = `workspace_${Date.now()}`
-    panels.value = []
-
-    if (queryId) {
-      panels.value.push({ queryId })
-    } else if (sql) {
-      try {
-        panels.value.push({ queryId: newQueryId(), initialSql: decodeURIComponent(sql) })
-      } catch {
-        panels.value.push({ queryId: newQueryId(), initialSql: sql })
-      }
+  // The workspace shown when the section opens: the one asked for, else the last one
+  // used (kept under LAST_WORKSPACE_KEY), else a new one.
+  async function restore(wsId) {
+    const id = wsId || (await storageGet(LAST_WORKSPACE_KEY))
+    const data = id ? await storageGet(id) : null
+    if (data?.panels?.length) {
+      workspaceId.value = id
+      layoutRows.value = data.layout?.rows ?? 1
+      layoutCols.value = data.layout?.cols ?? 1
+      panels.value = data.panels.map(p => ({ queryId: p.queryId }))
     } else {
-      panels.value.push({ queryId: newQueryId() })
+      workspaceId.value = `workspace_${Date.now()}`
+      layoutRows.value = 1
+      layoutCols.value = 1
+      panels.value = [{ queryId: newQueryId() }]
+      await saveWorkspace()
     }
+    chrome.storage.local.set({ [LAST_WORKSPACE_KEY]: workspaceId.value })
+  }
 
-    const url = new URL(window.location.href)
-    url.searchParams.set('ws', workspaceId.value)
-    url.searchParams.delete('id')
-    url.searchParams.delete('sql')
-    window.history.replaceState({}, '', url.toString())
+  // Opens a saved query (`id`) or new SQL (`sql`) in this workspace: an empty panel
+  // takes it, else a new panel. A query already open is just reported back.
+  // Returns { queryId, added } or { full: true } when all 6 panels are in use.
+  async function openInPanel({ id, sql }) {
+    if (id) {
+      const open = panels.value.find(p => p.queryId === id)
+      if (open) return { queryId: id, added: false }
+    }
+    const entry = id ? { queryId: id } : { queryId: newQueryId(), initialSql: sql || undefined }
+    const emptyIdx = await findEmptyPanel()
+    if (emptyIdx >= 0) {
+      panels.value.splice(emptyIdx, 1, entry)
+    } else {
+      if (!canAddPanel.value) return { full: true }
+      const capacity = layoutRows.value * layoutCols.value
+      if (panels.value.length >= capacity) {
+        if (layoutRows.value === 1 && layoutCols.value < 3) layoutCols.value++
+        else if (layoutRows.value < 2) { layoutRows.value = 2; if (layoutCols.value < 3) layoutCols.value = 3 }
+      }
+      panels.value.push(entry)
+    }
     await saveWorkspace()
+    return { queryId: entry.queryId, added: true }
+  }
+
+  // A panel that was never typed in has no stored record.
+  async function findEmptyPanel() {
+    for (let i = 0; i < panels.value.length; i++) {
+      const p = panels.value[i]
+      if (p.initialSql) continue
+      const rec = await storageGet(p.queryId)
+      if (!rec || !(rec.queryText || '').trim()) return i
+    }
+    return -1
+  }
+
+  async function newWorkspace() {
+    workspaceId.value = `workspace_${Date.now()}`
+    layoutRows.value = 1
+    layoutCols.value = 1
+    panels.value = [{ queryId: newQueryId() }]
+    await saveWorkspace()
+    chrome.storage.local.set({ [LAST_WORKSPACE_KEY]: workspaceId.value })
   }
 
   watch([layoutRows, layoutCols], () => saveWorkspace())
@@ -136,6 +165,6 @@ export function useWorkspace() {
   return {
     workspaceId, layoutRows, layoutCols, panels, panelCount, canAddPanel,
     LAYOUT_PRESETS, setLayout, addPanel, removePanel, duplicatePanel,
-    loadFromUrl, saveWorkspace,
+    restore, openInPanel, newWorkspace, saveWorkspace,
   }
 }

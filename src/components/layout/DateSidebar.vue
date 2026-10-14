@@ -45,8 +45,8 @@ function clearBuFilters() {
 
 <template>
   <aside
-    class="relative flex-shrink-0 bg-card border-r border-border py-3 px-2 sticky overflow-y-auto"
-    :style="{ width: sidebarWidth + 'px', top: '44px', height: 'calc(100vh - 44px)' }"
+    class="relative flex-shrink-0 h-full bg-card border-r border-border py-3 px-2 overflow-y-auto"
+    :style="{ width: sidebarWidth + 'px' }"
   >
 
     <!-- BU Filter (collapsed by default) -->
