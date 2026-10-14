@@ -3,6 +3,10 @@
 
 export function getDateGroup(timestamp, now = new Date()) {
   const d = new Date(timestamp)
+  // Older records can lack a timestamp; they go last.
+  if (timestamp == null || timestamp === '' || Number.isNaN(d.getTime())) {
+    return { key: 'unknown', label: 'Unknown date', order: Number.MAX_SAFE_INTEGER }
+  }
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const startOfDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const diffDays = Math.round((startOfToday - startOfDate) / 86400000)

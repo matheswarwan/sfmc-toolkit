@@ -34,16 +34,10 @@ loadEmailSaverPrefs()
 
 const APP_PAGE = 'app.html'
 
-// The toolbar icon opens the app in a tab, or focuses the one already open.
-chrome.action?.onClicked?.addListener(async () => {
-  const appUrl = chrome.runtime.getURL(APP_PAGE)
-  const [existing] = await queryTabs({ url: appUrl + '*' })
-  if (existing) {
-    chrome.tabs.update(existing.id, { active: true })
-    chrome.windows?.update(existing.windowId, { focused: true })
-  } else {
-    createTab({ url: appUrl })
-  }
+// The toolbar icon opens the app in a new tab each time; several tabs can be open
+// (each keeps its own workspace and Query Builder query, see utils/tabClaims.js).
+chrome.action?.onClicked?.addListener(() => {
+  createTab({ url: chrome.runtime.getURL(APP_PAGE) })
 })
 
 chrome.tabs?.onActivated?.addListener(({ tabId }) => {

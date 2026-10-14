@@ -17,9 +17,10 @@ const props = defineProps({
   isFavourite:          { type: Boolean, default: false },
   deleteMode:           { type: Boolean, default: false },
   isSelected:           { type: Boolean, default: false },
+  versionCount:         { type: Number, default: 1 },
 })
 
-const emit = defineEmits(['toggle-select', 'toggle-favourite'])
+const emit = defineEmits(['toggle-select', 'toggle-favourite', 'open'])
 
 const humanReadableDate = computed(() =>
   props.timeStamp ? new Date(props.timeStamp).toLocaleString() : 'Unknown date'
@@ -27,9 +28,7 @@ const humanReadableDate = computed(() =>
 const displayName = computed(() => props.name || humanReadableDate.value)
 
 function openDetail() {
-  chrome.tabs.create({
-    url: chrome.runtime.getURL('email-detail.html') + '?id=' + props.id,
-  })
+  emit('open', props.id)
 }
 
 // Compile the asset model into a final HTML string for the preview iframe.
@@ -138,8 +137,7 @@ const compiledHtml = computed(() => {
     <!-- Card footer -->
     <div class="px-2.5 py-1.5 border-t border-border bg-muted/20 flex items-center justify-between gap-1">
       <span class="text-[9px] text-muted-foreground truncate">{{ humanReadableDate }}</span>
-      <span v-if="assetTypeDisplayName"
-        class="text-[9px] text-muted-foreground/60 flex-shrink-0">{{ assetTypeDisplayName }}</span>
+      <span class="text-[9px] text-muted-foreground/70 flex-shrink-0">{{ versionCount }} {{ versionCount === 1 ? 'version' : 'versions' }}</span>
     </div>
   </div>
 </template>

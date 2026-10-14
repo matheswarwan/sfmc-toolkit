@@ -9,7 +9,7 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 - **Never call SFMC from an extension page.** Pages use `sfmcFetch`/`proxyFetch` in `src/utils/sfmcApi.js`, which sends `SFMC_FETCH` to the service worker. Errors keep Query Saver's text (`SFMC API error <status>: ...`, "DE not found", "session expired") since callers match on it; replies also carry `code` (`SFMC_LOGIN_REQUIRED`, `SFMC_SESSION_UNAVAILABLE`) and `status`.
 - **Storage keys stay Query Saver's** (`sql_*`, `email_*`, `workspace_*`, `_emailSaverEnabled`, `_emailSaveDebounce`, `_reuseQueryDE`, `sfmcqs_theme`, `lintDisabledRules`, `stackOverride`, `sfmcStack`), so a Query Saver backup imports as is.
 - **Theme:** the `.dark` class from `useTheme.js` drives the colour tokens; components set text colour explicitly (`text-foreground`, ...), never from a `prefers-color-scheme` media query (Query Saver's Bug 8).
-- **Toolbar icon:** no `default_popup`; `chrome.action.onClicked` opens or focuses `app.html`.
+- **Toolbar icon:** no `default_popup`; `chrome.action.onClicked` opens a new `app.html` tab on every click. Several tabs can be open: `src/utils/tabClaims.js` (BroadcastChannel) keeps two tabs from reopening the same workspace or Query Builder query.
 - **Writing:** plain prose, no em dashes, no emoji.
 
 ## Auth (src/background)
@@ -26,13 +26,15 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 
 ## Porting status
 
-Steps 1 (scaffold) and 2 (Queries) are done. Query Saver's email detail and info pages are under `src/views/emails/` and `src/views/info/` but **not routed yet** (steps 3 and 7); they still import `./composables/...` paths and link to the old `*.html` pages. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
+Steps 1 (scaffold), 2 (Queries) and 3 (Emails) are done. Query Saver's info page is under `src/views/info/` but **not routed yet** (step 7); it still imports `./composables/...` paths and link to the old `*.html` pages. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
 
 Queries section notes:
 - `WorkspacePage` and `BuilderPage` are kept alive (`<KeepAlive>` in `App.vue`), so a run's polling and a half-built query survive a visit to another section. Never key them on the route.
 - Workspace: `?id=`, `?sql=`, `?ws=` are applied by `openInPanel`/`restore` in `useWorkspace.js` and then removed from the URL. The last workspace is remembered in `toolkit_lastWorkspace`. An empty panel takes the opened query; otherwise a panel is added (6 at most).
 - Builder: `QueryBuilder.vue` is the old page; `BuilderPage` remounts it (`session` key) for New query or a different `?id=`. The last builder record is in `toolkit_lastBuilder`.
 - Workspace panels store a `sql_*` record as soon as they open; Saved queries hides records with no SQL and no runs.
+- Emails: `/emails` (list) and `/emails/:id` (versions, preview, revert with a confirm step, delete). Capture happens in `src/background/capture.js`.
+- API console: one drawer for the whole app (`components/shell/ApiConsole.vue`, `useApiConsole.js`), on/off in Settings, stored as `sfmcqs_settings.apiConsole`. Pages don't call `setApiLogCallback` themselves.
 - Backups: `src/utils/backup.js` (`planImport` never overwrites). Query Saver exports the same format.
 
 Known Automation Viewer bugs not to carry over: Journey "Event Definition Key" filter read the DE-id input; the DE Clear button was bound to the Activity tab's button; activity types 725, 726, 736, 783, 1010, 1101, 1701, 3700 called missing renderers; `escapeHtml` did not escape `&` or quotes.

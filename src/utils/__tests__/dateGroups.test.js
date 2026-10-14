@@ -21,4 +21,10 @@ describe('date groups', () => {
     expect(groups.map((g) => g.key)).toEqual(['today', 'm_2026_05'])
     expect(groups[0].items.map((i) => i.id)).toEqual(['b', 'c'])
   })
+  it('puts items without a usable date last', () => {
+    expect(getDateGroup(undefined, now).label).toBe('Unknown date')
+    expect(getDateGroup('nope', now).label).toBe('Unknown date')
+    const groups = groupByDate([{ id: 'x' }, { id: 'y', timeStamp: at(2026, 9, 14) }], now)
+    expect(groups.map((g) => g.key)).toEqual(['today', 'unknown'])
+  })
 })

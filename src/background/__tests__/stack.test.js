@@ -108,13 +108,13 @@ describe('connection status', () => {
   it('a failed token mint forgets the stack and is not retried on the next poll', async () => {
     const sw = await loadSW({ loggedIn: ['s13'], local: { sfmcStack: 's13', sfmcStackTs: 1 } })
     await sw.send({ type: 'GET_CONNECTION_STATUS' })
-    await flush()
+    await flush(450) // the mint times out after 300 ms in tests
     const mints = () => sw.sim.created.filter((t) => t.url.includes('mc.s13.marketingcloudapps.com')).length
     expect(mints()).toBe(1)
     expect(sw.local.sfmcStack).toBeUndefined()
 
     await sw.send({ type: 'GET_CONNECTION_STATUS' })
-    await flush()
+    await flush(450)
     expect(mints()).toBe(1)
   })
 })

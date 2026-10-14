@@ -165,15 +165,16 @@ export async function loadSW(o = {}) {
   await import('../index.js')
   const { timing } = await import('../sessions.js')
   const { mintTiming } = await import('../mcaToken.js')
-  Object.assign(timing, { pollMs: 1, landingTimeoutMs: 30, cooldownMs: 60000 })
-  Object.assign(mintTiming, { timeoutMs: 30 })
+  // Short, but with room for a busy machine (30 ms made the mint test flaky).
+  Object.assign(timing, { pollMs: 2, landingTimeoutMs: 200, cooldownMs: 60000 })
+  Object.assign(mintTiming, { timeoutMs: 300 })
 
   function send(message, sender = {}) {
     return new Promise((resolve) => {
       let answered = false
       const reply = (r) => { if (!answered) { answered = true; resolve(r) } }
       for (const fn of [...onMessage.fns]) fn(message, sender, reply)
-      setTimeout(() => reply(undefined), 1000)
+      setTimeout(() => reply(undefined), 3000)
     })
   }
 

@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { FilePlus2 } from 'lucide-vue-next'
 import QueryBuilder from '@/components/builder/QueryBuilder.vue'
 import Button from '@/components/ui/button/Button.vue'
+import { claim, release, isClaimedElsewhere } from '@/utils/tabClaims.js'
 
 const LAST_BUILDER_KEY = 'toolkit_lastBuilder'
 
@@ -15,12 +16,16 @@ const openId = ref(null)
 const session = ref(0) // a new value remounts the builder
 
 function open(id) {
+  release(openId.value)
   openId.value = id
+  claim(id)
   session.value++
 }
 
 function onSaved(id) {
+  release(openId.value)
   openId.value = id
+  claim(id)
   chrome.storage.local.set({ [LAST_BUILDER_KEY]: id })
 }
 
@@ -32,7 +37,14 @@ function startNew() {
 // First visit: the query asked for, else the one you were last building.
 const first = typeof route.query.id === 'string' ? route.query.id : null
 if (first) open(first)
-else chrome.storage.local.get(LAST_BUILDER_KEY, (r) => { if (r?.[LAST_BUILDER_KEY]) open(r[LAST_BUILDER_KEY]); else session.value++ })
+// (Skipped when another tab is building it, so two tabs never save over each other.)
+else {
+  chrome.storage.local.get(LAST_BUILDER_KEY, async (r) => {
+    const last = r?.[LAST_BUILDER_KEY]
+    if (last && !(await isClaimedElsewhere(last))) open(last)
+    else open(null)
+  })
+}
 
 watch(() => route.query.id, (id) => {
   if (route.path !== '/queries/builder' || typeof id !== 'string') return
