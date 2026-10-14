@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "SFMC Toolkit",
+  "version": "0.1.0",
+  "description": "Save, write and run SFMC SQL, and browse automations, activities, data extensions, journeys, CloudPages and email versions.",
+  "action": {
+    "default_title": "Open SFMC Toolkit",
+    "default_icon": {
+      "16": "images/icon16x16.png",
+      "32": "images/icon32x32.png",
+      "48": "images/icon48x48.png",
+      "128": "images/icon128x128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16x16.png",
+    "32": "images/icon32x32.png",
+    "48": "images/icon48x48.png",
+    "128": "images/icon128x128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "unlimitedStorage", "webRequest", "tabs", "cookies"],
+  "host_permissions": [
+    "https://*.exacttarget.com/*",
+    "https://*.marketingcloudapps.com/*",
+    "https://*.marketingcloud.com/*",
+    "https://*.salesforce-marketingcloud.com/*",
+    "https://querystudio.herokuapp.com/*",
+    "https://sfmc-share-worker.mathes-btech.workers.dev/*",
+    "https://query-saver-feedback.mathes-btech.workers.dev/*",
+    "https://www.google-analytics.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.exacttarget.com/*",
+        "https://*.marketingcloudapps.com/*",
+        "https://*.marketingcloud.com/*",
+        "https://*.salesforce-marketingcloud.com/*",
+        "https://querystudio.herokuapp.com/*"
+      ],
+      "js": ["content.js"]
+    },
+    {
+      "matches": ["https://sfmc-share-worker.mathes-btech.workers.dev/share/*"],
+      "js": ["share-handler.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
