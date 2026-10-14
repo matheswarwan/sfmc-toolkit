@@ -1,0 +1,140 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
+import { Copy, Check, ExternalLink, X, Share2, Loader2 } from 'lucide-vue-next'
+
+const props = defineProps({
+  card: { type: Object, required: true },
+})
+
+const emit = defineEmits(['close', 'open-editor'])
+
+const copied = ref(false)
+
+const humanReadableDate = computed(() =>
+  props.card.timeStamp ? new Date(props.card.timeStamp).toLocaleString() : 'Unknown date'
+)
+const displayName = computed(() => props.card.name ?? humanReadableDate.value)
+const sql = computed(() => props.card.queryText || '')
+
+async function copySql() {
+  try {
+    await navigator.clipboard.writeText(sql.value)
+  } catch {
+    // Fallback for environments without the async clipboard API
+    const ta = document.createElement('textarea')
+    ta.value = sql.value
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    try { document.execCommand('copy') } catch { /* ignore */ }
+    document.body.removeChild(ta)
+  }
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1500)
+}
+
+// ── Share ─────────────────────────────────────────────────
+// Generates a 24hr share link via the sfmc-share-worker and copies it
+// straight to the clipboard — same one-click pattern as Copy SQL.
+const shareState = ref('idle') // idle | loading | copied | error
+
+async function shareQuery() {
+  if (shareState.value === 'loading') return
+  shareState.value = 'loading'
+  try {
+    const res = await fetch('https://sfmc-share-worker.mathes-btech.workers.dev/api/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: displayName.value, queryText: sql.value }),
+    })
+    if (!res.ok) throw new Error(`Server error: ${res.status}`)
+    const data = await res.json()
+    await navigator.clipboard.writeText(data.url)
+    shareState.value = 'copied'
+  } catch {
+    shareState.value = 'error'
+  } finally {
+    setTimeout(() => { shareState.value = 'idle' }, 2000)
+  }
+}
+</script>
+
+<template>
+  <DialogRoot :open="true">
+    <DialogPortal>
+      <DialogOverlay class="fixed inset-0 z-[9998] bg-black/50" @click="emit('close')" />
+
+      <DialogContent
+        class="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[760px] max-h-[85vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
+        @click.stop
+        @keyup.esc="emit('close')"
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between gap-3 px-5 py-3.5 bg-muted/30 border-b border-border flex-shrink-0">
+          <div class="min-w-0 flex flex-col gap-0.5">
+            <DialogTitle class="text-[15px] font-bold text-foreground truncate">{{ displayName }}</DialogTitle>
+            <div class="flex items-center gap-2 min-w-0">
+              <span v-if="card.businessUnit?.name"
+                class="inline-block text-[10px] font-semibold text-primary bg-primary/10 border border-primary/30 rounded-full px-2 py-px truncate max-w-[220px]"
+                :title="`BU: ${card.businessUnit.name} (${card.businessUnit.accountId})`">
+                {{ card.businessUnit.name }}
+              </span>
+              <span class="text-[11px] text-muted-foreground truncate">{{ humanReadableDate }}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60"
+              :class="shareState === 'copied'
+                ? 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700'
+                : shareState === 'error'
+                  ? 'border-red-300 text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
+                  : 'border-border text-foreground hover:bg-muted'"
+              :disabled="shareState === 'loading'"
+              title="Generate a 24hr share link and copy it"
+              @click="shareQuery"
+            >
+              <Loader2 v-if="shareState === 'loading'" class="h-3.5 w-3.5 animate-spin" />
+              <Check v-else-if="shareState === 'copied'" class="h-3.5 w-3.5" />
+              <Share2 v-else class="h-3.5 w-3.5" />
+              {{ shareState === 'loading' ? 'Generating…' : shareState === 'copied' ? 'Link copied!' : shareState === 'error' ? 'Failed' : 'Share' }}
+            </button>
+            <button
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors"
+              :class="copied
+                ? 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700'
+                : 'border-border text-foreground hover:bg-muted'"
+              @click="copySql"
+            >
+              <component :is="copied ? Check : Copy" class="h-3.5 w-3.5" />
+              {{ copied ? 'Copied' : 'Copy SQL' }}
+            </button>
+            <button
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              title="Open in the full editor to validate or run this query"
+              @click="emit('open-editor', card.id)"
+            >
+              <ExternalLink class="h-3.5 w-3.5" />
+              Open in editor
+            </button>
+            <button
+              class="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+              title="Close"
+              @click="emit('close')"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <!-- SQL body -->
+        <div class="flex-1 overflow-auto bg-[#0f172a] p-4">
+          <pre class="font-mono text-[12.5px] leading-relaxed text-slate-200 whitespace-pre-wrap break-words m-0 select-text">{{ sql }}</pre>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
+</template>
