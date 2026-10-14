@@ -22,6 +22,7 @@ const tables = computed(() => (d.value.tables || []).filter((t) => !t.extra || s
 <template>
   <article class="rounded-lg border border-border bg-card">
     <header class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 rounded-t-lg">
+      <img v-if="d.icon" :src="d.icon" alt="" class="h-5 w-5 object-contain" referrerpolicy="no-referrer" @error="$event.target.style.display = 'none'" />
       <span v-if="heading" class="text-[11px] text-muted-foreground tabular-nums">{{ heading }}</span>
       <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">{{ d.typeLabel }}</span>
       <h3 class="flex-1 min-w-0 truncate text-sm font-semibold">{{ d.title }}</h3>

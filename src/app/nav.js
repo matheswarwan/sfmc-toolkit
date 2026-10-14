@@ -1,5 +1,4 @@
-// Sidebar sections and the routes behind them. `step` is the build step that ports
-// the screen (see ../../README.md); until then the route shows a placeholder.
+// Sidebar sections and the routes behind them (pages in router.js).
 import {
   Bookmark, LayoutGrid, Blocks, Workflow, ListChecks, Database, Route, Globe, Mail,
 } from 'lucide-vue-next'
@@ -8,30 +7,30 @@ export const NAV_GROUPS = [
   {
     label: 'Queries',
     items: [
-      { path: '/queries/saved', name: 'Saved queries', icon: Bookmark, step: 2 },
-      { path: '/queries/workspace', name: 'Workspace', icon: LayoutGrid, step: 2 },
-      { path: '/queries/builder', name: 'Query Builder', icon: Blocks, step: 2 },
+      { path: '/queries/saved', name: 'Saved queries', icon: Bookmark },
+      { path: '/queries/workspace', name: 'Workspace', icon: LayoutGrid },
+      { path: '/queries/builder', name: 'Query Builder', icon: Blocks },
     ],
   },
   {
     label: 'Automation',
     items: [
-      { path: '/automations', name: 'Automations', icon: Workflow, step: 5 },
-      { path: '/activities', name: 'Activities', icon: ListChecks, step: 5 },
+      { path: '/automations', name: 'Automations', icon: Workflow },
+      { path: '/activities', name: 'Activities', icon: ListChecks },
     ],
   },
   {
     label: 'Data',
     items: [
-      { path: '/data-extensions', name: 'Data Extensions', icon: Database, step: 4 },
-      { path: '/journeys', name: 'Journeys', icon: Route, step: 6 },
+      { path: '/data-extensions', name: 'Data Extensions', icon: Database },
+      { path: '/journeys', name: 'Journeys', icon: Route },
     ],
   },
   {
     label: 'Content',
     items: [
-      { path: '/cloudpages', name: 'CloudPages', icon: Globe, step: 6 },
-      { path: '/emails', name: 'Emails', icon: Mail, step: 3 },
+      { path: '/cloudpages', name: 'CloudPages', icon: Globe },
+      { path: '/emails', name: 'Emails', icon: Mail },
     ],
   },
 ]

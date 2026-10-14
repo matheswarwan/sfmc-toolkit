@@ -20,7 +20,7 @@ Work in progress. The sections are being moved over one at a time:
 | 3 | Emails | done |
 | 4 | Data Extensions | done |
 | 5 | Automations and Activities | done |
-| 6 | Journeys and CloudPages | |
+| 6 | Journeys and CloudPages | done |
 | 7 | Search, Features and To do pages, first release | |
 
 ## Install (unpacked)

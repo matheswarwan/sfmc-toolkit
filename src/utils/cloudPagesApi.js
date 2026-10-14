@@ -1,0 +1,125 @@
+// CloudPage Finder calls (from SFMC Automation Viewer's cloudPageExplorer.js): search
+// Content Builder for CloudPage assets, then on demand each page's URL and folder.
+import { sfmcFetch } from './sfmcApi.js'
+
+export const CP_PAGE_SIZE = 20
+export const CLOUD_PAGE_ASSET_TYPE_IDS = [240, 241, 242, 243, 244, 245, 247, 248, 249]
+const FIELDS = ['assetType', 'category', 'createdDate', 'customerKey', 'id', 'modifiedDate', 'name', 'meta', 'status']
+const CB = (stack) => `https://content-builder.${stack}.marketingcloudapps.com/fuelapi`
+
+export const SYSTEM_CP_PREFIXES = ['System', 'Default', 'Template']
+export const isSystemCloudPage = (name) => SYSTEM_CP_PREFIXES.some((p) => String(name || '').startsWith(p))
+
+// Matches the text in the name, content, description, file name, subject or key.
+function textOperand(value) {
+  const fields = [
+    { property: 'name', boost: 50 }, { property: 'content', boost: 5 }, { property: 'description', boost: 3 },
+    { property: 'fileProperties.fileName', boost: 2 }, { property: 'views.subjectline.content', boost: 50 }, { property: 'customerKey' },
+  ]
+  const node = (i) => {
+    const f = fields[i]
+    const leaf = { property: f.property, simpleOperator: 'contains', value, ...(f.boost ? { boost: f.boost } : {}) }
+    return i === fields.length - 1 ? leaf : { leftOperand: leaf, logicalOperator: 'OR', rightOperand: node(i + 1) }
+  }
+  return node(0)
+}
+
+export function cloudPageSearchBody(query, page = 1, pageSize = CP_PAGE_SIZE) {
+  const types = { property: 'assetType.id', simpleOperator: 'in', values: CLOUD_PAGE_ASSET_TYPE_IDS }
+  const value = query.trim().toLowerCase()
+  return {
+    page: { pageSize, page },
+    query: value ? { leftOperand: textOperand(value), logicalOperator: 'AND', rightOperand: types } : types,
+    fields: FIELDS,
+  }
+}
+
+export function urlFromAsset(item) {
+  if (!item) return null
+  if (item.url) return item.url
+  const cp = item.meta?.cloudPages
+  return cp ? cp.url || cp.pageUrl || cp.publicUrl || cp.publishUrl || cp.liveUrl || null : null
+}
+
+export function toCloudPage(item) {
+  return {
+    id: item.id,
+    name: item.name || '',
+    customerKey: item.customerKey || '',
+    status: item.status?.name || 'Unknown',
+    categoryId: item.category?.id ?? null,
+    categoryName: item.category?.name || '',
+    createdDate: item.createdDate || null,
+    modifiedDate: item.modifiedDate || null,
+    assetType: item.assetType?.displayName || item.assetType?.name || '',
+    publishDate: item.meta?.cloudPages?.publishDate || null,
+    url: urlFromAsset(item),
+  }
+}
+
+export async function searchCloudPages(stack, query, page = 1) {
+  const data = await sfmcFetch(`${CB(stack)}/asset/v1/content/assets/query?scope=ours`, 'POST', cloudPageSearchBody(query, page))
+  const items = (data?.items || []).map(toCloudPage)
+  return { items, total: data?.count ?? items.length }
+}
+
+let sitesCache = null // { stack, promise }
+
+function fetchSites(stack) {
+  if (!sitesCache || sitesCache.stack !== stack) {
+    const promise = sfmcFetch(`https://cloud-pages.${stack}.marketingcloudapps.com/fuelapi/internal/v2/cloudpages/sites?$page=1&$pagesize=5000`, 'GET')
+      .then((d) => d?.entities || [])
+    promise.catch(() => { sitesCache = null })
+    sitesCache = { stack, promise }
+  }
+  return sitesCache.promise
+}
+
+export function urlFromSites(stack, sites, page) {
+  const match = sites.find((s) => (page.customerKey && s.key === page.customerKey) ||
+    (page.id && String(s.defaultPageId) === String(page.id)) || (page.name && s.name === page.name))
+  if (!match) return null
+  if (match.url) return match.url
+  return match.siteId ? `https://cloud-pages.${stack}.marketingcloudapps.com/sites/${match.siteId}` : null
+}
+
+/** The page's public URL: from its asset, else from the CloudPages sites list. */
+export async function resolveCloudPageUrl(stack, page) {
+  if (page.url) return page.url
+  try {
+    const url = urlFromAsset(await sfmcFetch(`${CB(stack)}/asset/v1/content/assets/${page.id}`, 'GET'))
+    if (url) return url
+  } catch { /* try the sites list */ }
+  try {
+    return urlFromSites(stack, await fetchSites(stack), page)
+  } catch {
+    return null
+  }
+}
+
+const folderCache = new Map() // `${stack}:${id}` → Promise<{ name, parentId }>
+
+/** "Folder > Sub folder" under CloudPages ('Root' at the top level). */
+export async function fetchCloudPageFolderPath(stack, categoryId) {
+  const parts = []
+  let id = categoryId != null ? String(categoryId) : ''
+  for (let depth = 0; id && id !== '0' && depth < 30; depth++) {
+    const key = `${stack}:${id}`
+    if (!folderCache.has(key)) {
+      const p = sfmcFetch(`${CB(stack)}/asset/v1/content/categories/${id}/?categoryType=cloudpages&$page=1&$pagesize=500`, 'GET')
+        .then((d) => ({ name: d?.name || '', parentId: String(d?.parentId ?? '0') }))
+      p.catch(() => folderCache.delete(key))
+      folderCache.set(key, p)
+    }
+    const f = await folderCache.get(key)
+    if (!f.name) break
+    if (f.name !== 'CloudPages') parts.unshift(f.name)
+    id = f.parentId
+  }
+  return parts.length ? parts.join(' > ') : 'Root'
+}
+
+export function clearCloudPageCaches() {
+  folderCache.clear()
+  sitesCache = null
+}
