@@ -52,6 +52,13 @@ Queries section notes:
 
 Known Automation Viewer bugs not to carry over: Journey "Event Definition Key" filter read the DE-id input; the DE Clear button was bound to the Activity tab's button; activity types 725, 726, 736, 783, 1010, 1101, 1701, 3700 called missing renderers; `escapeHtml` did not escape `&` or quotes.
 
-## Release
+## Release checklist
 
-Not released yet. When it is: bump `public/manifest.json`, `npm run build`, zip from inside `dist/` into `releases/` (`cd dist && zip -r ../releases/sfmc-toolkit-<version>.zip .`), and check `unzip -l` shows `manifest.json` at the root (Query Saver's Bug 11). The user uploads to the Chrome Web Store.
+The Toolkit ships as an update to the SFMC Query Saver store listing; the user uploads the zip and then tells Claude (record it in `../CLAUDE.md`).
+
+1. Version: `public/manifest.json` and `package.json` (higher than the published one; Query Saver ended at 1.4.0). If the release has news for users, update `WhatsNew.vue` (`VERSION` and the list) and `src/data/features.js` / `todo.js`.
+2. Permissions: compare `public/manifest.json` with the published manifest. Any new permission, host or content-script match makes Chrome disable the extension until each user accepts it; tell the user first.
+3. `npm test` and `npm run build`.
+4. Package from inside `dist/` (manifest at the zip root; Query Saver's Bug 11): `cd dist && zip -qr ../releases/sfmc-toolkit-<version>.zip . -x "*.DS_Store"`. Never delete older zips in `releases/`.
+5. Check the zip: `unzip -l releases/sfmc-toolkit-<version>.zip` lists `manifest.json`, `background.js`, `app.html`, `content.js` with no `dist/` prefix; `unzip -p releases/sfmc-toolkit-<version>.zip manifest.json | grep version` shows the new version.
+6. Commit the zip, push, and make a GitHub release `v<version>` with it.

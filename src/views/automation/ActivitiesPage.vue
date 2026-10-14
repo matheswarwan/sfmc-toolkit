@@ -7,7 +7,8 @@ import { Search, Loader2, ListChecks } from 'lucide-vue-next'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { useStack } from '@/composables/useStack.js'
+import { useStack, whenStack } from '@/composables/useStack.js'
+import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { ACTIVITY_SEARCH_TYPES, searchActivities, fetchAllActivities, fetchActivityDetails } from '@/utils/automationApi.js'
 import { describeActivity, activityBlocks } from '@/utils/activityTypes.js'
@@ -95,6 +96,9 @@ async function loadFilterDefinitions() {
     } catch { /* keep the list item */ }
   }
 }
+
+// From Ctrl+K: searches the selected type (Query unless another was picked).
+useRouteSearch('/activities', (q) => { query.value = q; whenStack(search) })
 
 function getDoc() {
   const s = searched.value

@@ -1,5 +1,5 @@
-// Shown on todo.html. Plain data so it is easy to keep current: move an item to
-// `done` (with the version) when it ships, or delete it.
+// Shown on the To do page (#/todo). Plain data so it is easy to keep current: delete
+// an item when it ships (and add it to features.js).
 //
 // status: 'planned' | 'considering' | 'investigating'
 
@@ -19,8 +19,12 @@ export const TODO_GROUPS = [
     title: 'Under consideration',
     items: [
       {
+        title: 'Monitor automations',
+        detail: 'Watch chosen automations and get a notice when one is paused, activated or fails. SFMC Automation Viewer had an unfinished version of this; it was left out of SFMC Toolkit until it can notify properly.',
+      },
+      {
         title: 'Business unit for older queries',
-        detail: 'Queries saved before 1.4.0 have no business unit, so they get no badge. They get one the next time they run in the Query Workspace.',
+        detail: 'Queries saved before SFMC Query Saver 1.4.0 have no business unit, so they get no badge. They get one the next time they run in the Workspace.',
       },
     ],
   },

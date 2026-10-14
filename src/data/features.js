@@ -1,91 +1,44 @@
-// Shown on features.html. Only list what the current code actually does; mark
-// additions with `since` for one or two releases, then drop the tag.
+// Shown on the Features page (#/features). Only list what the current code does;
+// mark additions with `since` for one or two releases, then drop the tag.
 //
 // item: { title, how?, detail, since? }
 
 export const FEATURE_GROUPS = [
   {
-    id: 'saved-queries',
-    title: 'Saved queries (main page)',
-    intro: 'Click the toolbar icon to open the main page in a full tab. If it is already open, that tab is reused.',
+    id: 'general',
+    title: 'Getting around',
+    intro: 'SFMC Toolkit replaces SFMC Query Saver and includes everything SFMC Automation Viewer did. Click the toolbar icon to open it in a new tab.',
     items: [
-      {
-        title: 'Automatic capture from Query Studio',
-        how: 'Automatic',
-        detail: 'Every query you run in Query Studio is saved, named with the date and time. The toolbar icon blinks briefly as a cue. On Query Studio pages a small extension icon also appears, which opens this page.',
-      },
-      {
-        title: 'Add a query by hand',
-        how: 'The + button in the header',
-        detail: 'Enter a name and the SQL.',
-      },
-      {
-        title: 'Search',
-        how: 'The magnifier in the header (Esc closes it)',
-        detail: 'Matches query names, SQL text and business unit names. Use bu:<name or MID> to filter by business unit.',
-      },
-      {
-        title: 'Date sidebar and business unit filter',
-        detail: 'Browse by Today, Yesterday, This Week, Last Week, This Month, Last Month or by month. The sidebar can be resized. A business unit filter appears once queries carry a business unit.',
-      },
-      {
-        title: 'Business unit badge',
-        how: 'Automatic',
-        detail: 'Queries captured from Query Studio, and queries the first time they run in the Query Workspace, record the business unit you were in. It shows as a badge on the card and feeds the business unit filter.',
-        since: '1.4.0',
-      },
-      {
-        title: 'Favourites',
-        how: 'The star on a card, then the Favourites pill',
-        detail: 'Show only the queries you starred.',
-      },
-      {
-        title: 'Large or compact cards',
-        how: 'The Large cards / Compact cards button',
-        detail: 'Large cards are wider and show up to 40 lines of SQL instead of 18. The choice is remembered.',
-        since: '1.3.0',
-      },
-      {
-        title: 'Quick preview',
-        how: 'Click a card',
-        detail: 'Shows the full SQL with Copy, Share (a link valid for 24 hours, copied to the clipboard) and Open in editor.',
-      },
-      {
-        title: 'CSV export and import',
-        how: 'The download and upload icons in the header',
-        detail: 'Export writes Time Saved, Name and Query Text columns. Import reads the same format, skips the header row and any row without SQL, and reports how many queries it added.',
-      },
-      {
-        title: 'Delete several at once',
-        how: 'The trash icon in the header',
-        detail: 'Tick cards, or use Select all (it covers the cards visible under the current date filter), then Delete.',
-      },
-      {
-        title: 'Settings',
-        how: 'The gear in the header',
-        detail: 'Turn email saving on or off, set how many seconds apart two saves of the same email must be to count as separate versions (default 5), let a re-run of the same query reuse its last DE and Query Activity, see how much storage is used, or clear all data.',
-      },
-      {
-        title: 'Light and dark theme',
-        how: 'The moon icon',
-        detail: 'Applies to every page of the extension.',
-      },
-      {
-        title: 'Feedback',
-        how: 'The speech bubble on any page',
-        detail: 'Send a message, with your name and email if you want a reply. The extension version and the page you are on are included.',
-      },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Workspace, Query Builder), Automation (Automations, Activities), Data (Data Extensions, Journeys) and Content (CloudPages, Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
+      { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
+      { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys and CloudPages, and a running query in the Workspace, are kept while you visit other sections.' },
+      { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
+      { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
+      { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Send a message, with your name or email if you want a reply.' },
+    ],
+  },
+  {
+    id: 'saved-queries',
+    title: 'Saved queries',
+    intro: 'Queries > Saved queries.',
+    items: [
+      { title: 'Automatic capture from Query Studio', how: 'Automatic', detail: 'Every query you run in Query Studio is saved, named with the date and time, with the business unit you were in. New captures appear without a reload.' },
+      { title: 'Search and filters', detail: 'Search names, SQL and business unit names; bu:<name or MID> filters by business unit. Browse by Today, Yesterday, This Week and so on in the sidebar, filter by business unit, or show only favourites.' },
+      { title: 'Quick preview', how: 'Click a card', detail: 'See the full SQL, copy it, share it (a link valid for 24 hours), or open it in the Workspace or the Query Builder.' },
+      { title: 'Add, import and export', how: 'The +, export and import buttons', detail: 'Add a query by hand, or export and import queries as CSV.' },
+      { title: 'Large or compact cards, delete several', detail: 'Switch card size to see more SQL, and select several queries to delete at once.' },
     ],
   },
   {
     id: 'workspace',
     title: 'Query Workspace',
-    intro: 'Open it with Run Query on the main page, or Open in editor on a saved query.',
+    intro: 'Queries > Workspace in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
     items: [
       {
         title: 'Up to 6 queries side by side',
         how: 'Layout buttons 1×1, 1×2, 2×2, 2×3 and + Panel',
-        detail: 'Each panel has its own editor, validation, run and history, and panels run independently. Drag the borders to resize, or expand one panel to fill the page while the others keep running. The workspace is kept under its own address, so reopening it restores the panels.',
+        detail: 'Each panel has its own editor, validation, run and history, and panels run independently. Drag the borders to resize, or expand one panel to fill the page while the others keep running. The last workspace reopens when you come back; New workspace starts a clean one. Each browser tab keeps its own workspace.',
       },
       {
         title: 'Autosave',
@@ -114,31 +67,27 @@ export const FEATURE_GROUPS = [
       {
         title: 'Run a query and see the results',
         how: 'The play icon',
-        detail: 'Runs in five steps: validate, create the target DE, create the Query Activity, run it and fetch the results. Each step shows its time, links to what it created in SFMC, and can be retried from where it failed. The DE and activity go into QuerySaver folders. Up to 2,500 rows are fetched, and a run gives up after 10 minutes.',
+        detail: 'Runs in five steps: validate, create the target DE, create the Query Activity, run it and fetch the results. Each step shows its time, links to what it created in SFMC, and can be retried from where it failed. The DE and activity go into QuerySaver folders (the name is kept from SFMC Query Saver). Up to 2,500 rows are fetched, and a run gives up after 10 minutes.',
       },
       {
         title: 'Asks before opening Contact Builder',
         how: 'During a run, when SFMC needs a fresh session',
         detail: 'If the DE folder or the new DE cannot be created, the step asks whether to open Contact Builder in a background tab for a few seconds and retry. Before, the tab opened without asking.',
-        since: '1.4.0',
       },
       {
         title: 'Fewer "Cannot find table 0" failures',
         how: 'Automatic during a run',
         detail: 'When SFMC cannot see the new target DE yet, creating and starting the Query Activity wait and retry twice before showing a plain explanation. Folder IDs remembered from an earlier run are only reused on the same stack, and are looked up again if they stop working.',
-        since: '1.4.0',
       },
       {
         title: 'Field names SFMC would refuse are renamed',
         how: 'Automatic during a run',
         detail: 'Output columns that start with an underscore (such as _ContactKey from a synchronized DE) become t_ContactKey, or t1_, t2_ if that name is taken. Your SQL is not changed, and the Create DE step lists every rename.',
-        since: '1.2.7',
       },
       {
         title: 'Better field types in the target DE',
         how: 'Automatic during a run',
         detail: 'Date functions such as GETDATE() and DATEADD() make Date fields, COUNT, DATEDIFF and LEN make Number fields, and columns passed through from a DE or data view keep that field\'s type. Decimal fields get a valid precision (18,2 unless the source says otherwise). Anything unknown is Text(4000), the SFMC maximum, so values are never cut off (it was Text(500) before 1.4.0).',
-        since: '1.2.7',
       },
       {
         title: 'Results table',
@@ -148,7 +97,6 @@ export const FEATURE_GROUPS = [
         title: 'Results as Markdown, and Copy for AI',
         how: 'The MD and Copy for AI buttons above the results',
         detail: 'The query name, the SQL and the results as a Markdown table (first 200 rows, with a note when rows are left out), as a file or on the clipboard, ready to paste into Claude or ChatGPT.',
-        since: '1.3.0',
       },
       {
         title: 'Run history',
@@ -166,54 +114,46 @@ export const FEATURE_GROUPS = [
         title: 'SFMC checks as you type',
         how: 'Underlines and gutter markers; hover to read them',
         detail: 'About 40 rules catch what SFMC rejects or handles badly: more than one statement, variables, temp tables, WITH, a computed column without an alias, duplicate column names, ORDER BY in a subquery without TOP, = NULL, NOT IN with a subquery, a tracking data view without a date filter, functions SFMC does not support, and more. Each message shows its rule code (QS001 and so on). SELECT * is allowed.',
-        since: '1.3.0',
       },
       {
         title: 'One-click fixes',
         how: 'The button in a lint message',
         detail: 'For example: add an alias, move a WITH block into the FROM clause, change = NULL to IS NULL, add brackets to a name with spaces, add a 30-day date filter to a tracking data view, or give DECIMAL a precision.',
-        since: '1.3.0',
       },
       {
         title: 'Turn off a check',
-        how: 'Turn off QSxxx in a lint message; turn it back on in Settings (gear) under Turned-off lint rules',
+        how: 'Turn off QSxxx in a lint message; turn it back on in Settings under Running queries',
         detail: 'Hides one rule everywhere, for example one that warns about a pattern you use on purpose.',
-        since: '1.4.0',
       },
       {
         title: 'Unknown table check',
         detail: 'A table in FROM or JOIN that the Data Extension lookup confirms does not exist in this business unit is marked as an error. Shared ENT. tables and lookups that fail for other reasons are never flagged.',
-        since: '1.4.0',
       },
       {
         title: 'Insert all fields',
         how: 'The list button in the panel toolbar, or "All fields of …" in autocomplete (after alias. it shows as *)',
         detail: 'Writes the full column list of a DE or data view. Pick a table in the query or search for one. It replaces * or alias.* for that table, inserts at the cursor otherwise, and in an empty editor writes the whole query.',
-        since: '1.4.0',
       },
       {
         title: 'Autocomplete',
         how: 'Type, or press Ctrl+Space',
         detail: 'After FROM or JOIN it suggests data views and your Data Extensions, found with the DE search as you type, including Data Extensions under Shared Items and Synchronized Data Extensions. After alias. it suggests that table\'s fields. It also suggests SFMC functions and known values for some data view fields, such as _Subscribers.Status.',
-        since: '1.3.0',
       },
       {
         title: 'Hover help and parameter hints',
         detail: 'Hover a function, data view or field to see what it is, with SFMC-specific notes. Inside a function\'s brackets, its parameters are shown.',
-        since: '1.3.0',
       },
       {
         title: 'Format SQL',
         how: 'The format button in the panel toolbar, or Shift+Alt+F',
         detail: 'Lays the query out with upper-case keywords and indentation. If formatting would change anything other than layout, the query is left as it was and a note says so.',
-        since: '1.3.0',
       },
     ],
   },
   {
     id: 'builder',
     title: 'Query Builder (experimental)',
-    intro: 'Open it with Query Builder on the main page. It builds SQL from Data Extensions without typing it.',
+    intro: 'Queries > Query Builder in the sidebar. It builds SQL from Data Extensions without typing it.',
     items: [
       {
         title: 'Pick tables',
@@ -229,51 +169,79 @@ export const FEATURE_GROUPS = [
       },
       {
         title: 'Generated SQL',
-        detail: 'Shown in a panel you can dock right or bottom, or hide, and edit by hand. Copy it, Save it to your list (it reopens in the Builder), or send it to the Query Workspace to run. Your work is saved automatically.',
+        detail: 'Shown in a panel you can dock right or bottom, or hide, and edit by hand. Copy it, Save it to Saved queries (it reopens in the Builder), or send it to the Workspace to run. Your work is saved automatically, and the query you were building reopens; New query starts another.',
       },
+    ],
+  },
+  {
+    id: 'automations',
+    title: 'Automations',
+    intro: 'Automation > Automations. Viewing an automation never pauses or changes it.',
+    items: [
+      { title: 'Find an automation', detail: 'Search by name, or list all, most recently run first, with status, last run and modified date. Hide columns you do not need.' },
+      { title: 'Overview, schedule and notifications', detail: 'Key, status and last run; the schedule in plain words (for example Every 2 weeks on Monday) with the next run; and who gets error notifications.' },
+      { title: 'Overview and Full view', detail: 'Overview shows the steps side by side, like Automation Studio; click an activity for its details. Full view lists every activity with its details, SQL and scripts highlighted, and Show additional details for the rest.' },
+      { title: 'Every activity type', detail: 'Queries, scripts, imports, data extracts, file transfers, filters, email sends, waits, journeys and every other type. Types SFMC has no API for show what the automation step holds.' },
+      { title: 'Download the automation', detail: 'The whole automation, with every activity\'s details, as Markdown, Word or HTML.' },
+    ],
+  },
+  {
+    id: 'activities',
+    title: 'Activities',
+    intro: 'Automation > Activities.',
+    items: [
+      { title: 'Activities by type', detail: 'Query, Script, Import, Data Extract, File Transfer and Filter. Search by name, list all (newest first), or Fetch all to load every one (up to 2,000).' },
+      { title: 'Details for each', detail: 'The same details as in an automation, with All fields to show every property. Filters can load their filter definitions.' },
+    ],
+  },
+  {
+    id: 'data-extensions',
+    title: 'Data Extensions',
+    intro: 'Data > Data Extensions.',
+    items: [
+      { title: 'Find data extensions', detail: 'Search by name or list all, newest first. Data extensions under Shared Items and Synchronized Data Extensions are included and tagged. Hide system DEs (such as QueryStudioResults) with one tick.' },
+      { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
+      { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Open it in the Workspace or copy it.' },
+      { title: 'Excel export', detail: 'Names only, or every field of every DE (one sheet each), with folder paths if you want them.' },
+    ],
+  },
+  {
+    id: 'journeys',
+    title: 'Journeys',
+    intro: 'Data > Journeys lists journey entry events (event definitions).',
+    items: [
+      { title: 'Every entry event', detail: 'Loads up to 1,000 when you open the section; Refresh loads them again.' },
+      { title: 'Filters', detail: 'Name, event definition key, data extension name or ID, type, category, journey status, and scheduled today or later.' },
+    ],
+  },
+  {
+    id: 'cloudpages',
+    title: 'CloudPages',
+    intro: 'Content > CloudPages.',
+    items: [
+      { title: 'Find CloudPages', detail: 'Search by name, content or key, or list all. Hide unpublished or system pages.' },
+      { title: 'URLs and folders', detail: 'Get each page\'s public URL and folder path, one by one or for every listed page.' },
+      { title: 'Excel export', detail: 'Name, key, type, status, asset ID, URL and dates, with folder paths if you want them.' },
     ],
   },
   {
     id: 'emails',
-    title: 'Email version history',
-    intro: 'On the Emails tab of the main page. Turn it on or off in Settings.',
+    title: 'Email versions',
+    intro: 'Content > Emails. Turn saving on or off in Settings.',
     items: [
-      {
-        title: 'Every Content Builder save is kept',
-        how: 'Automatic when you save an email in Content Builder',
-        detail: 'Each save becomes a version. Saves of the same email closer together than the time set in Settings count as one.',
-      },
-      {
-        title: 'Browse and compare versions',
-        how: 'Click an email card',
-        detail: 'Pick any version to preview it with its subject line. Delete versions you do not need.',
-      },
-      {
-        title: 'Revert to an earlier version',
-        how: 'Revert to this version',
-        detail: 'Writes that version back to Content Builder. Refresh the email in Content Builder to see it. Emails saved before version history existed cannot be reverted.',
-      },
+      { title: 'Every Content Builder save is kept', how: 'Automatic', detail: 'Each save of an email becomes a version. Saves closer together than the time set in Settings count as one.' },
+      { title: 'Preview and delete versions', how: 'Click an email', detail: 'Pick any version to preview it with its subject line, and delete versions you do not need.' },
+      { title: 'Revert to an earlier version', how: 'Revert to this version, then confirm', detail: 'Writes that version back to Content Builder; reload the email there to see it. Emails saved before version history existed cannot be reverted.' },
     ],
   },
   {
-    id: 'connection',
-    title: 'Connection to SFMC',
+    id: 'settings',
+    title: 'Settings and connection',
     items: [
-      {
-        title: 'Connection status',
-        how: 'The status pill in the page header',
-        detail: 'Shows your SFMC stack and whether the extension is ready to run queries. It needs you to be logged in to SFMC in this browser; the token Automation Studio and Content Builder need is fetched for you in a hidden background tab.',
-      },
-      {
-        title: 'Choose the stack',
-        how: 'Open the status pill and use the Stack list',
-        detail: 'The extension picks the stack of the SFMC tab you used most recently. If it picks the wrong one, choose the right stack from the list, or enter it under Other. A chosen stack shows as pinned; pick Automatic to go back. Open pages switch straight away.',
-        since: '1.3.0',
-      },
-      {
-        title: 'What is sent where',
-        detail: 'Queries and emails are stored in your browser only. SFMC calls go straight from the extension to your SFMC account. Shared links and feedback go to the extension\'s own Cloudflare workers, and anonymous usage events (such as a query run) go to Google Analytics.',
-      },
+      { title: 'Connection menu', how: 'The stack pill in the top bar', detail: 'Shows your stack, business unit and whether the app token is ready. App sessions lists Automation Studio, Data Extensions, Content Builder, CloudPages and Journey Builder; sessions start automatically when needed, and Connect starts one now. Pin a stack if the wrong one is picked.' },
+      { title: 'Backup', how: 'Settings > Backup', detail: 'Export everything (queries with run history, email versions, workspaces, settings) as one file, or import one from SFMC Toolkit or SFMC Query Saver. Import never overwrites what is already here.' },
+      { title: 'API console', how: 'Settings > Troubleshooting', detail: 'Shows every SFMC call and its response at the bottom of the window, to download or send with feedback when something fails.' },
+      { title: 'What is sent where', detail: 'Queries and emails are stored in your browser only. SFMC calls go straight from the extension to your SFMC account using your login; nothing is stored about your credentials. Shared links and feedback go to the extension\'s own Cloudflare workers, and anonymous usage events (such as a query run) go to Google Analytics.' },
     ],
   },
 ]

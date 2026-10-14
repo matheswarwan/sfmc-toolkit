@@ -1,20 +1,12 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { ArrowLeft, Search } from 'lucide-vue-next'
-import { useTheme } from './composables/useTheme.js'
-import { FEATURE_GROUPS } from './data/features.js'
-import { TODO_GROUPS, TODO_STATUS_LABELS } from './data/todo.js'
+// Features and To do pages. Content lives in src/data/features.js and src/data/todo.js.
+import { ref, computed } from 'vue'
+import { Search } from 'lucide-vue-next'
+import { FEATURE_GROUPS } from '@/data/features.js'
+import { TODO_GROUPS, TODO_STATUS_LABELS } from '@/data/todo.js'
 
-// features.html and todo.html: a plain reference page and a list of what is
-// coming. Content lives in src/data/features.js and src/data/todo.js.
-const props = defineProps({
+defineProps({
   page: { type: String, default: 'features' },
-})
-
-const { loadTheme } = useTheme()
-onMounted(() => {
-  loadTheme()
-  document.title = props.page === 'todo' ? 'SFMC Query Saver: To do' : 'SFMC Query Saver: Features'
 })
 
 const version = (() => {
@@ -35,46 +27,25 @@ const filteredFeatures = computed(() => {
 })
 const featureCount = computed(() => FEATURE_GROUPS.reduce((n, g) => n + g.items.length, 0))
 
-function pageUrl(name) {
-  try { return chrome.runtime.getURL(name) } catch { return name }
-}
-function goBack() {
-  window.location.href = pageUrl('index.html')
+function scrollTo(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 </script>
 
 <template>
-  <div class="min-h-screen bg-background text-foreground">
-    <header class="flex items-center gap-3 px-5 py-3 border-b border-border bg-card sticky top-0 z-10">
-      <button
-        class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        title="Back to saved queries"
-        @click="goBack"
-      >
-        <ArrowLeft class="h-4 w-4" />
-      </button>
-      <h1 class="text-sm font-bold">SFMC Query Saver</h1>
-      <span v-if="version" class="text-[10px] text-muted-foreground">v{{ version }}</span>
-      <nav class="ml-auto flex gap-1 text-xs">
-        <a
-          :href="pageUrl('features.html')"
-          class="px-2.5 py-1 rounded-md border"
-          :class="page === 'features' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'"
-        >Features</a>
-        <a
-          :href="pageUrl('todo.html')"
-          class="px-2.5 py-1 rounded-md border"
-          :class="page === 'todo' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'"
-        >To do</a>
-      </nav>
-    </header>
+  <div class="min-h-full bg-background text-foreground">
+    <nav class="flex items-center gap-1 px-5 py-2 border-b border-border bg-card text-xs" aria-label="Pages">
+      <RouterLink to="/features" class="px-2.5 py-1 rounded-md border" :class="page === 'features' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">Features</RouterLink>
+      <RouterLink to="/todo" class="px-2.5 py-1 rounded-md border" :class="page === 'todo' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">To do</RouterLink>
+      <span v-if="version" class="ml-auto text-muted-foreground">SFMC Toolkit {{ version }}</span>
+    </nav>
 
     <main class="max-w-3xl mx-auto px-5 py-6">
       <!-- Features -->
       <template v-if="page === 'features'">
         <h2 class="text-lg font-bold">Features</h2>
         <p class="text-sm text-muted-foreground mt-1">
-          What the extension does, screen by screen ({{ featureCount }} features).
+          What SFMC Toolkit does, section by section ({{ featureCount }} features).
         </p>
 
         <div class="relative mt-4">
@@ -88,8 +59,8 @@ function goBack() {
         </div>
 
         <nav v-if="!query" class="flex flex-wrap gap-1.5 mt-3 text-xs">
-          <a v-for="g in FEATURE_GROUPS" :key="g.id" :href="`#${g.id}`"
-            class="px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:text-foreground">{{ g.title }}</a>
+          <button v-for="g in FEATURE_GROUPS" :key="g.id" type="button" @click="scrollTo(g.id)"
+            class="px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:text-foreground">{{ g.title }}</button>
         </nav>
 
         <p v-if="!filteredFeatures.length" class="text-sm text-muted-foreground mt-6">No feature matches "{{ query }}".</p>

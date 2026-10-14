@@ -158,7 +158,11 @@ function setDebounce(e) {
     <section class="rounded-lg border border-border bg-card p-4 text-sm">
       <h2 class="font-semibold mb-2">About</h2>
       <p class="text-muted-foreground">SFMC Toolkit {{ version }}. It combines SFMC Query Saver and SFMC Automation Viewer.</p>
-      <button class="mt-3 h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="showFeedback = true">Send feedback</button>
+      <div class="flex gap-2 mt-3">
+        <RouterLink to="/features" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Features</RouterLink>
+        <RouterLink to="/todo" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">To do</RouterLink>
+        <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="showFeedback = true">Send feedback</button>
+      </div>
     </section>
 
     <FeedbackModal v-if="showFeedback" screen="settings" @close="showFeedback = false" />

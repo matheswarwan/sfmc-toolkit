@@ -7,7 +7,8 @@ import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { useStack } from '@/composables/useStack.js'
+import { useStack, whenStack } from '@/composables/useStack.js'
+import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchCloudPages, resolveCloudPageUrl, fetchCloudPageFolderPath, clearCloudPageCaches, isSystemCloudPage, CP_PAGE_SIZE } from '@/utils/cloudPagesApi.js'
 import { runInBatches } from '@/utils/batchRunner.js'
@@ -114,6 +115,8 @@ function getDoc() {
       rows: shown.value.map((p) => [p.name, p.customerKey, p.assetType, p.status, p.id, urls[p.id]?.url || '', paths[p.id]?.path || p.categoryName, formatDateTime(p.modifiedDate)]) }],
   }
 }
+
+useRouteSearch('/cloudpages', (q) => { query.value = q; whenStack(search) })
 
 const columns = [
   { key: 'name', label: 'Name', hideable: false },

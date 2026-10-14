@@ -11,7 +11,7 @@ It uses your existing Marketing Cloud login. It never asks for or stores credent
 
 ## Status
 
-Work in progress. The sections are being moved over one at a time:
+Version 2.0.0 is the first release. It is published as an update to the SFMC Query Saver listing on the Chrome Web Store. How it was built:
 
 | Step | What | State |
 |---|---|---|
@@ -21,9 +21,11 @@ Work in progress. The sections are being moved over one at a time:
 | 4 | Data Extensions | done |
 | 5 | Automations and Activities | done |
 | 6 | Journeys and CloudPages | done |
-| 7 | Search, Features and To do pages, first release | |
+| 7 | Search, Features and To do pages, first release | done |
 
-## Install (unpacked)
+## Install
+
+From the Chrome Web Store (the listing that was SFMC Query Saver), or unpacked:
 
 ```bash
 npm install

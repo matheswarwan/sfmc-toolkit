@@ -7,6 +7,7 @@ import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack } from '@/composables/useStack.js'
+import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { fetchEventDefinitions, filterEventDefinitions, describeEventDefinition, EVENT_TYPES, EVENT_CATEGORIES } from '@/utils/journeyApi.js'
 import { activityBlocks } from '@/utils/activityTypes.js'
 
@@ -43,6 +44,8 @@ const shown = computed(() => filterEventDefinitions(items.value, filters))
 const descs = computed(() => shown.value.map((it) => describeEventDefinition(it, stack.value)))
 const anyFilter = computed(() => Object.values(filters).some(Boolean))
 function clearFilters() { Object.assign(filters, { name: '', key: '', deName: '', deId: '', type: '', category: '', journeyStatus: '', scheduledFrom: false }) }
+
+useRouteSearch('/journeys', (q) => { filters.name = q })
 
 function getDoc() {
   return { title: 'Journey entry events', blocks: descs.value.flatMap((d) => activityBlocks(d, '', 2)) }

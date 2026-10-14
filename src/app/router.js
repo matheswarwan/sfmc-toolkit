@@ -30,6 +30,8 @@ export const routes = [
     component: () => import('../views/emails/EmailDetailPage.vue'),
     meta: { title: 'Emails', group: 'Content' },
   },
+  { path: '/features', component: () => import('../views/info/InfoPage.vue'), props: { page: 'features' }, meta: { title: 'Features' } },
+  { path: '/todo', component: () => import('../views/info/InfoPage.vue'), props: { page: 'todo' }, meta: { title: 'To do' } },
   { path: '/settings', component: () => import('../views/settings/SettingsPage.vue'), meta: { title: 'Settings' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

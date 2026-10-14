@@ -7,7 +7,8 @@ import { Search, Loader2 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { useStack } from '@/composables/useStack.js'
+import { useStack, whenStack } from '@/composables/useStack.js'
+import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchAutomations } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
@@ -49,6 +50,8 @@ async function loadMore() {
     loadingMore.value = false
   }
 }
+
+useRouteSearch('/automations', (q) => { query.value = q; whenStack(search) })
 
 const columns = [
   { key: 'name', label: 'Name', hideable: false },

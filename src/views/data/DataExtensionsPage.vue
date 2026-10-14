@@ -8,7 +8,8 @@ import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
-import { useStack } from '@/composables/useStack.js'
+import { useStack, whenStack } from '@/composables/useStack.js'
+import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchDataExtensions, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
@@ -225,6 +226,8 @@ async function buildDoc() {
     ],
   }
 }
+
+useRouteSearch('/data-extensions', (q) => { query.value = q; whenStack(search) })
 
 const columns = [
   { key: 'name', label: 'Name', hideable: false },

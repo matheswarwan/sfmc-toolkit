@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { detectStack, readCachedStack, onStackChange } from '@/utils/stackDetection.js'
 
 // The current SFMC stack, shared by every section. Starts from the cached stack
@@ -27,4 +27,13 @@ export function useStack() {
     })
   }
   return { stack, state, detect }
+}
+
+// Runs `fn` now if the stack is known, else once it is (searches opened from Ctrl+K
+// in a fresh tab arrive before detection finishes). Gives up after 15 seconds.
+export function whenStack(fn) {
+  useStack()
+  if (stack.value) return fn()
+  const stop = watch(stack, (s) => { if (s) { stop(); clearTimeout(timer); fn() } })
+  const timer = setTimeout(() => { stop(); if (!stack.value) fn() }, 15000)
 }
