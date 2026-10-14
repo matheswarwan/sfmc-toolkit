@@ -13,6 +13,7 @@ import { useTheme } from '@/composables/useTheme.js'
 import { trackEvent } from '@/utils/analytics.js'
 
 const route = useRoute()
+const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage']
 const paletteOpen = ref(false)
 const showFeedback = ref(false)
 const isMac = /Mac/i.test(navigator.platform || '')
@@ -56,10 +57,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         <ThemeSwitcher />
       </header>
       <main class="flex-1 min-h-0 overflow-auto">
-        <!-- Workspace and Query Builder stay alive in the background, so a running
-             query or a half-built join survives a visit to another section. -->
+        <!-- These stay alive in the background, so a running query, a half-built join
+             or a list of search results survives a visit to another section. -->
         <RouterView v-slot="{ Component }">
-          <KeepAlive :include="['WorkspacePage', 'BuilderPage']">
+          <KeepAlive :include="KEEP_ALIVE">
             <component :is="Component" />
           </KeepAlive>
         </RouterView>

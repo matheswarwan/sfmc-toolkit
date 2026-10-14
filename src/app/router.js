@@ -9,6 +9,7 @@ const PAGES = {
   '/queries/workspace': () => import('../views/queries/WorkspacePage.vue'),
   '/queries/builder': () => import('../views/queries/BuilderPage.vue'),
   '/emails': () => import('../views/emails/EmailsPage.vue'),
+  '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
 }
 
 export const routes = [

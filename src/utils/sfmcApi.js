@@ -530,6 +530,11 @@ const _sharedDEs = createSharedDECatalog({
   listDEs: (stack, id) => fetchDEsInCategoryAllPages(stack, id),
 })
 
+/** Forgets the Shared and Synchronized DE list (all stacks, or one), so the next search walks the folders again. */
+export function clearSharedDECache(stack) {
+  _sharedDEs.clear(stack)
+}
+
 /** Shared and Synchronized DEs whose name contains `name`, each with sourceType 'shared' or 'sync'. */
 export function searchSharedDEs(stack, name) {
   return _sharedDEs.search(stack, name)

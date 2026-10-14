@@ -18,7 +18,7 @@ Work in progress. The sections are being moved over one at a time:
 | 1 | Scaffold: build, service worker, app shell, Settings | done |
 | 2 | Queries: Saved, Workspace, Builder; backup export and import | done |
 | 3 | Emails | done |
-| 4 | Data Extensions | |
+| 4 | Data Extensions | done |
 | 5 | Automations and Activities | |
 | 6 | Journeys and CloudPages | |
 | 7 | Search, Features and To do pages, first release | |
