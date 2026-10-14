@@ -2,9 +2,10 @@
 
 A Chrome extension for Salesforce Marketing Cloud. It combines SFMC Query Saver and SFMC Automation Viewer in one full-tab app, and replaces SFMC Query Saver in the Chrome Web Store (version 2.0.0 is published as an update to that listing, so its users keep their data):
 
-- **Queries:** saved queries (captured from Query Studio), a multi-panel SQL workspace with lint, autocomplete and run-to-DE, and a visual Query Builder.
+- **Queries:** saved queries (captured from Query Studio), Run Query (up to 6 SQL panels with lint, autocomplete and run-to-DE), and a visual Query Builder.
 - **Automation:** automations with schedules, notifications and every activity's details; activities by type.
-- **Data:** data extensions (local, Shared and Synchronized) with fields, folder paths and Excel export; journey event definitions.
+- **Journey:** journeys drawn like the Journey Builder canvas (horizontal or vertical) with each step's content; journey entry events.
+- **Data:** data extensions (local, Shared and Synchronized) with fields, folder paths, query building and Excel export.
 - **Content:** CloudPages with URLs and folder paths; saved versions of Content Builder emails, with revert.
 
 It uses your existing Marketing Cloud login. It never asks for or stores credentials.
@@ -64,6 +65,10 @@ Layout:
 | `public/` | Copied as is: `manifest.json`, `content.js` (SSO and token capture), `share-handler.js`, images |
 
 Storage keys are the same as SFMC Query Saver's (`sql_*`, `email_*`, `workspace_*` and its settings), so a Query Saver backup imports unchanged.
+
+## Chrome Web Store listing
+
+The store text, single-purpose statement, permission justifications and data-use answers are in [docs/store-listing.md](docs/store-listing.md).
 
 ## Feedback
 
