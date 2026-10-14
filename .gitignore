@@ -1,0 +1,7 @@
+node_modules/
+dist/
+legacy/
+.DS_Store
+**/.DS_Store
+.claude/
+.npm-cache/
