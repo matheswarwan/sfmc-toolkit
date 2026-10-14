@@ -27,7 +27,7 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 
 ## Porting status
 
-Steps 1 (scaffold), 2 (Queries), 3 (Emails) and 4 (Data Extensions) are done. Query Saver's info page is under `src/views/info/` but **not routed yet** (step 7); it still imports `./composables/...` paths and link to the old `*.html` pages. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
+Steps 1 to 5 (scaffold, Queries, Emails, Data Extensions, Automations and Activities) are done. Query Saver's info page is under `src/views/info/` but **not routed yet** (step 7); it still imports `./composables/...` paths and link to the old `*.html` pages. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
 
 Queries section notes:
 - `WorkspacePage` and `BuilderPage` are kept alive (`<KeepAlive>` in `App.vue`), so a run's polling and a half-built query survive a visit to another section. Never key them on the route.
@@ -38,6 +38,7 @@ Queries section notes:
 - API console: one drawer for the whole app (`components/shell/ApiConsole.vue`, `useApiConsole.js`), on/off in Settings, stored as `sfmcqs_settings.apiConsole`. Pages don't call `setApiLogCallback` themselves.
 - Result screens (DE, and Automations, Activities, Journeys, CloudPages next) share `components/results/`: `DataTable` (columns can be hidden, remembered in localStorage `toolkit_cols_<key>`; `expanded` rows), `DownloadMenu` (View/Copy as Markdown, .md, .docx, .html) built on `utils/exportDoc.js` (one document model: `h`, `p`, `kv`, `table`, `code` blocks; Excel via `downloadWorkbook`, SheetJS from its CDN tarball since npm's copy is outdated). Kept-alive pages are listed in `KEEP_ALIVE` in `App.vue`.
 - Data Extensions: `utils/deApi.js` (Automation Viewer's contactsmeta endpoints; Shared/Synchronized from Query Saver's catalog in `sfmcApi.js`), `utils/deSql.js` (ticked fields to a SELECT with joins on a shared column name), `utils/batchRunner.js` (10 at a time).
+- Automations and Activities: `utils/automationApi.js`, `utils/activityTypes.js` (`describeActivity` turns any activity's details into plain data for `ActivityCard` and the exports; fields a type doesn't list go to `extra`; values are text, never HTML), `utils/automationDoc.js`, `utils/ical.js`. Activity details load 4 at a time.
 - Backups: `src/utils/backup.js` (`planImport` never overwrites). Query Saver exports the same format.
 
 Known Automation Viewer bugs not to carry over: Journey "Event Definition Key" filter read the DE-id input; the DE Clear button was bound to the Activity tab's button; activity types 725, 726, 736, 783, 1010, 1101, 1701, 3700 called missing renderers; `escapeHtml` did not escape `&` or quotes.

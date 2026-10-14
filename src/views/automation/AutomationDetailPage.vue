@@ -1,0 +1,183 @@
+<script setup>
+// One automation: overview, schedule, error notifications and every step's activities,
+// as an Overview (steps side by side, like Automation Studio) or a Full view (every
+// activity's details). Read-only.
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { ArrowLeft, Loader2, ExternalLink, Mail, ChevronDown, ChevronRight, X } from 'lucide-vue-next'
+import ActivityCard from '@/components/results/ActivityCard.vue'
+import StatusBadge from '@/components/results/StatusBadge.vue'
+import DownloadMenu from '@/components/results/DownloadMenu.vue'
+import { useStack } from '@/composables/useStack.js'
+import { fetchAutomation, fetchActivityDetails } from '@/utils/automationApi.js'
+import { describeActivity, activityTypeLabel, automationStudioUrl } from '@/utils/activityTypes.js'
+import { automationOverviewRows, scheduleRows, automationDoc } from '@/utils/automationDoc.js'
+import { runInBatches } from '@/utils/batchRunner.js'
+
+const route = useRoute()
+const { stack } = useStack()
+
+const details = ref(null)
+const notifications = ref(null)
+const loading = ref(true)
+const error = ref('')
+const acts = reactive({}) // "si.ai" → { status: 'loading' | 'ok' | 'error', desc, error }
+const view = ref('full')
+const showAllFields = ref(false)
+const open = reactive({ schedule: true, notifications: false })
+const modal = ref(null) // "si.ai" of the activity shown in the Overview modal
+
+const id = computed(() => String(route.params.id || ''))
+const key = (si, ai) => `${si}.${ai}`
+// "0.1" (internal key) → "1.2" (as shown to people)
+const stepLabel = (k) => k.split('.').map((n) => Number(n) + 1).join('.')
+
+async function load() {
+  if (!stack.value || !id.value) return
+  loading.value = true
+  error.value = ''
+  for (const k of Object.keys(acts)) delete acts[k]
+  try {
+    const r = await fetchAutomation(stack.value, id.value)
+    details.value = r.details
+    notifications.value = r.notifications
+  } catch (e) {
+    error.value = `Could not load this automation: ${e.message}`
+    loading.value = false
+    return
+  }
+  loading.value = false
+  const list = []
+  ;(details.value.steps || []).forEach((step, si) => (step.activities || []).forEach((a, ai) => {
+    acts[key(si, ai)] = { status: 'loading' }
+    list.push({ a, k: key(si, ai) })
+  }))
+  // A few at a time, so a long automation doesn't fire every request at once.
+  await runInBatches(list, 4, async ({ a, k }) => {
+    try {
+      acts[k] = { status: 'ok', desc: describeActivity(a.objectTypeId, await fetchActivityDetails(stack.value, a), stack.value) }
+    } catch (e) {
+      acts[k] = { status: 'error', error: e.message, desc: describeActivity(a.objectTypeId, { ...a, _fromStep: true }, stack.value) }
+    }
+  })
+}
+watch([id, stack], load, { immediate: true })
+
+const steps = computed(() => details.value?.steps || [])
+const workers = computed(() => notifications.value?.workers || [])
+const pending = computed(() => Object.values(acts).filter((x) => x.status === 'loading').length)
+
+function getDoc() {
+  return automationDoc(details.value, notifications.value, (si, ai) => acts[key(si, ai)]?.desc || null)
+}
+</script>
+
+<template>
+  <div class="h-full flex flex-col">
+    <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card">
+      <RouterLink to="/automations" class="p-1.5 rounded-md text-muted-foreground hover:bg-accent" title="Back to automations"><ArrowLeft class="h-4 w-4" /></RouterLink>
+      <h1 class="text-sm font-semibold truncate">{{ details?.name || 'Automation' }}</h1>
+      <StatusBadge v-if="details" :status="details.status" />
+      <span v-if="pending" class="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Loading {{ pending }} activities</span>
+      <div class="flex-1" />
+      <template v-if="details">
+        <div class="flex items-center gap-0.5 border border-border rounded-md p-0.5" role="group" aria-label="View">
+          <button class="text-xs px-2 py-0.5 rounded" :class="view === 'overview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'" :aria-pressed="view === 'overview'" @click="view = 'overview'">Overview</button>
+          <button class="text-xs px-2 py-0.5 rounded" :class="view === 'full' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'" :aria-pressed="view === 'full'" @click="view = 'full'">Full view</button>
+        </div>
+        <label v-if="view === 'full'" class="flex items-center gap-1.5 text-xs text-muted-foreground"><input v-model="showAllFields" type="checkbox" /> All fields</label>
+        <a :href="automationStudioUrl(stack)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Automation Studio <ExternalLink class="h-3 w-3" /></a>
+        <DownloadMenu :get-doc="getDoc" :file-name="details.name || 'automation'" :disabled="pending > 0" />
+      </template>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      <div v-if="loading" class="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Loading the automation…</div>
+      <p v-else-if="error" class="text-sm text-red-600" role="alert">{{ error }}</p>
+      <template v-else-if="details">
+        <section class="rounded-lg border border-border bg-card p-3">
+          <dl class="grid grid-cols-[minmax(7rem,10rem)_1fr_minmax(7rem,10rem)_1fr] gap-x-4 gap-y-1 text-xs">
+            <template v-for="[k, v] in automationOverviewRows(details)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-words">{{ v }}</dd></template>
+          </dl>
+        </section>
+
+        <section v-if="details.schedule" class="rounded-lg border border-border bg-card">
+          <button class="w-full flex items-center gap-1.5 px-3 py-2 text-sm font-semibold" :aria-expanded="open.schedule" @click="open.schedule = !open.schedule">
+            <ChevronDown v-if="open.schedule" class="h-4 w-4" /><ChevronRight v-else class="h-4 w-4" /> Schedule
+          </button>
+          <div v-if="open.schedule" class="grid grid-cols-2 md:grid-cols-3 gap-2 px-3 pb-3">
+            <div v-for="[k, v] in scheduleRows(details.schedule)" :key="k" class="rounded-md border border-border p-2">
+              <div class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{{ k }}</div>
+              <div class="text-sm" :class="{ 'text-primary font-medium': k === 'Next run' }">{{ v }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="workers.length" class="rounded-lg border border-border bg-card">
+          <button class="w-full flex items-center gap-1.5 px-3 py-2 text-sm font-semibold" :aria-expanded="open.notifications" @click="open.notifications = !open.notifications">
+            <ChevronDown v-if="open.notifications" class="h-4 w-4" /><ChevronRight v-else class="h-4 w-4" /> Error notifications ({{ workers.length }})
+          </button>
+          <div v-if="open.notifications" class="flex flex-wrap gap-2 px-3 pb-3">
+            <a v-for="(w, i) in workers" :key="i" :href="`mailto:${w.definition}`" class="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-primary hover:bg-accent">
+              <Mail class="h-3.5 w-3.5" /> {{ w.definition }}<span v-if="w.notificationType" class="text-muted-foreground">· {{ w.notificationType }}</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- Overview: steps left to right, like Automation Studio -->
+        <section v-if="view === 'overview'" class="overflow-x-auto pb-2">
+          <div class="flex items-start gap-1 min-w-max">
+            <template v-for="(step, si) in steps" :key="si">
+              <div v-if="si" class="self-center px-1 text-muted-foreground" aria-hidden="true">→</div>
+              <div class="w-56 rounded-lg border border-border bg-card">
+                <div class="px-3 py-2 border-b border-border bg-muted/40 rounded-t-lg">
+                  <div class="text-xs font-bold text-primary">Step {{ si + 1 }}</div>
+                  <div v-if="step.name" class="text-[11px] text-muted-foreground line-clamp-2">{{ step.name }}</div>
+                </div>
+                <div class="p-2 space-y-1.5">
+                  <button v-for="(a, ai) in step.activities || []" :key="ai" class="w-full text-left rounded-md border border-border px-2 py-1.5 hover:bg-accent" @click="modal = key(si, ai)">
+                    <div class="flex items-center gap-1 text-[10px] font-semibold uppercase text-primary">
+                      {{ activityTypeLabel(a.objectTypeId) }}
+                      <Loader2 v-if="acts[key(si, ai)]?.status === 'loading'" class="h-3 w-3 animate-spin" />
+                      <span class="ml-auto text-muted-foreground font-normal">{{ si + 1 }}.{{ ai + 1 }}</span>
+                    </div>
+                    <div class="text-xs truncate" :title="a.name">{{ a.name }}</div>
+                  </button>
+                  <p v-if="!step.activities?.length" class="text-xs text-muted-foreground italic">No activities.</p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- Full view: every activity's details -->
+        <section v-else class="space-y-5">
+          <div v-for="(step, si) in steps" :key="si">
+            <h2 class="text-sm font-semibold text-primary mb-2">Step {{ si + 1 }}{{ step.name ? `: ${step.name}` : '' }}</h2>
+            <div class="space-y-3">
+              <template v-for="(a, ai) in step.activities || []" :key="ai">
+                <div v-if="acts[key(si, ai)]?.status === 'loading'" class="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+                  <Loader2 class="h-3.5 w-3.5 animate-spin" /> {{ si + 1 }}.{{ ai + 1 }} {{ a.name }}
+                </div>
+                <template v-else-if="acts[key(si, ai)]">
+                  <p v-if="acts[key(si, ai)].status === 'error'" class="text-xs text-red-600">Could not load {{ si + 1 }}.{{ ai + 1 }}: {{ acts[key(si, ai)].error }}</p>
+                  <ActivityCard :description="acts[key(si, ai)].desc" :heading="`${si + 1}.${ai + 1}`" :show-all-fields="showAllFields" />
+                </template>
+              </template>
+              <p v-if="!step.activities?.length" class="text-xs text-muted-foreground italic">No activities.</p>
+            </div>
+          </div>
+        </section>
+      </template>
+    </div>
+
+    <!-- Activity modal (Overview) -->
+    <div v-if="modal && acts[modal]" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="modal = null" @keydown.esc="modal = null">
+      <div class="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-lg bg-background shadow-xl" role="dialog" aria-modal="true">
+        <div class="sticky top-0 z-10 flex justify-end bg-background p-1"><button class="p-1 rounded hover:bg-accent" title="Close" @click="modal = null"><X class="h-4 w-4" /></button></div>
+        <div v-if="acts[modal].status === 'loading'" class="p-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Loading…</div>
+        <ActivityCard v-else :description="acts[modal].desc" :heading="stepLabel(modal)" />
+      </div>
+    </div>
+  </div>
+</template>

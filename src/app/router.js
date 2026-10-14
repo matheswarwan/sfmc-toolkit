@@ -10,6 +10,8 @@ const PAGES = {
   '/queries/builder': () => import('../views/queries/BuilderPage.vue'),
   '/emails': () => import('../views/emails/EmailsPage.vue'),
   '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
+  '/automations': () => import('../views/automation/AutomationsPage.vue'),
+  '/activities': () => import('../views/automation/ActivitiesPage.vue'),
 }
 
 export const routes = [
@@ -19,6 +21,11 @@ export const routes = [
     component: PAGES[item.path] || Placeholder,
     meta: { title: item.name, group: item.group, step: item.step },
   })),
+  {
+    path: '/automations/:id',
+    component: () => import('../views/automation/AutomationDetailPage.vue'),
+    meta: { title: 'Automations', group: 'Automation' },
+  },
   {
     path: '/emails/:id',
     component: () => import('../views/emails/EmailDetailPage.vue'),
