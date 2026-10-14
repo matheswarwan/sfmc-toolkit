@@ -6,6 +6,7 @@ import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import { useTheme } from '@/composables/useTheme.js'
 import { useStoredSetting } from '@/composables/useStoredSetting.js'
 import { disabledRules, setRuleDisabled, onLintSettingsChange } from '@/editor/lintSettings.js'
+import { LINT_RULES } from '@/utils/sqlLint.js'
 import { buildBackup, backupFileName, parseBackup, planImport, describeImport } from '@/utils/backup.js'
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
@@ -22,6 +23,16 @@ const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => 
 const offRules = ref([...disabledRules()].sort())
 const stopLint = onLintSettingsChange((set) => { offRules.value = [...set].sort() })
 onUnmounted(stopLint)
+
+// Every SQL check, with a switch. QS043 (plain SELECT *) is always off in the editor,
+// since the run flow supports SELECT * (src/editor/sqlExtensions.js).
+const ALWAYS_OFF = new Set(['QS043'])
+const ruleSearch = ref('')
+const rules = computed(() => {
+  const q = ruleSearch.value.trim().toLowerCase()
+  return LINT_RULES.filter((r) => !q || `${r.code} ${r.title}`.toLowerCase().includes(q))
+})
+function turnAllOn() { for (const code of [...offRules.value]) setRuleDisabled(code, false) }
 
 const showFeedback = ref(false)
 const { enabled: apiConsoleOn, setEnabled: setApiConsole } = useApiConsole()
@@ -113,13 +124,25 @@ function setDebounce(e) {
         <Switch v-model="reuseQueryDE" aria-label="Reuse the data extension and Query Activity" />
       </div>
       <div>
-        <div class="text-sm font-medium">Turned-off lint rules</div>
-        <p v-if="!offRules.length" class="text-xs text-muted-foreground">None. Turn a rule off from its message in the SQL editor.</p>
-        <ul v-else class="mt-2 space-y-1">
-          <li v-for="code in offRules" :key="code" class="flex items-center gap-2 text-sm">
-            <code class="flex-1">{{ code }}</code>
-            <button class="h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="setRuleDisabled(code, false)">Turn on</button>
+        <div class="flex items-center gap-2">
+          <div class="flex-1">
+            <div class="text-sm font-medium">SQL checks</div>
+            <p class="text-xs text-muted-foreground">The editor checks queries as you type. Turn off any check you don't want; it is off in every panel and tab. {{ offRules.length }} off.</p>
+          </div>
+          <button v-if="offRules.length" class="h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="turnAllOn">Turn all on</button>
+        </div>
+        <input v-model="ruleSearch" type="search" placeholder="Find a check (code or words)" aria-label="Find a SQL check"
+          class="mt-2 h-8 w-full rounded-md border border-border bg-background px-2 text-xs" />
+        <ul class="mt-2 max-h-80 overflow-y-auto divide-y divide-border rounded-md border border-border">
+          <li v-for="r in rules" :key="r.code" class="flex items-center gap-2 px-2 py-1.5 text-xs">
+            <code class="w-12 flex-shrink-0">{{ r.code }}</code>
+            <span class="text-[10px] rounded px-1 flex-shrink-0"
+              :class="r.severity === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' : r.severity === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-muted text-muted-foreground'">{{ r.severity }}</span>
+            <span class="flex-1">{{ r.title }}</span>
+            <span v-if="ALWAYS_OFF.has(r.code)" class="text-muted-foreground" title="SELECT * works in Run Query, so this check is not used">Always off</span>
+            <Switch v-else :model-value="!offRules.includes(r.code)" :aria-label="`${r.code} ${r.title}`" @update:model-value="setRuleDisabled(r.code, !$event)" />
           </li>
+          <li v-if="!rules.length" class="px-2 py-3 text-xs text-muted-foreground">No check matches.</li>
         </ul>
       </div>
     </section>

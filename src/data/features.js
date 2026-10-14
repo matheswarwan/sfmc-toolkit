@@ -15,7 +15,7 @@ export const FEATURE_GROUPS = [
       { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys, Journey Entry and CloudPages, and a running query in Run Query, are kept while you visit other sections.' },
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
       { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
-      { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Send a message, with your name or email if you want a reply.' },
+      { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Say what happened (or your idea), add details, and attach a screenshot: of this page, of another tab or window such as SFMC, or an image you upload or paste. Draw boxes or freehand on it to point at the problem or cover anything private. Technical details (version, browser, section, stack, business unit, the last failed SFMC calls; never SQL or data) are included unless you untick them, and you can see exactly what is sent.' },
     ],
   },
   {
@@ -121,9 +121,9 @@ export const FEATURE_GROUPS = [
         detail: 'For example: add an alias, move a WITH block into the FROM clause, change = NULL to IS NULL, add brackets to a name with spaces, add a 30-day date filter to a tracking data view, or give DECIMAL a precision.',
       },
       {
-        title: 'Turn off a check',
-        how: 'Turn off QSxxx in a lint message; turn it back on in Settings under Running queries',
-        detail: 'Hides one rule everywhere, for example one that warns about a pattern you use on purpose.',
+        title: 'Turn checks on or off',
+        how: 'Turn off QSxxx in a lint message, or Settings > Running queries > SQL checks',
+        detail: 'Settings lists every check with a switch and a search box; Turn all on puts them all back. A check that is off is off in every panel and tab.',
       },
       {
         title: 'Unknown table check',

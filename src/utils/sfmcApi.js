@@ -36,6 +36,17 @@ function _log(entry) { if (_logCallback) try { _logCallback(entry) } catch {} }
 function _logInfo(message) { _log({ ts: Date.now(), type: 'info', message }) }
 export function logInfo(message) { _logInfo(message) }
 
+// The last few failed SFMC calls, for the feedback form's technical details. Only
+// the method, the path (no query string, which can hold names) and the error.
+const _recentErrors = []
+function _rememberError(method, url, error, status) {
+  let path = url
+  try { const u = new URL(url); path = u.host + u.pathname } catch { /* keep as is */ }
+  _recentErrors.unshift({ at: new Date().toISOString(), method, path, status: status ?? null, error: String(error).slice(0, 300) })
+  _recentErrors.length = Math.min(_recentErrors.length, 5)
+}
+export function recentApiErrors() { return [..._recentErrors] }
+
 /**
  * Generic authenticated proxy fetch - exposed for callers that need a raw
  * PUT/POST/GET without a dedicated wrapper (e.g. Content Builder revert).
@@ -58,6 +69,7 @@ function proxyFetch(url, method, body) {
         (response ? null : 'No reply from the extension service worker.')
       if (error) {
         _log({ ts: Date.now(), type: 'err', method, url, error })
+        _rememberError(method, url, error, response?.status)
         const err = new Error(error)
         err.code = response?.code || null
         err.status = response?.status ?? null

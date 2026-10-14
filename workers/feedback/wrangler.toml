@@ -1,0 +1,10 @@
+# Deployed at https://query-saver-feedback.mathes-btech.workers.dev (the extension posts there).
+# From this folder: CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c npx wrangler deploy
+name = "query-saver-feedback"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding       = "FEEDBACK_DB"
+database_name = "sfmc-query-saver-feedback"
+database_id   = "5fe5fc22-e6ef-4cf1-97bd-5a19b5599e96"

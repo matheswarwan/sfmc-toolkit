@@ -1,0 +1,19 @@
+#!/bin/sh
+# Saves the screenshot of one feedback row as feedback-<id>.jpg (or .png/.webp).
+# Usage: CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c sh show-screenshot.sh <id>
+set -e
+id="$1"
+[ -n "$id" ] || { echo "Usage: sh show-screenshot.sh <feedback id>"; exit 1; }
+case "$id" in *[!0-9]*) echo "The id is a number."; exit 1;; esac
+cd "$(dirname "$0")"
+npx wrangler d1 execute sfmc-query-saver-feedback --remote --json \
+  --command "SELECT data_url FROM feedback_screenshots WHERE feedback_id = $id" > .shot.json
+node -e '
+const rows = JSON.parse(require("fs").readFileSync(".shot.json", "utf8"))[0].results
+if (!rows.length) { console.log("No screenshot for that id."); process.exit(1) }
+const m = rows[0].data_url.match(/^data:image\/(\w+);base64,(.+)$/)
+const ext = m[1] === "jpeg" ? "jpg" : m[1]
+require("fs").writeFileSync(`feedback-${process.argv[1]}.${ext}`, Buffer.from(m[2], "base64"))
+console.log(`Saved feedback-${process.argv[1]}.${ext}`)
+' "$id"
+rm -f .shot.json
