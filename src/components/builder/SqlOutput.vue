@@ -1,4 +1,6 @@
 <script setup>
+import { useRouter } from 'vue-router'
+import { showToast } from '@/composables/useToast.js'
 import { ref, watch, computed } from 'vue'
 import QueryEditor from '../detail/QueryEditor.vue'
 import Button from '../ui/button/Button.vue'
@@ -6,6 +8,7 @@ import { buildSqlFromSelections, buildSqlFromGraph } from '../../utils/sqlBuilde
 import { saveBuilderRecord } from '../../utils/builderStorage.js'
 import { Copy, ExternalLink, Save } from 'lucide-vue-next'
 
+const router = useRouter()
 const props = defineProps({
   sql: { type: String, default: '' },
   selectedDEs: { type: Array, default: () => [] },
@@ -59,12 +62,11 @@ async function saveToQuerySaver() {
   })
   const wasUpdate = !!props.recordId
   emit('saved', id)
-  alert(wasUpdate ? 'Query Builder query updated.' : 'Saved to Query Saver.')
+  showToast(wasUpdate ? 'Query updated in Saved queries.' : 'Saved to Saved queries.')
 }
 
 function openInWorkspace() {
-  const q = encodeURIComponent(localSql.value)
-  chrome.tabs.create({ url: chrome.runtime.getURL(`query-detail.html?sql=${q}`) })
+  router.push({ path: '/queries/workspace', query: { sql: localSql.value } })
 }
 </script>
 

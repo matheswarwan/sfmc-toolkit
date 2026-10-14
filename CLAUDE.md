@@ -26,7 +26,14 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 
 ## Porting status
 
-Step 1 (scaffold) is done. Query Saver's page components are under `src/views/` (`queries/SavedQueriesPage.vue`, `WorkspacePage.vue`, `BuilderPage.vue`, `emails/EmailDetailPage.vue`, `info/InfoPage.vue`) but are **not routed yet**: they still import `./composables/...` relative paths, have their own headers and link to the old `*.html` pages. Step 2 wires them into the router. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
+Steps 1 (scaffold) and 2 (Queries) are done. Query Saver's email detail and info pages are under `src/views/emails/` and `src/views/info/` but **not routed yet** (steps 3 and 7); they still import `./composables/...` paths and link to the old `*.html` pages. Automation Viewer's screens are rewritten from scratch in steps 4 to 6 (its source is plain JS in `../sfmc-automation-viewer`; the feature list is in the plan).
+
+Queries section notes:
+- `WorkspacePage` and `BuilderPage` are kept alive (`<KeepAlive>` in `App.vue`), so a run's polling and a half-built query survive a visit to another section. Never key them on the route.
+- Workspace: `?id=`, `?sql=`, `?ws=` are applied by `openInPanel`/`restore` in `useWorkspace.js` and then removed from the URL. The last workspace is remembered in `toolkit_lastWorkspace`. An empty panel takes the opened query; otherwise a panel is added (6 at most).
+- Builder: `QueryBuilder.vue` is the old page; `BuilderPage` remounts it (`session` key) for New query or a different `?id=`. The last builder record is in `toolkit_lastBuilder`.
+- Workspace panels store a `sql_*` record as soon as they open; Saved queries hides records with no SQL and no runs.
+- Backups: `src/utils/backup.js` (`planImport` never overwrites). Query Saver exports the same format.
 
 Known Automation Viewer bugs not to carry over: Journey "Event Definition Key" filter read the DE-id input; the DE Clear button was bound to the Activity tab's button; activity types 725, 726, 736, 783, 1010, 1101, 1701, 3700 called missing renderers; `escapeHtml` did not escape `&` or quotes.
 

@@ -6,6 +6,9 @@ import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import { useTheme } from '@/composables/useTheme.js'
 import { useStoredSetting } from '@/composables/useStoredSetting.js'
 import { disabledRules, setRuleDisabled, onLintSettingsChange } from '@/editor/lintSettings.js'
+import { buildBackup, backupFileName, parseBackup, planImport, describeImport } from '@/utils/backup.js'
+import { saveTextFile, readFileText } from '@/utils/download.js'
+import { showToast } from '@/composables/useToast.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
@@ -23,6 +26,35 @@ const showFeedback = ref(false)
 const version = computed(() => {
   try { return chrome.runtime.getManifest().version } catch { return '' }
 })
+
+// ── Backup ───────────────────────────────────────────────
+const backupInput = ref(null)
+const importResult = ref('')
+const importError = ref('')
+
+const getAll = () => new Promise((r) => chrome.storage.local.get(null, (items) => r(items || {})))
+
+async function exportBackup() {
+  const backup = buildBackup(await getAll(), { app: 'sfmc-toolkit', appVersion: version.value })
+  await saveTextFile(JSON.stringify(backup, null, 2), backupFileName('sfmc-toolkit'), 'application/json', 'Backup file')
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  importResult.value = ''
+  importError.value = ''
+  if (!file) return
+  try {
+    const backup = parseBackup(await readFileText(file))
+    const plan = planImport(backup.items, await getAll())
+    if (Object.keys(plan.writes).length) await new Promise((r) => chrome.storage.local.set(plan.writes, r))
+    importResult.value = describeImport(plan)
+    showToast(importResult.value)
+  } catch (e) {
+    importError.value = e.message
+  }
+}
 
 function setDebounce(e) {
   const n = Math.round(Number(e.target.value))
@@ -88,6 +120,21 @@ function setDebounce(e) {
           </li>
         </ul>
       </div>
+    </section>
+
+    <section class="rounded-lg border border-border bg-card p-4">
+      <h2 class="text-sm font-semibold">Backup</h2>
+      <p class="text-xs text-muted-foreground mt-1">
+        One file with your saved queries (with run history), email versions, workspaces and settings.
+        Import a backup from SFMC Query Saver or SFMC Toolkit. Nothing already here is overwritten.
+      </p>
+      <div class="flex gap-2 mt-3">
+        <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="exportBackup">Export backup</button>
+        <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="backupInput?.click()">Import backup</button>
+        <input ref="backupInput" type="file" accept=".json,application/json" class="hidden" @change="importBackup" />
+      </div>
+      <p v-if="importResult" class="mt-2 text-xs text-emerald-700 dark:text-emerald-400" role="status">{{ importResult }}</p>
+      <p v-if="importError" class="mt-2 text-xs text-red-600" role="alert">{{ importError }}</p>
     </section>
 
     <section class="rounded-lg border border-border bg-card p-4">

@@ -11,12 +11,12 @@ It uses your existing Marketing Cloud login. It never asks for or stores credent
 
 ## Status
 
-Work in progress. The app shell, the service worker and Settings are done; the sections are being moved over one at a time:
+Work in progress. The sections are being moved over one at a time:
 
 | Step | What | State |
 |---|---|---|
 | 1 | Scaffold: build, service worker, app shell, Settings | done |
-| 2 | Queries: Saved, Workspace, Builder; import a Query Saver backup | |
+| 2 | Queries: Saved, Workspace, Builder; backup export and import | done |
 | 3 | Emails | |
 | 4 | Data Extensions | |
 | 5 | Automations and Activities | |

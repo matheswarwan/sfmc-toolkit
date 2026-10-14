@@ -1,9 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useStore } from 'vuex'
 import { Star } from 'lucide-vue-next'
-
-const store = useStore()
 
 const props = defineProps({
   id:           String,
@@ -16,6 +13,7 @@ const props = defineProps({
   deleteMode:   { type: Boolean, default: false },
   isSelected:   { type: Boolean, default: false },
   size:         { type: String, default: 'compact' },  // 'compact' | 'large'
+  search:       { type: String, default: '' },
 })
 
 const emit = defineEmits(['toggle-select', 'toggle-favourite', 'open-preview'])
@@ -26,7 +24,7 @@ const humanReadableDate = computed(() =>
 const displayName = computed(() => props.name ?? humanReadableDate.value)
 
 const containsSearchText = computed(() => {
-  const raw = store.state.searchText.toLowerCase().trim()
+  const raw = props.search.toLowerCase().trim()
   if (!raw) return true
 
   const buTerms = [...raw.matchAll(/bu:(\S+)/g)].map(m => m[1])
