@@ -7,6 +7,7 @@ import ConnectionMenu from '@/components/shell/ConnectionMenu.vue'
 import CommandPalette from '@/components/shell/CommandPalette.vue'
 import ToastHost from '@/components/shell/ToastHost.vue'
 import ApiConsole from '@/components/shell/ApiConsole.vue'
+import WhatsNew from '@/components/shell/WhatsNew.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import { useTheme } from '@/composables/useTheme.js'
@@ -69,6 +70,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
     </div>
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <ToastHost />
+    <WhatsNew />
     <FeedbackModal v-if="showFeedback" :screen="route.path" @close="showFeedback = false" />
   </div>
 </template>

@@ -1,6 +1,6 @@
 # SFMC Toolkit
 
-A Chrome extension for Salesforce Marketing Cloud. It combines SFMC Query Saver and SFMC Automation Viewer in one full-tab app:
+A Chrome extension for Salesforce Marketing Cloud. It combines SFMC Query Saver and SFMC Automation Viewer in one full-tab app, and replaces SFMC Query Saver in the Chrome Web Store (version 2.0.0 is published as an update to that listing, so its users keep their data):
 
 - **Queries:** saved queries (captured from Query Studio), a multi-panel SQL workspace with lint, autocomplete and run-to-DE, and a visual Query Builder.
 - **Automation:** automations with schedules, notifications and every activity's details; activities by type.

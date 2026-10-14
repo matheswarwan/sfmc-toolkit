@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SFMC Toolkit",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Save, write and run SFMC SQL, and browse automations, activities, data extensions, journeys, CloudPages and email versions.",
   "action": {
     "default_title": "Open SFMC Toolkit",

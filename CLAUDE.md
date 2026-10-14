@@ -2,6 +2,14 @@
 
 Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../SFMCQuerySaver`, from branch `feature/shared-des-remove-launcher`, PR #44) and SFMC Automation Viewer (`../sfmc-automation-viewer`, v1.2 plus PR #4). The plan, decisions and status log are in `../sfmc-toolkit-plan.md`.
 
+## Replaces SFMC Query Saver (user, 2026-10-14)
+
+- SFMC Toolkit is published as an **update to the SFMC Query Saver store listing** (same extension ID, renamed), so Query Saver users keep their `chrome.storage` data. Versions continue from Query Saver: 2.0.0 is the first Toolkit release (Query Saver ended at 1.4.0).
+- **Never add a permission or host that Query Saver 1.4.0 did not have** without telling the user: Chrome disables an updated extension until each user accepts new permissions. Today the Toolkit's are a subset (it dropped `activeTab`).
+- Query Saver's old pages (`index.html`, `query-detail.html`, `query-builder.html`, `email-detail.html`, `features.html`, `todo.html`, `popup.html`) are tiny files in `public/` that forward to `app.html` (`public/legacy-redirect.js`), so bookmarks keep working.
+- `WhatsNew.vue` explains the change once to upgraders (key `_seenVersion`, Query Saver's).
+- Automation Viewer's listing: undecided.
+
 ## Rules
 
 - **Everything is built from `src/` and `public/`.** `dist/` is build output and is not committed. Never hand-edit `dist/` (Query Saver's Bug 9: hand patches to bundles vanish on the next build).
