@@ -31,8 +31,8 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">SFMC Query Saver is now SFMC Toolkit</h2>
       <ul class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Emails in the sidebar.</span></li>
-        <li><strong class="block">New sections</strong><span class="text-muted-foreground">Automations, Activities, Data Extensions, Journeys and CloudPages, from SFMC Automation Viewer.</span></li>
+        <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
+        <li><strong class="block">New sections</strong><span class="text-muted-foreground">Automations, Activities, Journeys, Journey Entry, Data Extensions and CloudPages.</span></li>
         <li><strong class="block">Settings have their own page</strong><span class="text-muted-foreground">Email versions, reuse DE, lint rules, backups and the API console are under Settings.</span></li>
         <li><strong class="block">Several tabs</strong><span class="text-muted-foreground">The toolbar icon opens a new tab each time; Ctrl+K jumps to any section.</span></li>
       </ul>

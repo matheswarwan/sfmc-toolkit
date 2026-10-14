@@ -9,10 +9,10 @@ export const FEATURE_GROUPS = [
     title: 'Getting around',
     intro: 'SFMC Toolkit replaces SFMC Query Saver and includes everything SFMC Automation Viewer did. Click the toolbar icon to open it in a new tab.',
     items: [
-      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Workspace, Query Builder), Automation (Automations, Activities), Data (Data Extensions, Journeys) and Content (CloudPages, Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
       { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
-      { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys and CloudPages, and a running query in the Workspace, are kept while you visit other sections.' },
+      { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys, Journey Entry and CloudPages, and a running query in Run Query, are kept while you visit other sections.' },
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
       { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
       { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Send a message, with your name or email if you want a reply.' },
@@ -25,20 +25,20 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Automatic capture from Query Studio', how: 'Automatic', detail: 'Every query you run in Query Studio is saved, named with the date and time, with the business unit you were in. New captures appear without a reload.' },
       { title: 'Search and filters', detail: 'Search names, SQL and business unit names; bu:<name or MID> filters by business unit. Browse by Today, Yesterday, This Week and so on in the sidebar, filter by business unit, or show only favourites.' },
-      { title: 'Quick preview', how: 'Click a card', detail: 'See the full SQL, copy it, share it (a link valid for 24 hours), or open it in the Workspace or the Query Builder.' },
+      { title: 'Quick preview', how: 'Click a card', detail: 'See the full SQL, copy it, share it (a link valid for 24 hours), or open it in Run Query or the Query Builder.' },
       { title: 'Add, import and export', how: 'The +, export and import buttons', detail: 'Add a query by hand, or export and import queries as CSV.' },
       { title: 'Large or compact cards, delete several', detail: 'Switch card size to see more SQL, and select several queries to delete at once.' },
     ],
   },
   {
     id: 'workspace',
-    title: 'Query Workspace',
-    intro: 'Queries > Workspace in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
+    title: 'Run Query',
+    intro: 'Queries > Run Query in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
     items: [
       {
         title: 'Up to 6 queries side by side',
         how: 'Layout buttons 1×1, 1×2, 2×2, 2×3 and + Panel',
-        detail: 'Each panel has its own editor, validation, run and history, and panels run independently. Drag the borders to resize, or expand one panel to fill the page while the others keep running. The last workspace reopens when you come back; New workspace starts a clean one. Each browser tab keeps its own workspace.',
+        detail: 'Each panel has its own editor, validation, run and history, and panels run independently. Drag the borders to resize, or expand one panel to fill the page while the others keep running. Your panels reopen when you come back; Start fresh begins with one empty panel. Each browser tab keeps its own panels.',
       },
       {
         title: 'Autosave',
@@ -108,7 +108,7 @@ export const FEATURE_GROUPS = [
   {
     id: 'editor',
     title: 'SQL editor',
-    intro: 'In the Query Workspace and, with fewer features, in the Query Builder.',
+    intro: 'In Run Query and, with fewer features, in the Query Builder.',
     items: [
       {
         title: 'SFMC checks as you type',
@@ -169,7 +169,7 @@ export const FEATURE_GROUPS = [
       },
       {
         title: 'Generated SQL',
-        detail: 'Shown in a panel you can dock right or bottom, or hide, and edit by hand. Copy it, Save it to Saved queries (it reopens in the Builder), or send it to the Workspace to run. Your work is saved automatically, and the query you were building reopens; New query starts another.',
+        detail: 'Shown in a panel you can dock right or bottom, or hide, and edit by hand. Copy it, Save it to Saved queries (it reopens in the Builder), or send it to Run Query. Your work is saved automatically, and the query you were building reopens; New query starts another.',
       },
     ],
   },
@@ -201,14 +201,25 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Find data extensions', detail: 'Search by name or list all, newest first. Data extensions under Shared Items and Synchronized Data Extensions are included and tagged. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
-      { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Open it in the Workspace or copy it.' },
+      { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Run it in Run Query or copy it.' },
       { title: 'Excel export', detail: 'Names only, or every field of every DE (one sheet each), with folder paths if you want them.' },
     ],
   },
   {
     id: 'journeys',
     title: 'Journeys',
-    intro: 'Data > Journeys lists journey entry events (event definitions).',
+    intro: 'Journey > Journeys. Viewing a journey never changes it.',
+    items: [
+      { title: 'Find a journey', detail: 'Search by name or description, or list all, most recently changed first; filter by status. Shows status, version and dates.' },
+      { title: 'The journey canvas', how: 'View on a journey', detail: 'The journey drawn like Journey Builder: entry, every step and every path, with the path names on the arrows. Switch between Horizontal and Vertical; the choice is remembered.' },
+      { title: 'What each step does', how: 'Click a step', detail: 'Emails show their subject, preheader and a preview from Content Builder; waits their duration or date; decision and random splits each path with its criteria or share; every step all of its settings.' },
+      { title: 'Download the journey', detail: 'Every step with its settings, goals and exit criteria, as Markdown, Word or HTML.' },
+    ],
+  },
+  {
+    id: 'journey-entry',
+    title: 'Journey Entry',
+    intro: 'Journey > Journey Entry lists journey entry events (event definitions).',
     items: [
       { title: 'Every entry event', detail: 'Loads up to 1,000 when you open the section; Refresh loads them again.' },
       { title: 'Filters', detail: 'Name, event definition key, data extension name or ID, type, category, journey status, and scheduled today or later.' },
@@ -227,7 +238,7 @@ export const FEATURE_GROUPS = [
   {
     id: 'emails',
     title: 'Email versions',
-    intro: 'Content > Emails. Turn saving on or off in Settings.',
+    intro: 'Content > Saved Emails. Turn saving on or off in Settings.',
     items: [
       { title: 'Every Content Builder save is kept', how: 'Automatic', detail: 'Each save of an email becomes a version. Saves closer together than the time set in Settings count as one.' },
       { title: 'Preview and delete versions', how: 'Click an email', detail: 'Pick any version to preview it with its subject line, and delete versions you do not need.' },

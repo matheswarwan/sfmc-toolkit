@@ -9,7 +9,8 @@ const PAGES = {
   '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
   '/automations': () => import('../views/automation/AutomationsPage.vue'),
   '/activities': () => import('../views/automation/ActivitiesPage.vue'),
-  '/journeys': () => import('../views/data/JourneysPage.vue'),
+  '/journeys': () => import('../views/journey/JourneysPage.vue'),
+  '/journey-entry': () => import('../views/journey/JourneyEntryPage.vue'),
   '/cloudpages': () => import('../views/content/CloudPagesPage.vue'),
 }
 
@@ -26,9 +27,14 @@ export const routes = [
     meta: { title: 'Automations', group: 'Automation' },
   },
   {
+    path: '/journeys/:id',
+    component: () => import('../views/journey/JourneyDetailPage.vue'),
+    meta: { title: 'Journeys', group: 'Journey' },
+  },
+  {
     path: '/emails/:id',
     component: () => import('../views/emails/EmailDetailPage.vue'),
-    meta: { title: 'Emails', group: 'Content' },
+    meta: { title: 'Saved Emails', group: 'Content' },
   },
   { path: '/features', component: () => import('../views/info/InfoPage.vue'), props: { page: 'features' }, meta: { title: 'Features' } },
   { path: '/todo', component: () => import('../views/info/InfoPage.vue'), props: { page: 'todo' }, meta: { title: 'To do' } },

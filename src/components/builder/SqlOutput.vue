@@ -82,7 +82,7 @@ function openInWorkspace() {
           <Save class="h-3 w-3 mr-1" /> Save
         </Button>
         <Button size="sm" class="h-7 text-[10px] bg-[#0176D3] text-white" :disabled="!localSql.trim()" @click="openInWorkspace">
-          <ExternalLink class="h-3 w-3 mr-1" /> Workspace
+          <ExternalLink class="h-3 w-3 mr-1" /> Run query
         </Button>
       </div>
     </div>

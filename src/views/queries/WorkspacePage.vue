@@ -63,8 +63,8 @@ function openLogin() {
       </Button>
       <span class="text-xs text-muted-foreground">{{ panels.length }} of 6 panels</span>
       <div class="flex-1" />
-      <Button variant="ghost" size="sm" class="h-8 text-xs" title="Start an empty workspace; the current panels stay saved" @click="newWorkspace">
-        <FilePlus2 class="h-3.5 w-3.5 mr-1" /> New workspace
+      <Button variant="ghost" size="sm" class="h-8 text-xs" title="Start with one empty panel; the queries in the current panels stay saved" @click="newWorkspace">
+        <FilePlus2 class="h-3.5 w-3.5 mr-1" /> Start fresh
       </Button>
     </div>
 

@@ -346,7 +346,7 @@ const columns = [
       <div class="flex items-center gap-2 mb-1.5 text-xs">
         <span class="font-semibold">Query from {{ tickedCount }} ticked {{ tickedCount === 1 ? 'field' : 'fields' }}</span>
         <div class="flex-1" />
-        <Button size="sm" class="h-7 text-xs" @click="openInWorkspace"><Play class="h-3.5 w-3.5 mr-1" /> Open in Workspace</Button>
+        <Button size="sm" class="h-7 text-xs" @click="openInWorkspace"><Play class="h-3.5 w-3.5 mr-1" /> Run this query</Button>
         <Button variant="outline" size="sm" class="h-7 text-xs" @click="copySql"><Copy class="h-3.5 w-3.5 mr-1" /> Copy</Button>
         <Button variant="ghost" size="sm" class="h-7 text-xs" @click="selected = new Map()"><X class="h-3.5 w-3.5 mr-1" /> Clear</Button>
       </div>

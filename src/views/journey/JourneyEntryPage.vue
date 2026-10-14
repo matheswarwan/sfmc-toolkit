@@ -45,7 +45,7 @@ const descs = computed(() => shown.value.map((it) => describeEventDefinition(it,
 const anyFilter = computed(() => Object.values(filters).some(Boolean))
 function clearFilters() { Object.assign(filters, { name: '', key: '', deName: '', deId: '', type: '', category: '', journeyStatus: '', scheduledFrom: false }) }
 
-useRouteSearch('/journeys', (q) => { filters.name = q })
+useRouteSearch('/journey-entry', (q) => { filters.name = q })
 
 function getDoc() {
   return { title: 'Journey entry events', blocks: descs.value.flatMap((d) => activityBlocks(d, '', 2)) }
