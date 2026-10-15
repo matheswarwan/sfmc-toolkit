@@ -157,7 +157,7 @@ export const FEATURE_GROUPS = [
     items: [
       {
         title: 'Pick tables',
-        detail: 'Browse your DE folders, search all DEs, or pick a data view. Click to add one, or drag it onto the canvas in Visual mode.',
+        detail: 'Browse your DE folders, search all DEs, or pick a data view. Click to add one, or drag it onto the canvas in Visual mode. Data views are joined the way SFMC documents them (for example _Journey to _JourneyActivity on VersionID, _JourneyActivity to _Sent on JourneyActivityObjectID = TriggererSendDefinitionObjectID, tracking views on JobID, ListID, BatchID and SubscriberID).',
       },
       {
         title: 'List mode',
