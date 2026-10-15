@@ -8,3 +8,8 @@ compatibility_date = "2024-01-01"
 binding       = "FEEDBACK_DB"
 database_name = "sfmc-query-saver-feedback"
 database_id   = "5fe5fc22-e6ef-4cf1-97bd-5a19b5599e96"
+
+# Workers Logs: keeps request logs (and console output) for a few days, so failed
+# feedback posts can be looked up in the Cloudflare dashboard.
+[observability]
+enabled = true

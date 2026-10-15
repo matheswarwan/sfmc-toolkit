@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check, Loader2 } from 'lucide-vue-next'
 import { buildResultsMarkdown, MARKDOWN_ROW_LIMIT } from '@/utils/markdownExport.js'
 import Button from '@/components/ui/button/Button.vue'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table/index.js'
@@ -13,7 +13,15 @@ const props = defineProps({
   filename: { type: String, default: 'results' },
   sql:      { type: String, default: '' },
   totalCount: { type: Number, default: null },
+  // Loading more than the first page of the target DE (Run Query).
+  canLoadMore: { type: Boolean, default: false },
+  loadingMore: { type: Boolean, default: false },
+  loadAllLimit: { type: Number, default: 50000 },
 })
+const emit = defineEmits(['load-more', 'load-all'])
+
+const total = computed(() => props.totalCount ?? props.rows.length)
+const moreToLoad = computed(() => props.canLoadMore && total.value > props.rows.length)
 
 const page = ref(0)
 const totalPages = computed(() => Math.max(1, Math.ceil(props.rows.length / PAGE_SIZE)))
@@ -73,7 +81,19 @@ function downloadCSV() {
   <div class="flex flex-col flex-1 overflow-hidden min-h-0">
     <!-- Toolbar -->
     <div class="flex items-center justify-between px-4 py-2 bg-card border-b border-border flex-shrink-0">
-      <span class="text-xs font-bold text-foreground">{{ rows.length.toLocaleString() }} rows</span>
+      <span class="text-xs font-bold text-foreground">
+        <template v-if="total > rows.length">Showing {{ rows.length.toLocaleString() }} of {{ total.toLocaleString() }} rows</template>
+        <template v-else>{{ rows.length.toLocaleString() }} rows</template>
+      </span>
+      <div v-if="moreToLoad" class="flex items-center gap-1.5 ml-3 mr-auto">
+        <Button variant="outline" size="sm" class="h-7 text-[11px]" :disabled="loadingMore" @click="emit('load-more')">
+          <Loader2 v-if="loadingMore" class="h-3 w-3 mr-1 animate-spin" /> Load next {{ Math.min(2500, total - rows.length).toLocaleString() }}
+        </Button>
+        <Button variant="outline" size="sm" class="h-7 text-[11px]" :disabled="loadingMore" @click="emit('load-all')"
+          :title="total > loadAllLimit ? `Loads up to ${loadAllLimit.toLocaleString()} rows; export the target data extension in SFMC for all of them` : 'Loads every row'">
+          Load all{{ total > loadAllLimit ? ` (up to ${loadAllLimit.toLocaleString()})` : '' }}
+        </Button>
+      </div>
 
       <div class="flex items-center gap-2">
         <!-- Pagination -->

@@ -72,6 +72,9 @@ watch(() => selectedList.value.map((d) => d.id).join('|'), () => {
   }
   joins.value = next
   emit('update:joins', joins.value)
+  // New join rows: suggest a condition when both sides already have their fields
+  // (data views have theirs at once, before this row existed).
+  for (const de of selectedList.value) if (de.fields?.length) autoSuggestJoinsForDe(de.id)
 }, { immediate: true })
 
 function emitJoins() {

@@ -29,6 +29,7 @@ const showMeta = ref(false)
 const bu = ref(null)
 const state = ref('idle') // idle | sending | sent | error
 const sendError = ref('')
+const sentNote = ref('') // e.g. the screenshot could not be attached
 
 const image = ref(null) // canvas or <img> being marked up
 const editor = ref(null)
@@ -92,7 +93,13 @@ async function submit() {
   state.value = 'sending'
   sendError.value = ''
   try {
-    const screenshot = image.value && editor.value ? toUploadableDataUrl(editor.value.getResult()) : null
+    // A picture that includes images from other sites can't be exported by the
+    // browser; send the feedback anyway, without it, rather than not at all.
+    let screenshot = null
+    sentNote.value = ''
+    if (image.value && editor.value) {
+      try { screenshot = toUploadableDataUrl(editor.value.getResult()) } catch (e) { sentNote.value = `The screenshot could not be attached (${e.message}).` }
+    }
     const version = chrome?.runtime?.getManifest?.()?.version ?? 'unknown'
     const res = await fetch(FEEDBACK_ENDPOINT, {
       method: 'POST',
@@ -136,6 +143,7 @@ const KINDS = [
 
       <div v-if="state === 'sent'" class="p-8 text-center">
         <p class="text-base font-semibold">Thank you, it's sent.</p>
+        <p v-if="sentNote" class="text-sm text-amber-700 dark:text-amber-400 mt-1">{{ sentNote }} Use Upload an image to send one.</p>
         <p class="text-sm text-muted-foreground mt-1">{{ email ? 'You may get a reply at ' + email + '.' : 'Add your email next time if you would like a reply.' }}</p>
         <button class="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm" @click="emit('close')">Close</button>
       </div>

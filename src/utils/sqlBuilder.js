@@ -1,3 +1,4 @@
+import { dataViewJoin } from './dataViews.js'
 import { formatDEForSql } from './deCatalog.js'
 
 /**
@@ -295,10 +296,15 @@ export function buildSqlFromSelections(selectedDEs, joins = [], where = null, op
 
 /**
  * Rank candidate join field pairs between two DEs.
+ * Data views use their known joins (dataViewJoin). Otherwise the first shared field
+ * name, preferring SubscriberKey, ContactKey, EmailAddress, Id and JobID.
  * Returns [] when no shared field is found (does NOT fall back to SubscriberKey).
  * @returns {JoinCondition[]}
  */
 export function suggestJoinConditions(leftDe, rightDe) {
+  // Data views have documented relationships (some on differently named columns).
+  const known = dataViewJoin(leftDe, rightDe)
+  if (known) return known
   const leftFields = leftDe?.fields || []
   const rightFields = rightDe?.fields || []
   const leftByLower = new Map(leftFields.map((f) => [f.name.toLowerCase(), f.name]))

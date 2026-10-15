@@ -32,6 +32,7 @@ const {
   queryName, isEditingName, editableName, saveStatus, isRunning,
   resultsMode, validationResults, stepStatuses, stepErrors, stepDetails,
   elapsedSeconds, completedSummary, resultRows, resultColumns, totalRowCount,
+  isFetchingMore, fetchMoreRows, fetchAllRows, LOAD_ALL_LIMIT,
   createdDeKey, createdActivityId, isDeleting,
   runs, currentRunId, activeTab, historyResults,
   sessionExpired, contactBuilderNeeded, isResultsOpen, editorHeightPct, answerPrompt,
@@ -264,7 +265,9 @@ function formatQuery() {
             <ChevronDown class="h-3 w-3" :class="{ 'rotate-180': isResultsOpen }" />
           </button>
           <div v-show="isResultsOpen" class="flex-1 overflow-auto min-h-0">
-            <ResultsTable :rows="resultRows" :columns="resultColumns" :filename="panelTitle" :sql="queryText" :totalCount="totalRowCount" />
+            <ResultsTable :rows="resultRows" :columns="resultColumns" :filename="panelTitle" :sql="queryText" :totalCount="totalRowCount"
+              :can-load-more="!!createdDeKey" :loading-more="isFetchingMore" :load-all-limit="LOAD_ALL_LIMIT"
+              @load-more="fetchMoreRows" @load-all="fetchAllRows" />
             <CleanupActions :deKey="createdDeKey" :activityId="createdActivityId" :isDeleting="isDeleting" @delete-de="handleDeleteDE(currentRunId)" @delete-activity="handleDeleteActivity(currentRunId)" />
           </div>
         </template>

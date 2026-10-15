@@ -156,12 +156,16 @@ export function useQueryPanel(options) {
     }
   }
 
+  // Up to LOAD_ALL_LIMIT rows: more would make the page slow; for bigger results,
+  // export the target DE in SFMC.
+  const LOAD_ALL_LIMIT = 50000
+
   async function fetchAllRows() {
     if (isFetchingMore.value || !createdDeKey.value) return
     isFetchingMore.value = true
     try {
       let page = Math.floor(resultRows.value.length / PAGE_SIZE) + 1
-      while (true) {
+      while (resultRows.value.length < LOAD_ALL_LIMIT) {
         const data = await fetchDERows(stack.value, createdDeKey.value, page, PAGE_SIZE)
         const items = data.items || []
         if (!items.length) break
@@ -1044,7 +1048,7 @@ export function useQueryPanel(options) {
     isDeleting, deleteError, deleteConfirm,
     runs, currentRunId, copiedText, activeTab, queryViewOpen, historyResults,
     sessionExpired, contactBuilderNeeded, isRunDetailsOpen, isResultsOpen, answerPrompt,
-    editorHeightPct, showRunStepper, PAGE_SIZE, canInteract,
+    editorHeightPct, showRunStepper, PAGE_SIZE, LOAD_ALL_LIMIT, canInteract,
     onEditorChange, enableNameEditing, saveName, runValidation, runQuery,
     fetchMoreRows, fetchAllRows, handleDeleteDE, handleDeleteActivity,
     openDeleteConfirm, handleDeleteRun, copyToClipboard, formatRunDate,

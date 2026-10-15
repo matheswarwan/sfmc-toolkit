@@ -67,7 +67,7 @@ export const FEATURE_GROUPS = [
       {
         title: 'Run a query and see the results',
         how: 'The play icon',
-        detail: 'Runs in five steps: validate, create the target DE, create the Query Activity, run it and fetch the results. Each step shows its time, links to what it created in SFMC, and can be retried from where it failed. The DE and activity go into QuerySaver folders (the name is kept from SFMC Query Saver). Up to 2,500 rows are fetched, and a run gives up after 10 minutes.',
+        detail: 'Runs in five steps: validate, create the target DE, create the Query Activity, run it and fetch the results. Each step shows its time, links to what it created in SFMC, and can be retried from where it failed. The DE and activity go into QuerySaver folders (the name is kept from SFMC Query Saver). The first 2,500 rows are shown; Load next 2,500 and Load all (up to 50,000) fetch the rest. A run gives up after 10 minutes.',
       },
       {
         title: 'Asks before opening Contact Builder',

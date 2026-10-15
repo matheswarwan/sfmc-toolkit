@@ -386,3 +386,49 @@ export const FIELD_VALUES = {
   '_SMSMESSAGETRACKING.DELIVERED': IS_UNIQUE,
   '_SMSMESSAGETRACKING.UNDELIVERED': IS_UNIQUE,
 }
+
+// ── Known joins between data views ─────────────────────────
+// How SFMC's data views relate (Salesforce's data view documentation; also the
+// relationships shown on dataviews.io). Used by the Query Builder before it falls
+// back to guessing from shared column names. A rule only applies when both views
+// have the fields it names.
+const TRACKING_VIEWS = ['_SENT', '_OPEN', '_CLICK', '_BOUNCE', '_COMPLAINT', '_UNSUBSCRIBE', '_FTAF']
+const SUBSCRIBER_VIEWS = ['_SUBSCRIBERS', '_LISTSUBSCRIBERS', '_BUSINESSUNITUNSUBSCRIBES', ...TRACKING_VIEWS]
+
+const JOIN_RULES = [
+  // [left views, right views, [[leftField, rightField], ...]]
+  [['_JOURNEY'], ['_JOURNEYACTIVITY'], [['VersionID', 'VersionID']]],
+  [['_JOURNEYACTIVITY'], ['_JOB', ...TRACKING_VIEWS], [['JourneyActivityObjectID', 'TriggererSendDefinitionObjectID']]],
+  [['_JOB'], TRACKING_VIEWS, [['JobID', 'JobID']]],
+  [TRACKING_VIEWS, TRACKING_VIEWS, [['JobID', 'JobID'], ['ListID', 'ListID'], ['BatchID', 'BatchID'], ['SubscriberID', 'SubscriberID']]],
+  [['_AUTOMATIONINSTANCE'], ['_AUTOMATIONACTIVITYINSTANCE'], [['AutomationInstanceID', 'AutomationInstanceID']]],
+  [['_ENTERPRISEATTRIBUTE'], ['_SUBSCRIBERS', ...TRACKING_VIEWS, '_LISTSUBSCRIBERS'], [['_SubscriberID', 'SubscriberID']]],
+  [SUBSCRIBER_VIEWS, SUBSCRIBER_VIEWS, [['SubscriberKey', 'SubscriberKey']]],
+  [['_SMSMESSAGETRACKING'], ['_SMSSUBSCRIPTIONLOG', '_UNDELIVERABLESMS'], [['MobileNumber', 'MobileNumber']]],
+]
+
+/**
+ * Join conditions between two data views, or null when no rule applies.
+ * @param {{ name: string, fields: Array<{name: string}> }} left
+ * @param {{ name: string, fields: Array<{name: string}> }} right
+ * @returns {Array<{ leftField, operator, rightField }> | null}
+ */
+export function dataViewJoin(left, right) {
+  const ln = String(left?.name || '').replace(/^ENT\./i, '').toUpperCase()
+  const rn = String(right?.name || '').replace(/^ENT\./i, '').toUpperCase()
+  if (!DATA_VIEWS_UPPER.has(ln) || !DATA_VIEWS_UPPER.has(rn) || (ln === rn && !TRACKING_VIEWS.includes(ln))) return null
+  const fieldOf = (de, name) => (de.fields || []).find((f) => f.name.toLowerCase() === name.toLowerCase())?.name
+  for (const [lefts, rights, keys] of JOIN_RULES) {
+    for (const [a, b, flip] of [[ln, rn, false], [rn, ln, true]]) {
+      if (!lefts.includes(a) || !rights.includes(b)) continue
+      const conds = keys.map(([lk, rk]) => {
+        const [lf, rf] = flip ? [fieldOf(left, rk), fieldOf(right, lk)] : [fieldOf(left, lk), fieldOf(right, rk)]
+        return lf && rf ? { leftField: lf, operator: '=', rightField: rf } : null
+      })
+      if (conds.every(Boolean)) return conds
+    }
+  }
+  return null
+}
+
+const DATA_VIEWS_UPPER = new Set([...DATA_VIEWS].map((n) => n.toUpperCase()))

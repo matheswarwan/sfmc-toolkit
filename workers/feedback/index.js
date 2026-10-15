@@ -52,7 +52,10 @@ export default {
     let body
     try { body = await request.json() } catch { return cors({ error: 'Invalid JSON' }, 400) }
     const v = validate(body)
-    if (v.error) return cors({ error: v.error }, 400)
+    if (v.error) {
+      console.warn('Rejected feedback:', v.error, { app: body?.app ?? null, screen: body?.screen ?? null, bytes: JSON.stringify(body).length })
+      return cors({ error: v.error }, 400)
+    }
 
     const r = v.row
     const now = Date.now()
