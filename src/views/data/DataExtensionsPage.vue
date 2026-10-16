@@ -11,7 +11,7 @@ import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchDataExtensions, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
+import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
@@ -23,54 +23,95 @@ const { stack } = useStack()
 
 const query = ref('')
 const searched = ref(null) // the query of the results shown, null before any search
-const results = ref([])
-const total = ref(0)
-const page = ref(1)
 const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
 const hideSystem = ref(false)
 
+// Local DEs come 50 a page, straight away; Shared and Synchronized DEs need a folder
+// walk, so they load in the background and are slotted in by date (mergeDEPages).
+const local = ref([])
+const localTotal = ref(0)
+const localPage = ref(0)
+const shared = ref(null) // null while loading
+const sharedError = ref('')
+const limit = ref(DE_PAGE_SIZE)
+let searchId = 0
+
+const localDone = computed(() => local.value.length >= localTotal.value)
+const merged = computed(() => mergeDEPages({ local: local.value, localDone: localDone.value, shared: shared.value || [], limit: limit.value }))
+const results = computed(() => merged.value.visible)
+const total = computed(() => localTotal.value - merged.value.duplicates + (shared.value?.length || 0))
+
 // Per-DE state, keyed by DE id.
 const fields = reactive({}) // id → { status: 'loading' | 'ok' | 'error', list, error }
 const paths = reactive({}) // id → { status, path, error }
 const expanded = ref(new Set())
-const selected = ref(new Map()) // id → { de, fields: Set } in the order first ticked
+const selected = ref(new Map()) // id → { de, fields: Set } in the order first ticked (query building)
+const picked = ref(new Set()) // ids of rows ticked for Download and Excel
 
 const shown = computed(() => (hideSystem.value ? results.value.filter((d) => !isSystemDE(d.name)) : results.value))
-const canLoadMore = computed(() => searched.value !== null && page.value * DE_PAGE_SIZE < total.value - results.value.filter((d) => d.sourceType).length)
+const canLoadMore = computed(() => searched.value !== null && merged.value.hasMore)
+// Exports cover the ticked rows when there are any, else everything shown.
+const exportList = computed(() => (picked.value.size ? shown.value.filter((d) => picked.value.has(d.id)) : shown.value))
+const allPicked = computed(() => shown.value.length > 0 && shown.value.every((d) => picked.value.has(d.id)))
+
+async function loadLocalPage(id) {
+  const r = await searchLocalDEs(stack.value, searched.value, localPage.value + 1)
+  if (id !== searchId) return
+  const have = new Set(local.value.map((d) => d.id))
+  local.value = [...local.value, ...r.items.filter((d) => !have.has(d.id))]
+  localTotal.value = r.items.length ? r.total : local.value.length
+  localPage.value++
+}
 
 async function search() {
   if (!stack.value) { error.value = 'Not connected to Marketing Cloud. Log in to SFMC in this browser.'; return }
+  const id = ++searchId
   loading.value = true
   error.value = ''
+  sharedError.value = ''
   stopAllFields()
+  searched.value = query.value.trim()
+  local.value = []
+  localTotal.value = 0
+  localPage.value = 0
+  shared.value = null
+  limit.value = DE_PAGE_SIZE
+  expanded.value = new Set()
+  picked.value = new Set()
+  searchSharedSyncDEs(stack.value, searched.value)
+    .then((list) => { if (id === searchId) shared.value = list })
+    .catch((e) => { if (id === searchId) { shared.value = []; sharedError.value = e.message } })
   try {
-    const r = await searchDataExtensions(stack.value, query.value, 1)
-    results.value = r.items
-    total.value = r.total
-    page.value = 1
-    searched.value = query.value.trim()
-    expanded.value = new Set()
+    await loadLocalPage(id)
   } catch (e) {
-    error.value = `Could not search data extensions: ${e.message}`
+    if (id === searchId) error.value = `Could not search data extensions: ${e.message}`
   } finally {
-    loading.value = false
+    if (id === searchId) loading.value = false
   }
 }
 
 async function loadMore() {
+  const id = searchId
   loadingMore.value = true
   try {
-    const r = await searchDataExtensions(stack.value, searched.value, page.value + 1)
-    const have = new Set(results.value.map((d) => d.id))
-    results.value = [...results.value, ...r.items.filter((d) => !have.has(d.id))]
-    page.value++
+    limit.value += DE_PAGE_SIZE
+    while (id === searchId && !localDone.value && local.value.length < limit.value) await loadLocalPage(id)
   } catch (e) {
     showToast(`Could not load more: ${e.message}`)
   } finally {
     loadingMore.value = false
   }
+}
+
+function togglePick(id) {
+  const next = new Set(picked.value)
+  next.has(id) ? next.delete(id) : next.add(id)
+  picked.value = next
+}
+function togglePickAll() {
+  picked.value = allPicked.value ? new Set() : new Set(shown.value.map((d) => d.id))
 }
 
 function refresh() {
@@ -174,7 +215,7 @@ const exporting = reactive({ running: false, done: 0, total: 0 })
 
 async function runExcelExport() {
   exportOpen.value = false
-  const list = shown.value
+  const list = exportList.value
   Object.assign(exporting, { running: true, done: 0, total: list.length })
   try {
     await runInBatches(list, 10, async (de) => {
@@ -210,10 +251,10 @@ async function runExcelExport() {
 
 // Download menu: a summary table plus the fields of each DE (fetched for up to 200).
 async function buildDoc() {
-  const list = shown.value
+  const list = exportList.value
   await runInBatches(list.slice(0, 200), 10, (de) => loadFields(de))
   return {
-    title: searched.value ? `Data extensions matching "${searched.value}"` : 'Data extensions',
+    title: picked.value.size ? `${list.length} data extensions` : searched.value ? `Data extensions matching "${searched.value}"` : 'Data extensions',
     blocks: [
       { type: 'table', columns: ['Name', 'Customer Key', 'Source', 'Folder', 'Modified'], rows: list.map((de) => [de.name, de.customerKey, de.sourceType || 'local', paths[de.id]?.path || '', formatDateTime(de.modifiedDate)]) },
       ...list.slice(0, 200).flatMap((de) => [
@@ -230,6 +271,7 @@ async function buildDoc() {
 useRouteSearch('/data-extensions', (q) => { query.value = q; whenStack(search) })
 
 const columns = [
+  { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
   { key: 'customerKey', label: 'Customer key' },
   { key: 'path', label: 'Folder' },
@@ -261,8 +303,8 @@ const columns = [
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="pathsBusy" @click="loadAllPaths">
           <Loader2 v-if="pathsBusy" class="h-3.5 w-3.5 mr-1 animate-spin" /><FolderTree v-else class="h-3.5 w-3.5 mr-1" /> Get all folders
         </Button>
-        <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> Excel</Button>
-        <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" />
+        <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> {{ picked.size ? `Excel (${picked.size})` : 'Excel' }}</Button>
+        <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" :label="picked.size ? `Download ${picked.size}` : 'Download'" />
       </template>
       <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders and the Shared/Synchronized list" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
@@ -283,9 +325,18 @@ const columns = [
       </div>
       <template v-else-if="searched !== null">
         <p class="mb-2 text-xs text-muted-foreground">
-          {{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="hideSystem && shown.length !== results.length"> ({{ results.length - shown.length }} system DEs hidden)</template>.
+          {{ total.toLocaleString() }}{{ shared === null ? '+' : '' }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="hideSystem && shown.length !== results.length"> ({{ results.length - shown.length }} system DEs hidden)</template>.
+          <span v-if="shared === null" class="inline-flex items-center gap-1 ml-1"><Loader2 class="h-3 w-3 animate-spin" /> Adding Shared and Synchronized data extensions…</span>
+          <span v-else-if="sharedError" class="ml-1 text-amber-700 dark:text-amber-400">Shared and Synchronized data extensions could not be loaded ({{ sharedError }}).</span>
+          <template v-if="picked.size"> {{ picked.size }} ticked for download. <button class="text-primary hover:underline" @click="picked = new Set()">Clear</button></template>
         </p>
         <DataTable :columns="columns" :rows="shown" row-key="id" storage-key="data-extensions" :expanded="expanded" empty-text="No data extensions found.">
+          <template #head-pick>
+            <input type="checkbox" :checked="allPicked" :indeterminate="picked.size > 0 && !allPicked" aria-label="Tick every data extension shown" @change="togglePickAll" />
+          </template>
+          <template #cell-pick="{ row }">
+            <input type="checkbox" :checked="picked.has(row.id)" :aria-label="`Tick ${row.name} for download`" @change="togglePick(row.id)" />
+          </template>
           <template #cell-name="{ row }">
             <span class="font-medium">{{ row.name }}</span>
             <span v-if="row.sourceType" class="ml-1.5 text-[10px] font-semibold rounded-full px-1.5 py-px"
@@ -335,7 +386,7 @@ const columns = [
         </DataTable>
         <div v-if="canLoadMore" class="mt-3 text-center">
           <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore">
-            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load more
+            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load {{ DE_PAGE_SIZE }} more
           </Button>
         </div>
       </template>
@@ -356,7 +407,7 @@ const columns = [
     <!-- Excel export -->
     <div v-if="exportOpen" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
       <div class="w-full max-w-sm rounded-lg border border-border bg-card p-4 shadow-xl text-sm" role="dialog" aria-modal="true" aria-labelledby="de-export-title">
-        <h2 id="de-export-title" class="font-semibold mb-3">Export {{ shown.length }} data extensions to Excel</h2>
+        <h2 id="de-export-title" class="font-semibold mb-3">Export {{ exportList.length }} {{ picked.size ? 'ticked' : '' }} data extensions to Excel</h2>
         <label class="flex items-start gap-2 mb-2"><input v-model="exportKind" type="radio" value="names" class="mt-1" /><span>Names only<br /><span class="text-xs text-muted-foreground">One sheet: name, customer key, ID, source, dates.</span></span></label>
         <label class="flex items-start gap-2 mb-3"><input v-model="exportKind" type="radio" value="fields" class="mt-1" /><span>All fields<br /><span class="text-xs text-muted-foreground">An index sheet plus one sheet of fields per data extension.</span></span></label>
         <label class="flex items-center gap-2 mb-4"><input v-model="exportPaths" type="checkbox" /> Include folder paths</label>

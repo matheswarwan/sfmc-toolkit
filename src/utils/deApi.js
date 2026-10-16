@@ -3,7 +3,7 @@
 // catalog in sfmcApi.js (SFMC Query Saver's), so the two never disagree.
 import { sfmcFetch, searchSharedDEs } from './sfmcApi.js'
 
-export const DE_PAGE_SIZE = 25
+export const DE_PAGE_SIZE = 50
 
 const CM = (stack) => `https://mc.${stack}.marketingcloudapps.com/contactsmeta/fuelapi`
 
@@ -30,23 +30,53 @@ export function toDE(item, sourceType = null) {
 }
 
 /**
- * One page of DEs whose name contains `query` ('' lists all, newest first). Page 1
- * also lists matching Shared and Synchronized DEs first (a failure there only drops
- * them). Returns { items, total }.
+ * One page (50) of the local DEs whose name contains `query` ('' lists all), newest
+ * change first. Returns { items, total }.
  */
-export async function searchDataExtensions(stack, query, page = 1) {
+export async function searchLocalDEs(stack, query, page = 1) {
   const search = query.trim() ? `&$search=${encodeURIComponent(query.trim())}` : ''
   const url = `${CM(stack)}/data-internal/v1/customobjects/category/0?retrievalType=1&$page=${page}&$pagesize=${DE_PAGE_SIZE}&$orderBy=modifiedDate%20DESC${search}`
-  const [data, shared] = await Promise.all([
-    sfmcFetch(url, 'GET'),
-    page === 1 ? searchSharedDEs(stack, query.trim()).catch(() => []) : Promise.resolve([]),
-  ])
+  const data = await sfmcFetch(url, 'GET')
   if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response from the data extension search.')
-  const extra = shared.map((d) => toDE(d))
-  const extraIds = new Set(extra.map((d) => d.id))
-  const local = data.items.map((d) => toDE(d)).filter((d) => !extraIds.has(d.id))
-  const localTotal = data.count ?? data.totalCount ?? data.items.length
-  return { items: [...extra, ...local], total: localTotal + extra.length - (data.items.length - local.length) }
+  return { items: data.items.map((d) => toDE(d)), total: data.count ?? data.totalCount ?? data.items.length }
+}
+
+/**
+ * Shared and Synchronized DEs whose name contains `query`, tagged. Slow the first
+ * time for a stack (it walks their folders), then cached for 10 minutes.
+ */
+export async function searchSharedSyncDEs(stack, query) {
+  return (await searchSharedDEs(stack, query.trim())).map((d) => toDE(d))
+}
+
+/** Both lists for one page, as SFMC Automation Viewer did (used by tests). */
+export async function searchDataExtensions(stack, query, page = 1) {
+  const [local, shared] = await Promise.all([
+    searchLocalDEs(stack, query, page),
+    page === 1 ? searchSharedSyncDEs(stack, query).catch(() => []) : Promise.resolve([]),
+  ])
+  const ids = new Set(shared.map((d) => d.id))
+  const items = [...shared, ...local.items.filter((d) => !ids.has(d.id))]
+  return { items, total: local.total + shared.length - (local.items.length - (items.length - shared.length)) }
+}
+
+const time = (d) => { const t = Date.parse(d?.modifiedDate || ''); return Number.isNaN(t) ? 0 : t }
+
+/**
+ * What the Data Extensions list can show: local DEs loaded so far (pages, newest
+ * first) and Shared/Synchronized DEs (all at once), merged newest first. While more
+ * local pages exist, a Shared DE older than the last local one loaded is held back
+ * (a local DE not loaded yet might belong before it). Shows at most `limit`.
+ */
+export function mergeDEPages({ local, localDone, shared = [], limit }) {
+  const sharedIds = new Set(shared.map((d) => d.id))
+  const loc = local.filter((d) => !sharedIds.has(d.id))
+  let ready = [...shared, ...loc].sort((a, b) => time(b) - time(a))
+  if (!localDone && loc.length) {
+    const cutoff = time(loc[loc.length - 1])
+    ready = ready.filter((d) => time(d) >= cutoff)
+  }
+  return { visible: ready.slice(0, limit), hasMore: ready.length > limit || !localDone, duplicates: local.length - loc.length }
 }
 
 const fieldsCache = new Map() // `${stack}:${id}` → Promise<fields>

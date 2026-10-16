@@ -3,6 +3,7 @@
 // Columns can be hidden (remembered per table in localStorage, like Automation
 // Viewer's Columns menu). Cells render with a `cell-<key>` slot when one is given;
 // a row whose key is in `expanded` gets a full-width `expanded` slot below it.
+// Headers render with a `head-<key>` slot when one is given.
 import { computed, ref } from 'vue'
 import { Columns3 } from 'lucide-vue-next'
 
@@ -51,7 +52,9 @@ function toggle(key) {
       <table class="w-full text-xs">
         <thead>
           <tr class="border-b border-border text-left text-muted-foreground">
-            <th v-for="c in visible" :key="c.key" class="px-3 py-2 font-semibold whitespace-nowrap" :class="c.class">{{ c.label }}</th>
+            <th v-for="c in visible" :key="c.key" class="px-3 py-2 font-semibold whitespace-nowrap" :class="c.class">
+              <slot :name="`head-${c.key}`">{{ c.label }}</slot>
+            </th>
           </tr>
         </thead>
         <tbody>

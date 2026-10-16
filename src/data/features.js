@@ -199,7 +199,8 @@ export const FEATURE_GROUPS = [
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',
     items: [
-      { title: 'Find data extensions', detail: 'Search by name or list all, newest first. Data extensions under Shared Items and Synchronized Data Extensions are included and tagged. Hide system DEs (such as QueryStudioResults) with one tick.' },
+      { title: 'Find data extensions', detail: 'Search by name or list all, newest first, 50 at a time (Load 50 more for the next). Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
+      { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
       { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Run it in Run Query or copy it.' },
       { title: 'Excel export', detail: 'Names only, or every field of every DE (one sheet each), with folder paths if you want them.' },

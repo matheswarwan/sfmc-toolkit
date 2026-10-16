@@ -776,8 +776,8 @@ export function useQueryPanel(options) {
       const m = Math.floor(totalSec / 60)
       const s = totalSec % 60
       completedSummary.value =
-        `Completed in ${m > 0 ? `${m}m ` : ''}${s}s · ${resultRows.value.length.toLocaleString()} rows`
-      trackEvent('run_complete', { duration_s: totalSec, row_count: resultRows.value.length })
+        `Completed in ${m > 0 ? `${m}m ` : ''}${s}s · ${(totalRowCount.value ?? resultRows.value.length).toLocaleString()} rows`
+      trackEvent('run_complete', { duration_s: totalSec, row_count: totalRowCount.value ?? resultRows.value.length })
       isRunDetailsOpen.value = false
       isResultsOpen.value    = true
       resultsMode.value = 'results'

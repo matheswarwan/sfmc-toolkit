@@ -59,3 +59,29 @@ describe('deApi', () => {
     expect(isSystemDE('Customers')).toBe(false)
   })
 })
+
+describe('mergeDEPages (feedback #20: first 50, then Load more)', () => {
+  const de = (id, day, sourceType = null) => ({ id, name: id, modifiedDate: `2026-10-${String(day).padStart(2, '0')}T00:00:00`, sourceType })
+  it('shows local results at once and slots shared ones in by date', async () => {
+    const { mergeDEPages } = await load()
+    const local = [de('L30', 30), de('L20', 20), de('L10', 10)]
+    const shared = [de('S25', 25, 'shared'), de('S05', 5, 'shared')]
+    expect(mergeDEPages({ local, localDone: true, shared: [], limit: 50 }).visible.map((d) => d.id)).toEqual(['L30', 'L20', 'L10'])
+    const r = mergeDEPages({ local, localDone: true, shared, limit: 50 })
+    expect(r.visible.map((d) => d.id)).toEqual(['L30', 'S25', 'L20', 'L10', 'S05'])
+    expect(r.hasMore).toBe(false)
+  })
+  it('holds back shared DEs older than the last local page while more pages exist', async () => {
+    const { mergeDEPages } = await load()
+    const r = mergeDEPages({ local: [de('L30', 30), de('L20', 20)], localDone: false, shared: [de('S25', 25, 'shared'), de('S05', 5, 'shared')], limit: 50 })
+    expect(r.visible.map((d) => d.id)).toEqual(['L30', 'S25', 'L20'])
+    expect(r.hasMore).toBe(true)
+  })
+  it('limits what is shown and drops local copies of shared DEs', async () => {
+    const { mergeDEPages } = await load()
+    const r = mergeDEPages({ local: [de('A', 3), de('X', 2)], localDone: true, shared: [de('X', 2, 'sync'), de('B', 1, 'shared')], limit: 2 })
+    expect(r.visible.map((d) => [d.id, d.sourceType])).toEqual([['A', null], ['X', 'sync']])
+    expect(r.hasMore).toBe(true)
+    expect(r.duplicates).toBe(1)
+  })
+})
