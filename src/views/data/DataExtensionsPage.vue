@@ -4,7 +4,7 @@
 // query, export to Excel or a document.
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network } from 'lucide-vue-next'
+import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
@@ -12,9 +12,8 @@ import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
+import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
-import { clearUsageCache } from '@/utils/usage/index.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
 import { downloadWorkbook } from '@/utils/exportDoc.js'
@@ -36,17 +35,21 @@ const hideSystem = ref(false)
 // Local DEs come 50 a page, straight away; Shared and Synchronized DEs need a folder
 // walk, so they load in the background and are slotted in by date (mergeDEPages).
 const local = ref([])
-const localTotal = ref(0)
+const localTotal = ref(0) // SFMC's count for what was sent (see deSearchTerms)
 const localPage = ref(0)
+const localFetched = ref(0) // rows SFMC returned, before the local filter
+const localFiltered = ref(false)
 const shared = ref(null) // null while loading
 const sharedError = ref('')
 const limit = ref(DE_PAGE_SIZE)
 let searchId = 0
 
-const localDone = computed(() => local.value.length >= localTotal.value)
+const localDone = computed(() => localFetched.value >= localTotal.value)
 const merged = computed(() => mergeDEPages({ local: local.value, localDone: localDone.value, shared: shared.value || [], limit: limit.value }))
 const results = computed(() => merged.value.visible)
-const total = computed(() => localTotal.value - merged.value.duplicates + (shared.value?.length || 0))
+const total = computed(() => (localFiltered.value ? local.value.length : localTotal.value) - merged.value.duplicates + (shared.value?.length || 0))
+// With a local filter the count is only known once every page is in.
+const totalIsPartial = computed(() => shared.value === null || (localFiltered.value && !localDone.value))
 
 // Per-DE state, keyed by DE id.
 const fields = reactive({}) // id → { status: 'loading' | 'ok' | 'error', list, error }
@@ -66,7 +69,9 @@ async function loadLocalPage(id) {
   if (id !== searchId) return
   const have = new Set(local.value.map((d) => d.id))
   local.value = [...local.value, ...r.items.filter((d) => !have.has(d.id))]
-  localTotal.value = r.items.length ? r.total : local.value.length
+  localFetched.value += r.fetched
+  localFiltered.value = r.filtered
+  localTotal.value = r.fetched ? r.total : localFetched.value
   localPage.value++
 }
 
@@ -81,6 +86,8 @@ async function search() {
   local.value = []
   localTotal.value = 0
   localPage.value = 0
+  localFetched.value = 0
+  localFiltered.value = false
   shared.value = null
   limit.value = DE_PAGE_SIZE
   expanded.value = new Set()
@@ -90,6 +97,8 @@ async function search() {
     .catch((e) => { if (id === searchId) { shared.value = []; sharedError.value = e.message } })
   try {
     await loadLocalPage(id)
+    // A filtered search can match nothing on the first page; read on (20 pages at most).
+    for (let n = 1; n < 20 && id === searchId && localFiltered.value && !localDone.value && local.value.length < DE_PAGE_SIZE; n++) await loadLocalPage(id)
   } catch (e) {
     if (id === searchId) error.value = `Could not search data extensions: ${e.message}`
   } finally {
@@ -102,7 +111,8 @@ async function loadMore() {
   loadingMore.value = true
   try {
     limit.value += DE_PAGE_SIZE
-    while (id === searchId && !localDone.value && local.value.length < limit.value) await loadLocalPage(id)
+    // A local filter can drop most of a page; read at most 20 pages per click.
+    for (let n = 0; n < 20 && id === searchId && !localDone.value && local.value.length < limit.value; n++) await loadLocalPage(id)
   } catch (e) {
     showToast(`Could not load more: ${e.message}`)
   } finally {
@@ -122,7 +132,6 @@ function togglePickAll() {
 function refresh() {
   clearDECaches()
   clearSharedDECache(stack.value)
-  clearUsageCache(stack.value)
   for (const k of Object.keys(fields)) delete fields[k]
   for (const k of Object.keys(paths)) delete paths[k]
   if (searched.value !== null) search()
@@ -312,7 +321,7 @@ const columns = [
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> {{ picked.size ? `Excel (${picked.size})` : 'Excel' }}</Button>
         <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" :label="picked.size ? `Download ${picked.size}` : 'Download'" />
       </template>
-      <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders, the Shared/Synchronized list and the Where used scan" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders and the Shared/Synchronized list" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
 
     <div v-if="allFields.running || exporting.running" class="px-4 py-1.5 border-b border-border bg-card text-xs text-muted-foreground flex items-center gap-3">
@@ -331,7 +340,7 @@ const columns = [
       </div>
       <template v-else-if="searched !== null">
         <p class="mb-2 text-xs text-muted-foreground">
-          {{ total.toLocaleString() }}{{ shared === null ? '+' : '' }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="hideSystem && shown.length !== results.length"> ({{ results.length - shown.length }} system DEs hidden)</template>.
+          {{ total.toLocaleString() }}{{ totalIsPartial ? '+' : '' }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="hideSystem && shown.length !== results.length"> ({{ results.length - shown.length }} system DEs hidden)</template>.
           <span v-if="shared === null" class="inline-flex items-center gap-1 ml-1"><Loader2 class="h-3 w-3 animate-spin" /> Adding Shared and Synchronized data extensions…</span>
           <span v-else-if="sharedError" class="ml-1 text-amber-700 dark:text-amber-400">Shared and Synchronized data extensions could not be loaded ({{ sharedError }}).</span>
           <template v-if="picked.size"> {{ picked.size }} ticked for download. <button class="text-primary hover:underline" @click="picked = new Set()">Clear</button></template>
@@ -360,6 +369,8 @@ const columns = [
           <template #cell-createdDate="{ row }">{{ formatDateTime(row.createdDate) }}</template>
           <template #cell-id="{ row }"><code class="text-[11px]">{{ row.id }}</code></template>
           <template #cell-actions="{ row }">
+            <a :href="deContactBuilderUrl(stack, row)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3"
+              :title="row.sourceType ? 'Open in Contact Builder (from the business unit that owns it)' : 'Open in Contact Builder'">SFMC <ExternalLink class="h-3 w-3" /></a>
             <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="whereUsed(row)">
               <Network class="h-3.5 w-3.5" /> Where used
             </button>

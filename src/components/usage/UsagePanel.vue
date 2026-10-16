@@ -24,11 +24,15 @@ const title = computed(() => state.result?.title || targetTitle(state.target))
 const openCode = ref(new Set())
 const collapsed = ref(new Set())
 watch(() => state.target, () => { openCode.value = new Set(); collapsed.value = new Set() })
-function toggle(setRef, k) {
-  const next = new Set(setRef.value)
+// Separate functions: in the template a ref passed as an argument arrives unwrapped,
+// so a shared toggle(setRef, k) could not replace the Set (feedback #25).
+function flip(set, k) {
+  const next = new Set(set)
   next.has(k) ? next.delete(k) : next.add(k)
-  setRef.value = next
+  return next
 }
+function toggleCode(k) { openCode.value = flip(openCode.value, k) }
+function toggleSection(k) { collapsed.value = flip(collapsed.value, k) }
 
 const TONES = {
   write: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
@@ -44,7 +48,7 @@ function stageText(s) {
   if (s.state === 'stopped') return 'Stopped'
   if (s.state === 'error') return `Failed: ${s.note}`
   const count = s.total ? `${s.done.toLocaleString()} of ${s.total.toLocaleString()}` : s.done ? s.done.toLocaleString() : ''
-  const parts = [count, s.state === 'cached' ? 'from the last scan' : '', s.note].filter(Boolean)
+  const parts = [count, s.note].filter(Boolean)
   return parts.join(', ') || (s.state === 'running' ? 'Starting' : 'Done')
 }
 
@@ -131,7 +135,7 @@ function buildDoc() {
         </ol>
         <p v-if="state.running" class="mt-3 text-[11px] text-muted-foreground">
           You can close this panel or open another section; the scan carries on. Automations and journeys are read 10 at a time, so a large business unit takes a while the first time.
-          The next check reuses what was loaded (for 30 minutes, or until Rescan).
+          What it loads is saved for this business unit, so later checks (in any tab) only read what changed; Rescan reads everything again.
         </p>
       </section>
 
@@ -144,7 +148,7 @@ function buildDoc() {
         <p v-if="state.result.note" class="mb-3 text-xs text-muted-foreground">{{ state.result.note }}</p>
 
         <div v-for="s in sections" :key="s.id" class="mb-4">
-          <button class="w-full flex items-center gap-1.5 text-left text-xs font-semibold mb-1.5" :aria-expanded="!collapsed.has(s.id)" @click="toggle(collapsed, s.id)">
+          <button class="w-full flex items-center gap-1.5 text-left text-xs font-semibold mb-1.5" :aria-expanded="!collapsed.has(s.id)" @click="toggleSection(s.id)">
             <ChevronDown v-if="!collapsed.has(s.id)" class="h-3.5 w-3.5" /><ChevronRight v-else class="h-3.5 w-3.5" />
             {{ s.title }} <span v-if="!s.tree" class="font-normal text-muted-foreground">({{ s.items.length }})</span>
           </button>
@@ -193,7 +197,7 @@ function buildDoc() {
                   </ul>
                 </div>
                 <template v-if="m.code?.text">
-                  <button class="mt-1.5 inline-flex items-center gap-1 text-primary hover:underline" :aria-expanded="openCode.has(m.key)" @click="toggle(openCode, m.key)">
+                  <button class="mt-1.5 inline-flex items-center gap-1 text-primary hover:underline" :aria-expanded="openCode.has(m.key)" @click="toggleCode(m.key)">
                     <ChevronDown v-if="openCode.has(m.key)" class="h-3.5 w-3.5" /><ChevronRight v-else class="h-3.5 w-3.5" /> {{ m.code.lang === 'sql' ? 'SQL' : 'Code' }}
                   </button>
                   <div v-if="openCode.has(m.key)" class="mt-1.5"><CodeView :code="m.code.text" :lang="m.code.lang" max-height="260px" /></div>

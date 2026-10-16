@@ -9,7 +9,7 @@ import { sfmcFetch } from '../sfmcApi.js'
 import { describeActivity, activityTypeLabel, activityEndpoint, UPDATE_TYPES } from '../activityTypes.js'
 import { formatDateTime } from '../format.js'
 import { runInBatches } from '../batchRunner.js'
-import { SOURCES, assetGroup, cachedSource } from './sources.js'
+import { SOURCES, assetGroup } from './sources.js'
 import {
   norm, matchQuery, matchField, tablesInSql, codeRefsToDE, contentBlockRefs, assetText, assetPlacesBlock,
   findValues, findPathMentions, collectProfileRefs, lineageEdges, lineageTree, deRefsInCode,
@@ -305,7 +305,7 @@ async function analyseAutomation(target, ctx) {
   }
   // A DE named only by key (DataExtension.Init, data extracts): its name when a cached
   // Query activity targets it, else the key.
-  const known = cachedSource(stack, 'queries')?.items || []
+  const known = ctx.peek('queries')?.items || []
   const byKey = (key) => {
     const q = known.find((x) => norm(x.targetKey) === norm(key))
     return q?.targetName ? { name: q.targetName, key, id: q.targetId } : { name: `${key} (key)`, key, keyOnly: true }

@@ -31,7 +31,6 @@ async function start(stack, target, { refresh = false, keepHistory = false } = {
   const same = targetKey(state.target) === targetKey(target) && state.stack === stack
   if (same && !refresh && (state.running || state.result)) return
   if (!keepHistory) state.history = []
-  if (refresh) clearUsageCache(stack)
   const runId = ++state.runId
   const order = usageStages(target)
   Object.assign(state, {
@@ -39,6 +38,7 @@ async function start(stack, target, { refresh = false, keepHistory = false } = {
     stages: Object.fromEntries(order.map((s) => [s.id, { state: 'waiting', done: 0, total: 0, note: '' }])),
   })
   try {
+    if (refresh) await clearUsageCache(stack)
     const result = await findUsage(stack, target, {
       onStage: (id, s) => { if (runId === state.runId) state.stages[id] = { done: 0, total: 0, note: '', ...s } },
       shouldStop: () => runId !== state.runId,

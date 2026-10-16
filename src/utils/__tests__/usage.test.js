@@ -311,3 +311,83 @@ describe('findUsage', () => {
     await expect(findUsage('s8', { kind: 'de', de }, { shouldStop: () => true })).rejects.toMatchObject({ stopped: true })
   })
 })
+
+describe('deltaList', () => {
+  it('reads only until it reaches saved changes and merges by ID', async () => {
+    const { deltaList } = await import('../usage/sources.js')
+    const saved = { items: [{ id: 'B', m: '2026-10-02' }, { id: 'A', m: '2026-10-01' }], total: 2 }
+    const server = [{ id: 'C', m: '2026-10-05' }, { id: 'A', m: '2026-10-04' }, { id: 'B', m: '2026-10-02' }]
+    const pages = []
+    const r = await deltaList({
+      saved, idOf: (i) => i.id, modOf: (i) => i.m, progress: () => {}, stop: () => false,
+      fetchPage: async (p) => { pages.push(p); return { items: server.slice(p * 2, p * 2 + 2), total: 3 } },
+    })
+    expect(pages).toEqual([0, 1])
+    expect(r.items.map((i) => i.id)).toEqual(['C', 'A', 'B'])
+    expect(r).toMatchObject({ changed: 2, complete: true, total: 3 })
+  })
+  it('says incomplete when something was deleted', async () => {
+    const { deltaList } = await import('../usage/sources.js')
+    const saved = { items: [{ id: 'B', m: '2026-10-02' }, { id: 'A', m: '2026-10-01' }], total: 2 }
+    const r = await deltaList({ saved, idOf: (i) => i.id, modOf: (i) => i.m, progress: () => {}, stop: () => false, fetchPage: async () => ({ items: [{ id: 'B', m: '2026-10-02' }], total: 1 }) })
+    expect(r.complete).toBe(false)
+  })
+})
+
+describe('saved data (feedback #26)', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+  const de = { id: 'DE-1', name: 'Orders', customerKey: 'ORD' }
+  const later = () => Date.now() + 10 * 60 * 1000
+
+  it('reuses data for 5 minutes, then reads only what changed', async () => {
+    const calls = stub(sfmc)
+    const { findUsage } = await load()
+    await findUsage('s7', { kind: 'activity', typeId: 300, activityObjectId: 'Q1' })
+    const first = calls.filter((c) => c.includes('/automations/A')).length
+    expect(first).toBe(2)
+    // Within 5 minutes: no SFMC call at all (not even the business unit, cached for a minute).
+    const before = calls.length
+    const seen = {}
+    await findUsage('s7', { kind: 'activity', typeId: 300, activityObjectId: 'Q2' }, { onStage: (id, s) => { seen[id] = s } })
+    expect(calls.length).toBe(before)
+    expect(seen.automations).toMatchObject({ state: 'cached' })
+    // Later: the list is read again, steps only for the automation without a change marker match.
+    const seen2 = {}
+    await findUsage('s7', { kind: 'activity', typeId: 300, activityObjectId: 'Q2' }, { now: later, onStage: (id, s) => { seen2[id] = s } })
+    expect(seen2.automations.state).toBe('done')
+    expect(seen2.automations.note).toMatch(/changed since the last scan/)
+  })
+
+  it('keeps business units apart', async () => {
+    let mid = 1
+    const calls = stub((url, body) => (url.includes('accounts/@current') ? { name: `BU ${mid}`, accountId: mid } : sfmc(url, body)))
+    const { findUsage } = await load()
+    await findUsage('s7', { kind: 'de', de })
+    const n = calls.filter((c) => c.includes('/automation/v1/queries/?')).length
+    mid = 2
+    // Another BU (looked up again once the 1-minute BU cache runs out): read in full,
+    // not refreshed from BU 1's data.
+    const seen = {}
+    await findUsage('s7', { kind: 'de', de }, { now: later, onStage: (id, s) => { seen[id] = s } })
+    expect(seen.queries).toMatchObject({ state: 'done', note: '' })
+    expect(calls.filter((c) => c.includes('/automation/v1/queries/?')).length).toBe(2 * n)
+    // Back to BU 1 later still: its own saved data is refreshed.
+    mid = 1
+    const seen1 = {}
+    await findUsage('s7', { kind: 'de', de }, { now: () => Date.now() + 20 * 60 * 1000, onStage: (id, s) => { seen1[id] = s } })
+    expect(seen1.queries.note).toBe('no changes since the last scan')
+  })
+
+  it('refreshes activity lists by reading only the newest page', async () => {
+    let queries = QUERIES.map((q, i) => ({ ...q, modifiedDate: `2026-10-0${4 - Math.min(i, 3)}T00:00:00` }))
+    const calls = stub((url, body) => (url.includes('/automation/v1/queries/?') ? { count: queries.length, items: queries.map((q) => ({ ...q })) } : sfmc(url, body)))
+    const { findUsage } = await load()
+    await findUsage('s7', { kind: 'field', de: { name: '_Sent', dataView: true }, field: 'JobID' })
+    queries = [{ queryDefinitionId: 'Q9', name: 'New one', targetKey: 'N', queryText: 'SELECT JobID FROM _Sent', modifiedDate: '2026-10-09T00:00:00' }, ...queries]
+    const seen = {}
+    const r = await findUsage('s7', { kind: 'field', de: { name: '_Sent', dataView: true }, field: 'JobID' }, { now: later, onStage: (id, s) => { seen[id] = s } })
+    expect(seen.queries.note).toBe('1 changed since the last scan')
+    expect(r.sections[0].items.map((i) => i.title)).toEqual(['New one'])
+    expect(calls.filter((c) => c.includes('/automation/v1/queries/?')).length).toBe(2)
+  })
+})

@@ -85,3 +85,32 @@ describe('mergeDEPages (feedback #20: first 50, then Load more)', () => {
     expect(r.duplicates).toBe(1)
   })
 })
+
+describe('deSearchTerms (feedback #22)', () => {
+  it('sends one word as is, with no local filter', async () => {
+    const { deSearchTerms } = await import('../deApi.js')
+    expect(deSearchTerms('Master')).toEqual({ term: 'Master', filter: null })
+    expect(deSearchTerms('')).toEqual({ term: '', filter: null })
+  })
+  it('sends the longest word of a name with spaces or dashes and filters the full text', async () => {
+    const { deSearchTerms } = await import('../deApi.js')
+    const t = deSearchTerms('[Master - Backup]')
+    expect(t.term).toBe('Master')
+    expect(['Master - Backup', 'Old master - backup 2', 'Master', 'Master Backup'].filter(t.filter)).toEqual(['Master - Backup', 'Old master - backup 2'])
+    expect(deSearchTerms('Customer - old').term).toBe('Customer')
+  })
+  it('filters the page SFMC returns', async () => {
+    vi.resetModules()
+    const calls = []
+    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage(msg, cb) {
+      calls.push(msg.url)
+      cb({ data: { count: 3, items: [{ id: '1', name: 'Master - Backup' }, { id: '2', name: 'Master' }, { id: '3', name: 'Master Backup' }] } })
+    } } })
+    const { searchLocalDEs } = await import('../deApi.js')
+    const r = await searchLocalDEs('s7', 'Master - Backup')
+    expect(calls[0]).toMatch(/\$search=Master$/)
+    expect(r).toMatchObject({ total: 3, fetched: 3, filtered: true })
+    expect(r.items.map((d) => d.name)).toEqual(['Master - Backup'])
+    vi.unstubAllGlobals()
+  })
+})

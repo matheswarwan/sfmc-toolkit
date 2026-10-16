@@ -31,15 +31,39 @@ export function toDE(item, sourceType = null) {
 }
 
 /**
+ * What to send to SFMC's search, and how to check a name here. SFMC's $search finds
+ * nothing for text with spaces or dashes ("Master - Backup", feedback #22), so for
+ * more than one word it gets the longest word and the whole text is matched here.
+ * Brackets around the text ([Master - Backup]) are ignored.
+ */
+export function deSearchTerms(query) {
+  const q = String(query || '').trim().replace(/^\[(.*)\]$/, '$1').trim()
+  const words = q.split(/[^A-Za-z0-9_]+/).filter(Boolean)
+  if (!q || (words.length === 1 && words[0] === q)) return { term: q, filter: null }
+  const term = [...words].sort((a, b) => b.length - a.length)[0] || ''
+  const needle = q.toLowerCase()
+  return { term, filter: (name) => String(name || '').toLowerCase().includes(needle) }
+}
+
+/**
  * One page (50) of the local DEs whose name contains `query` ('' lists all), newest
- * change first. Returns { items, total }.
+ * change first. Returns { items, total, fetched, filtered }: with a filter (see
+ * deSearchTerms) `items` can be fewer than `fetched`, and `total` counts SFMC's
+ * matches for the single word sent.
  */
 export async function searchLocalDEs(stack, query, page = 1) {
-  const search = query.trim() ? `&$search=${encodeURIComponent(query.trim())}` : ''
+  const { term, filter } = deSearchTerms(query)
+  const search = term ? `&$search=${encodeURIComponent(term)}` : ''
   const url = `${CM(stack)}/data-internal/v1/customobjects/category/0?retrievalType=1&$page=${page}&$pagesize=${DE_PAGE_SIZE}&$orderBy=modifiedDate%20DESC${search}`
   const data = await sfmcFetch(url, 'GET')
   if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response from the data extension search.')
-  return { items: data.items.map((d) => toDE(d)), total: data.count ?? data.totalCount ?? data.items.length }
+  const all = data.items.map((d) => toDE(d))
+  return {
+    items: filter ? all.filter((d) => filter(d.name)) : all,
+    total: data.count ?? data.totalCount ?? data.items.length,
+    fetched: all.length,
+    filtered: !!filter,
+  }
 }
 
 /**
@@ -125,6 +149,14 @@ export async function fetchDEFolderPath(stack, categoryId) {
 export function clearDECaches() {
   fieldsCache.clear()
   folderCache.clear()
+}
+
+/**
+ * The data extension in Contact Builder (its properties page). Not yet checked
+ * against a live org. A Shared DE opens only from the business unit that owns it.
+ */
+export function deContactBuilderUrl(stack, de) {
+  return `${CM(stack).replace('/fuelapi', '')}/admin.html#admin/data-extension/${encodeURIComponent(de.id)}/properties/`
 }
 
 /** Field type with its length and scale, e.g. "Text (254)" or "Decimal (18,2)". */

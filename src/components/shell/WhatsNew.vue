@@ -36,7 +36,7 @@ function close() {
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Where used</strong><span class="text-muted-foreground">Data > Where used, or the Where used buttons on data extensions, fields, activities and entry events: see what uses a data extension (with its lineage), a field, a data view, an email, a content block, a file location or a profile, and what an automation touches. Each step of the scan shows a progress bar.</span></li>
-        <li><strong class="block">Faster data extension search</strong><span class="text-muted-foreground">The first 50 show straight away; Shared and Synchronized data extensions join in the background.</span></li>
+        <li><strong class="block">Faster data extension search</strong><span class="text-muted-foreground">The first 50 show straight away; Shared and Synchronized data extensions join in the background. Names with spaces or dashes are found, and SFMC on a row opens the data extension in Contact Builder.</span></li>
         <li><strong class="block">Download chosen data extensions</strong><span class="text-muted-foreground">Tick rows, then Download or Excel covers only those, with their fields.</span></li>
         <li><strong class="block">50 results at a time</strong><span class="text-muted-foreground">Every SFMC search shows 50 results; Load 50 more shows the next.</span></li>
       </ul>

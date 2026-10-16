@@ -200,7 +200,7 @@ export const FEATURE_GROUPS = [
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',
     items: [
-      { title: 'Find data extensions', detail: 'Search by name or list all, newest first, 50 at a time (Load 50 more for the next). Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
+      { title: 'Find data extensions', detail: 'Search by name (names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
       { title: 'Where used', how: 'Where used on a data extension\'s row, or on a field', detail: 'Opens the Where used panel for the data extension or one field (see Where used below).' },
@@ -218,7 +218,7 @@ export const FEATURE_GROUPS = [
       { title: 'Activities and automations', detail: 'The automations and steps that run an activity. For an automation, What it touches: data extensions written and read, files, emails sent and journey entry events it fires.' },
       { title: 'Journeys and content', detail: 'For an entry event, its data extension and the journeys that use it. For an email, the journeys and Send Email activities that send it. For a content block, the emails, templates, blocks and CloudPages that include it (ContentBlockByKey, ById, ByName, or placed in a slot). For a file location, its imports and file transfers.' },
       { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
-      { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and the next check reuses what was loaded for 30 minutes (Rescan reloads). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
+      { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and what it loads is saved for each business unit: checks in the next 5 minutes, in any tab, use it as is, and later checks read only what changed since (Rescan reads everything again). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
     ],
   },
   {
