@@ -1,16 +1,20 @@
 <script setup>
-// Shown once after the update from SFMC Query Saver to SFMC Toolkit (2.0.0). Fresh
-// installs skip it. Uses Query Saver's `_seenVersion` key.
+// Shown once after an update that has news: to SFMC Query Saver users the rename
+// to SFMC Toolkit (2.0.0) plus the latest news, to Toolkit users only the news.
+// Fresh installs skip it. Uses Query Saver's `_seenVersion` key.
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.0'
+const VERSION = '2.0.2'
 const open = ref(false)
+const fromQuerySaver = ref(false)
 
 try {
   chrome.storage.local.get(null, (all) => {
     if (all?._seenVersion === VERSION) return
     const upgrading = !!all?._seenVersion || Object.keys(all || {}).some((k) => /^(sql|email|workspace)_/.test(k))
+    // Query Saver stored 1.x here; the Toolkit stores 2.x.
+    fromQuerySaver.value = !String(all?._seenVersion || '').startsWith('2.')
     if (upgrading) open.value = true
     else chrome.storage.local.set({ _seenVersion: VERSION })
   })
@@ -29,12 +33,19 @@ function close() {
         <span class="text-[11px] font-bold text-primary bg-primary/10 rounded-full px-3 py-1 uppercase tracking-wide">Version {{ VERSION }}</span>
         <button class="p-1 rounded hover:bg-accent" title="Close" @click="close"><X class="h-4 w-4" /></button>
       </div>
-      <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">SFMC Query Saver is now SFMC Toolkit</h2>
-      <ul class="px-5 mt-3 mb-5 space-y-3 text-sm">
+      <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
+      <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
+        <li><strong class="block">Where used</strong><span class="text-muted-foreground">Data > Where used, or the Where used buttons on data extensions, fields, activities and entry events: see what uses a data extension (with its lineage), a field, a data view, an email, a content block, a file location or a profile, and what an automation touches. Each step of the scan shows a progress bar.</span></li>
+        <li><strong class="block">Faster data extension search</strong><span class="text-muted-foreground">The first 50 show straight away; Shared and Synchronized data extensions join in the background.</span></li>
+        <li><strong class="block">Download chosen data extensions</strong><span class="text-muted-foreground">Tick rows, then Download or Excel covers only those, with their fields.</span></li>
+        <li><strong class="block">50 results at a time</strong><span class="text-muted-foreground">Every SFMC search shows 50 results; Load 50 more shows the next.</span></li>
+      </ul>
+      <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
         <li><strong class="block">New sections</strong><span class="text-muted-foreground">Automations, Activities, Journeys, Journey Entry, Data Extensions and CloudPages.</span></li>
         <li><strong class="block">Settings have their own page</strong><span class="text-muted-foreground">Email versions, reuse DE, lint rules, backups and the API console are under Settings.</span></li>
         <li><strong class="block">Several tabs</strong><span class="text-muted-foreground">The toolbar icon opens a new tab each time; Ctrl+K jumps to any section.</span></li>
+        <li><strong class="block">Where used</strong><span class="text-muted-foreground">Data > Where used shows what uses a data extension, field, email or content block, and what an automation touches.</span></li>
       </ul>
       <div class="px-5 pb-5"><button class="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium" @click="close">Got it</button></div>
     </div>
