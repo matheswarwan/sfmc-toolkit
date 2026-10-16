@@ -13,10 +13,6 @@ export const TODO_GROUPS = [
         detail: 'Suggest values for _Journey.JourneyStatus, _AutomationInstance.AutomationInstanceStatus and _JourneyActivity.ActivityType once the lists are confirmed against a real account.',
       },
       {
-        title: 'Where used: more places',
-        detail: 'Where used on a data extension covers SQL Query activities and their automations. Next: imports, filters, data extracts, scripts, journeys (entry source, Update Contact) and emails (AMPscript lookups).',
-      },
-      {
         title: 'Better journey details',
         detail: 'Show more about a journey and its activities on the Journeys page.',
       },

@@ -8,14 +8,13 @@ import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
-import DEUsagePanel from '@/components/data/DEUsagePanel.vue'
-import { useDEUsage } from '@/composables/useDEUsage.js'
+import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
-import { clearDEUsageCache } from '@/utils/deUsage.js'
+import { clearUsageCache } from '@/utils/usage/index.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
 import { downloadWorkbook } from '@/utils/exportDoc.js'
@@ -23,8 +22,9 @@ import { formatDateTime } from '@/utils/format.js'
 
 const router = useRouter()
 const { stack } = useStack()
-const usage = useDEUsage()
-const usagePercent = computed(() => Math.round(100 * usage.progress()))
+const usage = useUsage()
+const whereUsed = (de) => usage.start(stack.value, { kind: 'de', de })
+const whereFieldUsed = (de, field) => usage.start(stack.value, { kind: 'field', de, field })
 
 const query = ref('')
 const searched = ref(null) // the query of the results shown, null before any search
@@ -122,7 +122,7 @@ function togglePickAll() {
 function refresh() {
   clearDECaches()
   clearSharedDECache(stack.value)
-  clearDEUsageCache(stack.value)
+  clearUsageCache(stack.value)
   for (const k of Object.keys(fields)) delete fields[k]
   for (const k of Object.keys(paths)) delete paths[k]
   if (searched.value !== null) search()
@@ -312,11 +312,6 @@ const columns = [
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> {{ picked.size ? `Excel (${picked.size})` : 'Excel' }}</Button>
         <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" :label="picked.size ? `Download ${picked.size}` : 'Download'" />
       </template>
-      <button v-if="usage.state.de && !usage.state.open" class="inline-flex items-center gap-1.5 h-8 rounded-md border border-border px-2 text-xs hover:bg-accent" :title="`Show where ${usage.state.de.name} is used`" @click="usage.state.open = true">
-        <Loader2 v-if="usage.state.running" class="h-3.5 w-3.5 animate-spin text-primary" /><Network v-else class="h-3.5 w-3.5" />
-        <span class="max-w-28 truncate">{{ usage.state.de.name }}</span>
-        <span v-if="usage.state.running" class="text-muted-foreground">{{ usagePercent }}%</span>
-      </button>
       <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders, the Shared/Synchronized list and the Where used scan" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
 
@@ -365,7 +360,7 @@ const columns = [
           <template #cell-createdDate="{ row }">{{ formatDateTime(row.createdDate) }}</template>
           <template #cell-id="{ row }"><code class="text-[11px]">{{ row.id }}</code></template>
           <template #cell-actions="{ row }">
-            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="usage.start(stack, row)">
+            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="whereUsed(row)">
               <Network class="h-3.5 w-3.5" /> Where used
             </button>
             <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap" :aria-expanded="expanded.has(row.id)" @click="toggleFields(row)">
@@ -383,7 +378,7 @@ const columns = [
                 </button>
               </div>
               <table class="w-full max-w-3xl">
-                <thead><tr class="text-left text-muted-foreground"><th class="w-6"></th><th class="py-1 pr-3">Field</th><th class="pr-3">Type</th><th class="pr-3">Primary key</th><th class="pr-3">Required</th><th>Default</th></tr></thead>
+                <thead><tr class="text-left text-muted-foreground"><th class="w-6"></th><th class="py-1 pr-3">Field</th><th class="pr-3">Type</th><th class="pr-3">Primary key</th><th class="pr-3">Required</th><th>Default</th><th></th></tr></thead>
                 <tbody>
                   <tr v-for="f in fields[row.id].list" :key="f.name" class="border-t border-border/60">
                     <td><input type="checkbox" :checked="isTicked(row, f.name)" :aria-label="`Use ${f.name} in a query`" @change="tick(row, f.name)" /></td>
@@ -392,6 +387,7 @@ const columns = [
                     <td class="pr-3">{{ f.isPrimaryKey ? 'Yes' : '' }}</td>
                     <td class="pr-3">{{ f.isNullable ? '' : 'Yes' }}</td>
                     <td class="text-muted-foreground">{{ f.defaultValue ?? '' }}</td>
+                    <td class="pl-3 text-right"><button class="inline-flex items-center gap-0.5 text-primary hover:underline whitespace-nowrap" :title="`Where is ${f.name} used?`" @click="whereFieldUsed(row, f.name)"><Network class="h-3 w-3" /> Where used</button></td>
                   </tr>
                 </tbody>
               </table>
@@ -417,8 +413,6 @@ const columns = [
       </div>
       <pre class="max-h-40 overflow-auto rounded-md bg-slate-900 text-slate-100 p-2 text-[11px]">{{ selectedSql }}</pre>
     </div>
-
-    <DEUsagePanel />
 
     <!-- Excel export -->
     <div v-if="exportOpen" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">

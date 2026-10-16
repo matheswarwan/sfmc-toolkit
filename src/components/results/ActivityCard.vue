@@ -26,6 +26,7 @@ const tables = computed(() => (d.value.tables || []).filter((t) => !t.extra || s
       <span v-if="heading" class="text-[11px] text-muted-foreground tabular-nums">{{ heading }}</span>
       <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">{{ d.typeLabel }}</span>
       <h3 class="flex-1 min-w-0 truncate text-sm font-semibold">{{ d.title }}</h3>
+      <slot name="actions" />
       <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0">
         Open in SFMC <ExternalLink class="h-3 w-3" />
       </a>

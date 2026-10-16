@@ -1,7 +1,7 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Search, MessageSquare } from 'lucide-vue-next'
+import { Search, MessageSquare, Network, Loader2 } from 'lucide-vue-next'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
 import ConnectionMenu from '@/components/shell/ConnectionMenu.vue'
 import CommandPalette from '@/components/shell/CommandPalette.vue'
@@ -10,14 +10,18 @@ import ApiConsole from '@/components/shell/ApiConsole.vue'
 import WhatsNew from '@/components/shell/WhatsNew.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
+import UsagePanel from '@/components/usage/UsagePanel.vue'
+import { useUsage, targetTitle } from '@/composables/useUsage.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { trackEvent } from '@/utils/analytics.js'
 
 const route = useRoute()
-const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage', 'AutomationsPage', 'ActivitiesPage', 'JourneysPage', 'JourneyEntryPage', 'CloudPagesPage']
+const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage', 'WhereUsedPage', 'AutomationsPage', 'ActivitiesPage', 'JourneysPage', 'JourneyEntryPage', 'CloudPagesPage']
 const paletteOpen = ref(false)
 const showFeedback = ref(false)
 const isMac = /Mac/i.test(navigator.platform || '')
+const usage = useUsage()
+const usagePercent = computed(() => Math.round(100 * usage.progress()))
 
 function onKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -51,6 +55,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           <span class="flex-1 text-left">Search</span>
           <kbd class="text-[10px] border border-border rounded px-1">{{ isMac ? '⌘' : 'Ctrl' }} K</kbd>
         </button>
+        <button v-if="usage.state.target && !usage.state.open" class="flex items-center gap-1.5 h-8 rounded-md border border-border px-2 text-xs hover:bg-accent" :title="`Where used: ${targetTitle(usage.state.target)}`" @click="usage.state.open = true">
+          <Loader2 v-if="usage.state.running" class="h-3.5 w-3.5 animate-spin text-primary" /><Network v-else class="h-3.5 w-3.5" />
+          <span class="max-w-32 truncate">{{ targetTitle(usage.state.target) }}</span>
+          <span v-if="usage.state.running" class="text-muted-foreground">{{ usagePercent }}%</span>
+        </button>
         <ConnectionMenu />
         <button class="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent" title="Send feedback" @click="showFeedback = true">
           <MessageSquare class="h-4 w-4" />
@@ -69,6 +78,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
       <ApiConsole />
     </div>
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
+    <UsagePanel />
     <ToastHost />
     <WhatsNew />
     <FeedbackModal v-if="showFeedback" :screen="route.path" @close="showFeedback = false" />

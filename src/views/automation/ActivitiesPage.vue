@@ -3,7 +3,7 @@
 // Import, Data Extract, File Transfer, Filter. Search by name, list all, or fetch
 // every one (50 a request, up to 2,000), with each activity's details.
 import { computed, ref } from 'vue'
-import { Search, Loader2, ListChecks } from 'lucide-vue-next'
+import { Search, Loader2, ListChecks, Network } from 'lucide-vue-next'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
@@ -13,8 +13,16 @@ import { showToast } from '@/composables/useToast.js'
 import { ACTIVITY_SEARCH_TYPES, searchActivities, fetchAllActivities, fetchActivityDetails } from '@/utils/automationApi.js'
 import { describeActivity, activityBlocks } from '@/utils/activityTypes.js'
 import { RESULTS_PAGE_SIZE } from '@/utils/paging.js'
+import { useUsage } from '@/composables/useUsage.js'
 
 const { stack } = useStack()
+const usage = useUsage()
+// The ID automations use for each activity type (activityObjectId in their steps).
+const ID_FIELDS = { 300: 'queryDefinitionId', 423: 'ssjsActivityId', 43: 'importDefinitionId', 73: 'dataExtractDefinitionId', 53: 'id', 303: 'filterActivityId' }
+function whereUsed(it) {
+  const typeId = searched.value.type.objectTypeId
+  usage.start(stack.value, { kind: 'activity', typeId, activityObjectId: it[ID_FIELDS[typeId]] ?? it.id, name: it.name, details: typeId === 300 ? it : null })
+}
 const type = ref(ACTIVITY_SEARCH_TYPES[0])
 const query = ref('')
 const searched = ref(null) // { type, query, all }
@@ -156,7 +164,11 @@ function getDoc() {
         </p>
         <p v-if="!items.length" class="text-sm text-muted-foreground">No {{ searched.type.label }} activities found.</p>
         <div class="space-y-3">
-          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="i" :description="d" :show-all-fields="showAllFields" />
+          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="i" :description="d" :show-all-fields="showAllFields">
+            <template #actions>
+              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0" title="Automations that run this activity" @click="whereUsed(items[i])"><Network class="h-3 w-3" /> Where used</button>
+            </template>
+          </ActivityCard>
         </div>
         <div v-if="visibleCount < total" class="mt-3 text-center">
           <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore">

@@ -4,7 +4,8 @@
 // activity's details). Read-only.
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Loader2, ExternalLink, Mail, ChevronDown, ChevronRight, X } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, ExternalLink, Mail, ChevronDown, ChevronRight, X, Network } from 'lucide-vue-next'
+import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
@@ -16,6 +17,7 @@ import { runInBatches } from '@/utils/batchRunner.js'
 
 const route = useRoute()
 const { stack } = useStack()
+const usage = useUsage()
 
 const details = ref(null)
 const notifications = ref(null)
@@ -86,6 +88,7 @@ function getDoc() {
           <button class="text-xs px-2 py-0.5 rounded" :class="view === 'full' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'" :aria-pressed="view === 'full'" @click="view = 'full'">Full view</button>
         </div>
         <label v-if="view === 'full'" class="flex items-center gap-1.5 text-xs text-muted-foreground"><input v-model="showAllFields" type="checkbox" /> All fields</label>
+        <button class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent" title="Data extensions, files and emails this automation touches" @click="usage.start(stack, { kind: 'automation', id: details.id || id, name: details.name })"><Network class="h-3.5 w-3.5" /> What it touches</button>
         <a :href="automationStudioUrl(stack)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Automation Studio <ExternalLink class="h-3 w-3" /></a>
         <DownloadMenu :get-doc="getDoc" :file-name="details.name || 'automation'" :disabled="pending > 0" />
       </template>

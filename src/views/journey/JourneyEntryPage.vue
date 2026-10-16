@@ -2,7 +2,8 @@
 // Journey entry events (SFMC Automation Viewer's Journey Activity Details): every
 // event definition (up to 1,000), filtered here in the page.
 import { computed, reactive, ref, watch } from 'vue'
-import { Loader2, RefreshCw, X } from 'lucide-vue-next'
+import { Loader2, RefreshCw, X, Network } from 'lucide-vue-next'
+import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
@@ -13,6 +14,7 @@ import { activityBlocks } from '@/utils/activityTypes.js'
 import { RESULTS_PAGE_SIZE } from '@/utils/paging.js'
 
 const { stack } = useStack()
+const usage = useUsage()
 const items = ref([])
 const total = ref(0)
 const loaded = ref(false)
@@ -95,7 +97,11 @@ function getDoc() {
           {{ shown.length }} of {{ items.length }} entry events match<template v-if="shown.length > visibleCount">, the first {{ visibleCount }} shown</template>.<template v-if="total > items.length"> Journey Builder has {{ total }}; the first {{ items.length }} are loaded.</template>
         </p>
         <div class="space-y-3">
-          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields" />
+          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields">
+            <template #actions>
+              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0" title="Journeys that use this entry event" @click="usage.start(stack, { kind: 'event', event: shown[i] })"><Network class="h-3 w-3" /> Where used</button>
+            </template>
+          </ActivityCard>
         </div>
         <div v-if="visibleCount < shown.length" class="mt-3 text-center">
           <Button variant="outline" size="sm" class="h-8 text-xs" @click="visibleCount += RESULTS_PAGE_SIZE">

@@ -7,6 +7,7 @@ const PAGES = {
   '/queries/builder': () => import('../views/queries/BuilderPage.vue'),
   '/emails': () => import('../views/emails/EmailsPage.vue'),
   '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
+  '/where-used': () => import('../views/data/WhereUsedPage.vue'),
   '/automations': () => import('../views/automation/AutomationsPage.vue'),
   '/activities': () => import('../views/automation/ActivitiesPage.vue'),
   '/journeys': () => import('../views/journey/JourneysPage.vue'),

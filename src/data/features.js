@@ -203,9 +203,22 @@ export const FEATURE_GROUPS = [
       { title: 'Find data extensions', detail: 'Search by name or list all, newest first, 50 at a time (Load 50 more for the next). Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
-      { title: 'Where used', how: 'Where used on a data extension\'s row', detail: 'Lists the SQL Query activities that write to the data extension (it is their target, with the update type) or read from it (FROM or JOIN, including ENT. and subqueries, ignoring comments), and the automations and steps each query runs in, with their status and last run. A Process panel shows each step with a progress bar; the scan carries on if you close the panel or open another section, and the next data extension reuses what was loaded for 30 minutes (Rescan reloads). Current business unit only.' },
+      { title: 'Where used', how: 'Where used on a data extension\'s row, or on a field', detail: 'Opens the Where used panel for the data extension or one field (see Where used below).' },
       { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Run it in Run Query or copy it.' },
       { title: 'Excel export', detail: 'Names only, or every field of every DE (one sheet each), with folder paths if you want them.' },
+    ],
+  },
+  {
+    id: 'where-used',
+    title: 'Where used',
+    intro: 'Data > Where used, or the Where used buttons on data extensions, fields, activities, automations (What it touches) and journey entry events. Current business unit only.',
+    items: [
+      { title: 'Data extensions', detail: 'Lineage (where its data comes from and goes, through queries, filters, imports and data extracts, up to 6 levels), and the SQL queries, imports, filters, data extracts, scripts, Send Email activities, entry events, journeys (entry source, Update Contact, split and goal criteria), emails, templates, content blocks and CloudPages (AMPscript and SSJS) that use it. Each automation activity shows the automations and steps that run it.' },
+      { title: 'Data views and fields', detail: 'Queries that read a data view and where their results go. For a field: queries that read it (qualified by the data extension or its alias, or marked maybe when unqualified with several tables) or write it, journey criteria and AMPscript lookups that name it.' },
+      { title: 'Activities and automations', detail: 'The automations and steps that run an activity. For an automation, What it touches: data extensions written and read, files, emails sent and journey entry events it fires.' },
+      { title: 'Journeys and content', detail: 'For an entry event, its data extension and the journeys that use it. For an email, the journeys and Send Email activities that send it. For a content block, the emails, templates, blocks and CloudPages that include it (ContentBlockByKey, ById, ByName, or placed in a slot). For a file location, its imports and file transfers.' },
+      { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
+      { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and the next check reuses what was loaded for 30 minutes (Rescan reloads). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
     ],
   },
   {
