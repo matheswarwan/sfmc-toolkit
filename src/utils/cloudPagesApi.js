@@ -1,8 +1,9 @@
 // CloudPage Finder calls (from SFMC Automation Viewer's cloudPageExplorer.js): search
 // Content Builder for CloudPage assets, then on demand each page's URL and folder.
 import { sfmcFetch } from './sfmcApi.js'
+import { RESULTS_PAGE_SIZE } from './paging.js'
 
-export const CP_PAGE_SIZE = 20
+export const CP_PAGE_SIZE = RESULTS_PAGE_SIZE
 export const CLOUD_PAGE_ASSET_TYPE_IDS = [240, 241, 242, 243, 244, 245, 247, 248, 249]
 const FIELDS = ['assetType', 'category', 'createdDate', 'customerKey', 'id', 'modifiedDate', 'name', 'meta', 'status']
 const CB = (stack) => `https://content-builder.${stack}.marketingcloudapps.com/fuelapi`

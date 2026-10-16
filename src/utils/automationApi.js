@@ -1,8 +1,9 @@
 // Automation Studio calls (from SFMC Automation Viewer), through the service worker.
 import { sfmcFetch } from './sfmcApi.js'
 import { activityEndpoint } from './activityTypes.js'
+import { RESULTS_PAGE_SIZE } from './paging.js'
 
-export const AUTOMATION_PAGE_SIZE = 25
+export const AUTOMATION_PAGE_SIZE = RESULTS_PAGE_SIZE
 const AS = (stack) => `https://mc.${stack}.marketingcloudapps.com/AutomationStudioFuel3/fuelapi`
 
 export async function searchAutomations(stack, query, skip = 0) {
@@ -49,7 +50,7 @@ export const ACTIVITY_SEARCH_TYPES = [
   { id: 'filter', label: 'Filter', endpoint: 'filters', objectTypeId: 303 },
 ]
 
-export async function searchActivities(stack, endpoint, query, page = 1, pageSize = 25) {
+export async function searchActivities(stack, endpoint, query, page = 1, pageSize = RESULTS_PAGE_SIZE) {
   const name = query.trim()
   const filter = name ? `&$filter=${encodeURIComponent(`name like "${name}"`)}` : ''
   const data = await sfmcFetch(`${AS(stack)}/automation/v1/${endpoint}/?$page=${page}&$pageSize=${pageSize}&$orderBy=${encodeURIComponent('modifiedDate desc')}&retrievalType=1${filter}`, 'GET')

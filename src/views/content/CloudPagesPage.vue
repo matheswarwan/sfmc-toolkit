@@ -178,7 +178,7 @@ const columns = [
           <template #cell-modifiedDate="{ row }">{{ formatDateTime(row.modifiedDate) }}</template>
         </DataTable>
         <div v-if="pageNo * CP_PAGE_SIZE < total" class="mt-3 text-center">
-          <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore"><Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load more ({{ pages.length }} of {{ total }})</Button>
+          <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore"><Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load {{ Math.min(50, total - pages.length) }} more ({{ pages.length }} of {{ total }})</Button>
         </div>
       </template>
     </div>

@@ -12,6 +12,7 @@ import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { ACTIVITY_SEARCH_TYPES, searchActivities, fetchAllActivities, fetchActivityDetails } from '@/utils/automationApi.js'
 import { describeActivity, activityBlocks } from '@/utils/activityTypes.js'
+import { RESULTS_PAGE_SIZE } from '@/utils/paging.js'
 
 const { stack } = useStack()
 const type = ref(ACTIVITY_SEARCH_TYPES[0])
@@ -25,6 +26,9 @@ const loadingMore = ref(false)
 const fetchProgress = ref(null) // { done, total } while fetching all
 const error = ref('')
 const showAllFields = ref(false)
+// Shown 50 at a time, also after Fetch all (thousands of cards with code views
+// would make the page slow).
+const visibleCount = ref(RESULTS_PAGE_SIZE)
 
 // Filters come back from the list without their definition; fetch it on demand.
 const filterDetails = ref({})
@@ -49,6 +53,7 @@ async function search() {
     total.value = r.total
     page.value = 1
     searched.value = { type: type.value, query: query.value.trim(), all: false }
+    visibleCount.value = RESULTS_PAGE_SIZE
     filterDetails.value = {}
   } catch (e) {
     error.value = `Could not search ${type.value.label} activities: ${e.message}`
@@ -66,6 +71,7 @@ async function fetchAll() {
     items.value = r.items
     total.value = r.items.length
     searched.value = { type: type.value, query: '', all: true }
+    visibleCount.value = RESULTS_PAGE_SIZE
     filterDetails.value = {}
     if (r.capped) showToast(`Showing the first ${r.items.length.toLocaleString()} of ${r.total.toLocaleString()}.`)
   } catch (e) {
@@ -75,7 +81,10 @@ async function fetchAll() {
   }
 }
 
+// Shows the next 50: from what is loaded, fetching another page when needed.
 async function loadMore() {
+  visibleCount.value += RESULTS_PAGE_SIZE
+  if (searched.value.all || items.value.length >= visibleCount.value || items.value.length >= total.value) return
   loadingMore.value = true
   try {
     const r = await searchActivities(stack.value, searched.value.type.endpoint, searched.value.query, page.value + 1)
@@ -143,15 +152,15 @@ function getDoc() {
       </div>
       <template v-else-if="searched">
         <p class="mb-2 text-xs text-muted-foreground">
-          {{ total.toLocaleString() }} {{ searched.type.label }} {{ total === 1 ? 'activity' : 'activities' }}{{ searched.query ? ` for "${searched.query}"` : '' }}{{ items.length < total ? `, ${items.length} shown` : '' }}.
+          {{ total.toLocaleString() }} {{ searched.type.label }} {{ total === 1 ? 'activity' : 'activities' }}{{ searched.query ? ` for "${searched.query}"` : '' }}{{ Math.min(visibleCount, items.length) < total ? `, ${Math.min(visibleCount, items.length)} shown` : '' }}.
         </p>
         <p v-if="!items.length" class="text-sm text-muted-foreground">No {{ searched.type.label }} activities found.</p>
         <div class="space-y-3">
-          <ActivityCard v-for="(d, i) in descs" :key="i" :description="d" :show-all-fields="showAllFields" />
+          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="i" :description="d" :show-all-fields="showAllFields" />
         </div>
-        <div v-if="!searched.all && items.length < total" class="mt-3 text-center">
+        <div v-if="visibleCount < total" class="mt-3 text-center">
           <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore">
-            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load more ({{ items.length }} of {{ total }})
+            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load {{ Math.min(50, total - Math.min(visibleCount, total)) }} more ({{ Math.min(visibleCount, items.length) }} of {{ total }})
           </Button>
         </div>
       </template>

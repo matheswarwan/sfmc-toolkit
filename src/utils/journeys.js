@@ -7,8 +7,9 @@
 import { sfmcFetch } from './sfmcApi.js'
 import { formatValue } from './activityTypes.js'
 import { formatDateTime } from './format.js'
+import { RESULTS_PAGE_SIZE } from './paging.js'
 
-export const JOURNEY_PAGE_SIZE = 25
+export const JOURNEY_PAGE_SIZE = RESULTS_PAGE_SIZE
 const JB = (stack) => `https://jbinteractions.${stack}.marketingcloudapps.com/fuelapi/interaction/v1`
 
 export const JOURNEY_STATUSES = ['Draft', 'Published', 'ScheduledToPublish', 'Paused', 'Stopped', 'Unpublished', 'Deleted']

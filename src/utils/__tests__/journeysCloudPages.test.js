@@ -39,7 +39,7 @@ describe('CloudPages', () => {
     const q = cloudPageSearchBody('Sale').query
     expect(q.logicalOperator).toBe('AND')
     expect(q.leftOperand.leftOperand).toEqual({ property: 'name', simpleOperator: 'contains', value: 'sale', boost: 50 })
-    expect(cloudPageSearchBody('x', 3).page).toEqual({ pageSize: 20, page: 3 })
+    expect(cloudPageSearchBody('x', 3).page).toEqual({ pageSize: 50, page: 3 })
   })
   it('reads the URL from the asset or the sites list', () => {
     expect(toCloudPage({ id: 1, name: 'P', status: { name: 'Published' }, meta: { cloudPages: { url: 'https://x/p' } } }).url).toBe('https://x/p')

@@ -10,6 +10,7 @@ import { useStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { fetchEventDefinitions, filterEventDefinitions, describeEventDefinition, EVENT_TYPES, EVENT_CATEGORIES } from '@/utils/journeyApi.js'
 import { activityBlocks } from '@/utils/activityTypes.js'
+import { RESULTS_PAGE_SIZE } from '@/utils/paging.js'
 
 const { stack } = useStack()
 const items = ref([])
@@ -42,6 +43,9 @@ watch(stack, (s) => { if (s && !loaded.value && !loading.value) load() }, { imme
 
 const shown = computed(() => filterEventDefinitions(items.value, filters))
 const descs = computed(() => shown.value.map((it) => describeEventDefinition(it, stack.value)))
+// All entry events load together (the filters work here); they are shown 50 at a time.
+const visibleCount = ref(RESULTS_PAGE_SIZE)
+watch(filters, () => { visibleCount.value = RESULTS_PAGE_SIZE }, { deep: true })
 const anyFilter = computed(() => Object.values(filters).some(Boolean))
 function clearFilters() { Object.assign(filters, { name: '', key: '', deName: '', deId: '', type: '', category: '', journeyStatus: '', scheduledFrom: false }) }
 
@@ -88,10 +92,15 @@ function getDoc() {
       <div v-if="loading && !loaded" class="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Loading journey entry events…</div>
       <template v-else-if="loaded">
         <p class="mb-2 text-xs text-muted-foreground">
-          {{ shown.length }} of {{ items.length }} entry events shown.<template v-if="total > items.length"> Journey Builder has {{ total }}; the first {{ items.length }} are loaded.</template>
+          {{ shown.length }} of {{ items.length }} entry events match<template v-if="shown.length > visibleCount">, the first {{ visibleCount }} shown</template>.<template v-if="total > items.length"> Journey Builder has {{ total }}; the first {{ items.length }} are loaded.</template>
         </p>
         <div class="space-y-3">
-          <ActivityCard v-for="(d, i) in descs" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields" />
+          <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields" />
+        </div>
+        <div v-if="visibleCount < shown.length" class="mt-3 text-center">
+          <Button variant="outline" size="sm" class="h-8 text-xs" @click="visibleCount += RESULTS_PAGE_SIZE">
+            Load {{ Math.min(50, shown.length - visibleCount) }} more ({{ visibleCount }} of {{ shown.length }})
+          </Button>
         </div>
       </template>
     </div>

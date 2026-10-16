@@ -2,8 +2,9 @@
 // the service worker like every SFMC call. Shared and Synchronized DEs come from the
 // catalog in sfmcApi.js (SFMC Query Saver's), so the two never disagree.
 import { sfmcFetch, searchSharedDEs } from './sfmcApi.js'
+import { RESULTS_PAGE_SIZE } from './paging.js'
 
-export const DE_PAGE_SIZE = 50
+export const DE_PAGE_SIZE = RESULTS_PAGE_SIZE
 
 const CM = (stack) => `https://mc.${stack}.marketingcloudapps.com/contactsmeta/fuelapi`
 

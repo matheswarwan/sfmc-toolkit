@@ -97,7 +97,7 @@ const columns = [
         </DataTable>
         <div v-if="entries.length < total" class="mt-3 text-center">
           <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loadingMore" @click="loadMore">
-            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load more ({{ entries.length }} of {{ total }})
+            <Loader2 v-if="loadingMore" class="h-3.5 w-3.5 mr-1 animate-spin" /> Load {{ Math.min(50, total - entries.length) }} more ({{ entries.length }} of {{ total }})
           </Button>
         </div>
       </template>
