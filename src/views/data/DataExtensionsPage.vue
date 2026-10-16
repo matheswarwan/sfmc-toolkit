@@ -4,15 +4,18 @@
 // query, export to Excel or a document.
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
+import DEUsagePanel from '@/components/data/DEUsagePanel.vue'
+import { useDEUsage } from '@/composables/useDEUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
+import { clearDEUsageCache } from '@/utils/deUsage.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
 import { downloadWorkbook } from '@/utils/exportDoc.js'
@@ -20,6 +23,8 @@ import { formatDateTime } from '@/utils/format.js'
 
 const router = useRouter()
 const { stack } = useStack()
+const usage = useDEUsage()
+const usagePercent = computed(() => Math.round(100 * usage.progress()))
 
 const query = ref('')
 const searched = ref(null) // the query of the results shown, null before any search
@@ -117,6 +122,7 @@ function togglePickAll() {
 function refresh() {
   clearDECaches()
   clearSharedDECache(stack.value)
+  clearDEUsageCache(stack.value)
   for (const k of Object.keys(fields)) delete fields[k]
   for (const k of Object.keys(paths)) delete paths[k]
   if (searched.value !== null) search()
@@ -306,7 +312,12 @@ const columns = [
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> {{ picked.size ? `Excel (${picked.size})` : 'Excel' }}</Button>
         <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" :label="picked.size ? `Download ${picked.size}` : 'Download'" />
       </template>
-      <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders and the Shared/Synchronized list" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
+      <button v-if="usage.state.de && !usage.state.open" class="inline-flex items-center gap-1.5 h-8 rounded-md border border-border px-2 text-xs hover:bg-accent" :title="`Show where ${usage.state.de.name} is used`" @click="usage.state.open = true">
+        <Loader2 v-if="usage.state.running" class="h-3.5 w-3.5 animate-spin text-primary" /><Network v-else class="h-3.5 w-3.5" />
+        <span class="max-w-28 truncate">{{ usage.state.de.name }}</span>
+        <span v-if="usage.state.running" class="text-muted-foreground">{{ usagePercent }}%</span>
+      </button>
+      <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders, the Shared/Synchronized list and the Where used scan" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
 
     <div v-if="allFields.running || exporting.running" class="px-4 py-1.5 border-b border-border bg-card text-xs text-muted-foreground flex items-center gap-3">
@@ -354,6 +365,9 @@ const columns = [
           <template #cell-createdDate="{ row }">{{ formatDateTime(row.createdDate) }}</template>
           <template #cell-id="{ row }"><code class="text-[11px]">{{ row.id }}</code></template>
           <template #cell-actions="{ row }">
+            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="usage.start(stack, row)">
+              <Network class="h-3.5 w-3.5" /> Where used
+            </button>
             <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap" :aria-expanded="expanded.has(row.id)" @click="toggleFields(row)">
               <ChevronDown v-if="expanded.has(row.id)" class="h-3.5 w-3.5" /><ChevronRight v-else class="h-3.5 w-3.5" /> Fields
             </button>
@@ -403,6 +417,8 @@ const columns = [
       </div>
       <pre class="max-h-40 overflow-auto rounded-md bg-slate-900 text-slate-100 p-2 text-[11px]">{{ selectedSql }}</pre>
     </div>
+
+    <DEUsagePanel />
 
     <!-- Excel export -->
     <div v-if="exportOpen" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
