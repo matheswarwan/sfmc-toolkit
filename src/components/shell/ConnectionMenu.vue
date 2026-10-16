@@ -44,6 +44,25 @@ async function loadBU() {
   try { bu.value = await fetchCurrentBU(stack.value) } catch { bu.value = null }
 }
 
+// While apps are being started (by the automatic warm-up or Start missing), check
+// again every 2 seconds so each one turns Ready as it comes up.
+let pollTimer = null
+watch([open, apps], () => {
+  clearTimeout(pollTimer)
+  if (open.value && apps.value.some((a) => a.starting)) pollTimer = setTimeout(loadApps, 2000)
+})
+onUnmounted(() => clearTimeout(pollTimer))
+const canStartMissing = computed(() => apps.value.some((a) => a.ok) && apps.value.some((a) => !a.ok && !a.starting))
+const startingMissing = ref(false)
+async function startMissing() {
+  startingMissing.value = true
+  const run = sendToBackground({ type: 'SFMC_WARM_UP', stack: stack.value, force: true })
+  setTimeout(loadApps, 300)
+  await run
+  startingMissing.value = false
+  await loadApps()
+}
+
 async function connectApp(appId) {
   connecting.value = { ...connecting.value, [appId]: true }
   const res = await sendToBackground({ type: 'SFMC_CONNECT_APP', stack: stack.value, appId })
@@ -157,13 +176,20 @@ const pickerOptions = computed(() => {
         </ul>
 
         <div v-if="status.connected" class="mt-3 pt-2 border-t border-border">
-          <div class="font-medium mb-1">App sessions</div>
-          <p class="text-muted-foreground mb-1.5">Started automatically when needed. Connect starts one now.</p>
+          <div class="flex items-center mb-1">
+            <span class="font-medium flex-1">App sessions</span>
+            <button v-if="canStartMissing" class="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border hover:bg-accent disabled:opacity-50" :disabled="startingMissing"
+              title="Start every app that has no session yet, one at a time in a background tab" @click="startMissing">
+              <Loader2 v-if="startingMissing" class="h-3 w-3 animate-spin" /> Start missing
+            </button>
+          </div>
+          <p class="text-muted-foreground mb-1.5">When one app has a session, the others are started in the background. Connect starts one now.</p>
           <ul class="space-y-1">
             <li v-for="app in apps" :key="app.id" class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full flex-shrink-0" :class="app.ok ? 'bg-emerald-500' : 'bg-muted-foreground/40'" />
+              <span class="h-2 w-2 rounded-full flex-shrink-0" :class="app.ok ? 'bg-emerald-500' : app.starting ? 'bg-amber-500' : 'bg-muted-foreground/40'" />
               <span class="flex-1 truncate">{{ app.name }}</span>
               <span v-if="app.ok" class="text-muted-foreground">Ready</span>
+              <span v-else-if="app.starting" class="flex items-center gap-1 text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Starting…</span>
               <button v-else class="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border hover:bg-accent disabled:opacity-50"
                 :disabled="connecting[app.id] === true" @click="connectApp(app.id)">
                 <Loader2 v-if="connecting[app.id] === true" class="h-3 w-3 animate-spin" />

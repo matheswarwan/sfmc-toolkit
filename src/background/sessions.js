@@ -19,6 +19,9 @@ const LOGIN_COOKIES = [
 
 const inFlight = new Map()
 const failedAt = new Map()
+const starting = new Set() // `${stack}:${appId}` being started by warmUpMissing
+const warmedAt = new Map() // stack → when warmUpMissing last ran
+export const WARM_UP_EVERY = 10 * 60 * 1000
 
 export class SfmcAuthError extends Error {
   constructor(code, message) {
@@ -92,6 +95,7 @@ export async function sessionStatus(stack) {
     id: app.id,
     name: app.name,
     ok: loggedIn && (await probeSession(app, stack)),
+    starting: starting.has(`${stack}:${app.id}`),
   })))
   return { stack, loggedIn, apps }
 }
@@ -101,4 +105,43 @@ export async function connectApp(stack, appId, opts) {
   if (!app) throw new Error(`Unknown SFMC app: ${appId}`)
   failedAt.delete(`${stack}:${app.id}`)
   await ensureSession(app, stack, opts)
+}
+
+/**
+ * Starts the app sessions that are missing, but only when at least one app already
+ * has a session: then the user is logged in and SFMC answers, so the rest can be
+ * started. With none, the user is most likely not logged in and opening tabs would
+ * not help. Apps are started one at a time (one inactive tab each), at most once
+ * every 10 minutes per stack unless `force`.
+ * @returns {{ skipped?: string, started?: string[], failed?: string[] }}
+ */
+export async function warmUpMissing(stack, { force = false, onLoggedOut } = {}) {
+  if (!stack) return { skipped: 'no stack' }
+  const last = warmedAt.get(stack)
+  if (!force && last && Date.now() - last < WARM_UP_EVERY) return { skipped: 'recently' }
+  const status = await sessionStatus(stack)
+  if (!status.loggedIn) return { skipped: 'not logged in' }
+  if (!status.apps.some((a) => a.ok)) return { skipped: 'no app session' }
+  warmedAt.set(stack, Date.now())
+  const missing = status.apps.filter((a) => !a.ok).map((a) => findApp(a.id))
+  const started = []
+  const failed = []
+  for (const app of missing) starting.add(`${stack}:${app.id}`)
+  try {
+    for (const app of missing) {
+      try {
+        failedAt.delete(`${stack}:${app.id}`)
+        await ensureSession(app, stack, { onLoggedOut })
+        started.push(app.id)
+      } catch (e) {
+        failed.push(app.id)
+        if (e.code === LOGIN_REQUIRED) break
+      } finally {
+        starting.delete(`${stack}:${app.id}`)
+      }
+    }
+  } finally {
+    for (const app of missing) starting.delete(`${stack}:${app.id}`)
+  }
+  return { started, failed }
 }

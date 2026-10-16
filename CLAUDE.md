@@ -27,6 +27,7 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 - `csrf.js`: core CSRF captured passively from `*.exacttarget.com` requests (no way to fetch one); `_csrf` cookie for marketingcloudapps apps.
 - `mcaToken.js`: Bearer token minted in an inactive `update-token.json` tab; `content.js` reports `MCA_TOKEN_CAPTURED`. A failed mint backs off for 2 minutes.
 - `sessions.js` + `apps.js`: Automation Viewer's per-app session warm-up (inactive landing tab, probe until 200). Apps with `bearer: true` (Automation Studio, Contact Builder meta, Content Builder) get the token; Journey Builder and CloudPages use cookies only. **Not yet checked live in the merged form**, in particular Journey Builder and CloudPages.
+- `sessions.js` `warmUpMissing` (message `SFMC_WARM_UP`, sent by `App.vue` when the stack is known): when logged in and at least one app probes 200, starts the other apps one at a time with `ensureSession`; at most every 10 minutes per stack unless `force` (Start missing in the connection menu); off with `_autoStartSessions: false` (Settings > Connection). `sessionStatus` reports `starting` per app. Note that the probe uses cookies only, so a Bearer-only app counts as missing.
 - `fetchProxy.js`: the order is Bearer/CSRF → re-read a rotated CSRF after a 403 → re-mint a rejected token once → warm up the app session once → `LOGIN_REQUIRED`. Requests use `redirect: 'manual'`, so a redirect into SSO reads as "no session".
 
 ## Tests

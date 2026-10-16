@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Search, MessageSquare, Network, Loader2 } from 'lucide-vue-next'
 import AppSidebar from '@/components/shell/AppSidebar.vue'
@@ -12,6 +12,8 @@ import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import UsagePanel from '@/components/usage/UsagePanel.vue'
 import { useUsage, targetTitle } from '@/composables/useUsage.js'
+import { useStack } from '@/composables/useStack.js'
+import { sendToBackground } from '@/utils/messaging.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { trackEvent } from '@/utils/analytics.js'
 
@@ -22,6 +24,12 @@ const showFeedback = ref(false)
 const isMac = /Mac/i.test(navigator.platform || '')
 const usage = useUsage()
 const usagePercent = computed(() => Math.round(100 * usage.progress()))
+
+// When at least one SFMC app already has a session, start the missing ones in the
+// background (the service worker decides, at most every 10 minutes per stack; off in
+// Settings). With none, the user is probably not logged in, so nothing is opened.
+const { stack } = useStack()
+watch(stack, (s) => { if (s) sendToBackground({ type: 'SFMC_WARM_UP', stack: s }) }, { immediate: true })
 
 function onKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {

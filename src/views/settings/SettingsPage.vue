@@ -19,6 +19,7 @@ const { value: emailSaver } = useStoredSetting('_emailSaverEnabled', true, (v) =
 const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
   (v) => (typeof v === 'number' && v >= 0 ? v : 5))
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
+const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
 
 const offRules = ref([...disabledRules()].sort())
 const stopLint = onLintSettingsChange((set) => { offRules.value = [...set].sort() })
@@ -144,6 +145,17 @@ function setDebounce(e) {
           </li>
           <li v-if="!rules.length" class="px-2 py-3 text-xs text-muted-foreground">No check matches.</li>
         </ul>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-border bg-card p-4">
+      <h2 class="text-sm font-semibold mb-3">Connection</h2>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Start the other app sessions</div>
+          <p class="text-xs text-muted-foreground">When the Toolkit opens and at least one SFMC app (such as Automation Studio) already has a session, the apps without one (Data Extensions, Content Builder, CloudPages, Journey Builder) are started in the background, one at a time in a tab that closes itself. At most every 10 minutes. With no app session at all, nothing is opened: log in to SFMC first.</p>
+        </div>
+        <Switch v-model="autoStartSessions" aria-label="Start the other app sessions" />
       </div>
     </section>
 

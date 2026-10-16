@@ -179,3 +179,44 @@ describe('app sessions in the connection menu', () => {
     expect((await sw.send({ type: 'SFMC_FETCH', url: JB })).data.ok).toBe(true)
   })
 })
+
+describe('starting the missing app sessions (SFMC_WARM_UP)', () => {
+  const JB_LAND = 'https://mc.s10.exacttarget.com/cloud/#app/Journey%20Builder'
+  const CB_LAND = 'https://mc.s10.exacttarget.com/cloud/#app/Content%20Builder'
+  const CP_LAND = 'https://cloud-pages.s10.marketingcloudapps.com/update-token.json'
+  const CM_LAND = 'https://mc.s10.marketingcloudapps.com/contactsmeta/'
+  const landings = { [JB_LAND]: 'journeyBuilder', [CB_LAND]: 'contentBuilder', [CP_LAND]: 'cloudPages', [CM_LAND]: 'contactsMeta' }
+
+  it('starts every missing app when one already has a session, one tab at a time', async () => {
+    const sw = await loadSW({ loggedIn: ['s10'], sessions: ['s10:automationStudio'], landings })
+    const r = await sw.send({ type: 'SFMC_WARM_UP', stack: 's10' })
+    expect(r.result.started.sort()).toEqual(['cloudPages', 'contactsMeta', 'contentBuilder', 'journeyBuilder'])
+    expect(sw.sim.created.map((t) => t.url).sort()).toEqual([CB_LAND, CM_LAND, CP_LAND, JB_LAND].sort())
+    expect(sw.sim.created.every((t) => t.active === false)).toBe(true)
+    expect(sw.sim.removed).toHaveLength(4)
+    const status = await sw.send({ type: 'SFMC_SESSION_STATUS', stack: 's10' })
+    expect(status.status.apps.every((a) => a.ok && !a.starting)).toBe(true)
+  })
+
+  it('opens nothing when no app has a session, or when not logged in', async () => {
+    const none = await loadSW({ loggedIn: ['s10'], landings })
+    expect((await none.send({ type: 'SFMC_WARM_UP', stack: 's10' })).result).toEqual({ skipped: 'no app session' })
+    expect(none.sim.created).toHaveLength(0)
+    const out = await loadSW({ loggedIn: [], sessions: ['s10:automationStudio'], landings })
+    expect((await out.send({ type: 'SFMC_WARM_UP', stack: 's10' })).result).toEqual({ skipped: 'not logged in' })
+    expect(out.sim.created).toHaveLength(0)
+  })
+
+  it('runs at most every 10 minutes unless forced, and can be turned off', async () => {
+    const sw = await loadSW({ loggedIn: ['s10'], sessions: ['s10:automationStudio'], landings: {} })
+    const first = await sw.send({ type: 'SFMC_WARM_UP', stack: 's10' })
+    expect(first.result.failed).toHaveLength(4)
+    expect((await sw.send({ type: 'SFMC_WARM_UP', stack: 's10' })).result).toEqual({ skipped: 'recently' })
+    sw.sim.landings[JB_LAND] = 'journeyBuilder'
+    const forced = await sw.send({ type: 'SFMC_WARM_UP', stack: 's10', force: true })
+    expect(forced.result.started).toContain('journeyBuilder')
+    const off = await loadSW({ loggedIn: ['s10'], sessions: ['s10:automationStudio'], landings, local: { _autoStartSessions: false } })
+    expect((await off.send({ type: 'SFMC_WARM_UP', stack: 's10' })).result).toEqual({ skipped: 'turned off' })
+    expect(off.sim.created).toHaveLength(0)
+  })
+})

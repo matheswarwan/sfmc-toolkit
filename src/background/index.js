@@ -5,6 +5,7 @@
 //   GET_CONNECTION_STATUS                             stack, MCA token, open SFMC tabs
 //   SFMC_SESSION_STATUS { stack }                     per-app sessions, never opens a tab
 //   SFMC_CONNECT_APP { stack, appId }                 warm up one app's session
+//   SFMC_WARM_UP { stack, force }                     start the missing app sessions when at least one exists
 //   SFMC_FETCH { url, method, body, bootstrap }       → { data } or { error, code, status }
 //   SAVE_RECORDS { records }, RENAME_QUERY { id, name }, IMPORT_SHARED_QUERY { records }
 //   TRACK_EVENT { clientId, name, params }
@@ -19,13 +20,13 @@ import { restoreCsrfTokens, sniffCsrf, getCoreCsrf } from './csrf.js'
 import {
   getMcaToken, isMcaTokenReady, mintBackoff, dropMcaToken, handleCapturedToken, setOnMintFailure,
 } from './mcaToken.js'
-import { sessionStatus, connectApp } from './sessions.js'
+import { sessionStatus, connectApp, warmUpMissing } from './sessions.js'
 import { sfmcFetch } from './fetchProxy.js'
 import {
   saveRecords, renameQuery, captureQueryStudio, captureEmail, loadEmailSaverPrefs, applyEmailSaverPrefs,
 } from './capture.js'
 import { sendAnalyticsEvent } from './analytics.js'
-import { queryTabs, createTab } from './chromeAsync.js'
+import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
@@ -99,6 +100,13 @@ const handlers = {
   SFMC_CONNECT_APP: async (m) => {
     await connectApp(m.stack, m.appId, { onLoggedOut: forgetStack })
     return { ok: true }
+  },
+  SFMC_WARM_UP: async (m) => {
+    // Settings switch "Start the other app sessions" (on unless turned off).
+    const { _autoStartSessions } = await storageGet('local', ['_autoStartSessions'])
+    if (_autoStartSessions === false && !m.force) return { result: { skipped: 'turned off' } }
+    const stack = m.stack || (await resolveAndPublish()).stack
+    return { result: await warmUpMissing(stack, { force: !!m.force, onLoggedOut: forgetStack }) }
   },
   SFMC_FETCH: async (m) => ({ data: await sfmcFetch(m) }),
   SAVE_RECORDS: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
