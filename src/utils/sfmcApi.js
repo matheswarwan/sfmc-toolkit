@@ -36,16 +36,41 @@ function _log(entry) { if (_logCallback) try { _logCallback(entry) } catch {} }
 function _logInfo(message) { _log({ ts: Date.now(), type: 'info', message }) }
 export function logInfo(message) { _logInfo(message) }
 
-// The last few failed SFMC calls, for the feedback form's technical details. Only
-// the method, the path (no query string, which can hold names) and the error.
+// The last few SFMC calls, for the feedback form's technical details. Only the
+// method, the path, paging and sort parameters (other query values, which can hold
+// names, are left out), the status, the time taken and how many items came back.
+const SAFE_PARAMS = new Set(['$page', '$pagesize', '$top', '$skip', '$sort', '$orderby', 'retrievalType', 'view', 'mostRecentVersionOnly', 'extras', 'versionNumber'])
 const _recentErrors = []
-function _rememberError(method, url, error, status) {
-  let path = url
-  try { const u = new URL(url); path = u.host + u.pathname } catch { /* keep as is */ }
-  _recentErrors.unshift({ at: new Date().toISOString(), method, path, status: status ?? null, error: String(error).slice(0, 300) })
-  _recentErrors.length = Math.min(_recentErrors.length, 5)
+const _recentCalls = []
+export function apiCallPath(url) {
+  try {
+    const u = new URL(url)
+    const params = [...u.searchParams.keys()].map((k) => (SAFE_PARAMS.has(k) || SAFE_PARAMS.has(k.toLowerCase()) ? `${k}=${u.searchParams.get(k)}` : `${k}=…`))
+    return u.host + u.pathname + (params.length ? `?${params.join('&')}` : '')
+  } catch { return String(url).split('?')[0] }
+}
+const _itemCount = (d) => {
+  const list = d?.items ?? d?.entry ?? (Array.isArray(d) ? d : null)
+  return Array.isArray(list) ? list.length : null
+}
+function _rememberCall(method, url, started, { status = null, data, error } = {}) {
+  const call = { at: new Date(started).toISOString(), method, path: apiCallPath(url), status, ms: Date.now() - started }
+  if (error) call.error = String(error).slice(0, 300)
+  else {
+    const n = _itemCount(data)
+    if (n != null) call.items = n
+    const total = data?.count ?? data?.totalCount ?? data?.totalResults
+    if (typeof total === 'number') call.total = total
+  }
+  _recentCalls.unshift(call)
+  _recentCalls.length = Math.min(_recentCalls.length, 20)
+  if (error) {
+    _recentErrors.unshift({ at: call.at, method, path: call.path, status, error: call.error })
+    _recentErrors.length = Math.min(_recentErrors.length, 5)
+  }
 }
 export function recentApiErrors() { return [..._recentErrors] }
+export function recentApiCalls() { return [..._recentCalls] }
 
 /**
  * Generic authenticated proxy fetch - exposed for callers that need a raw
@@ -69,13 +94,14 @@ function proxyFetch(url, method, body) {
         (response ? null : 'No reply from the extension service worker.')
       if (error) {
         _log({ ts: Date.now(), type: 'err', method, url, error })
-        _rememberError(method, url, error, response?.status)
+        _rememberCall(method, url, ts, { status: response?.status ?? null, error })
         const err = new Error(error)
         err.code = response?.code || null
         err.status = response?.status ?? null
         return reject(err)
       }
       _log({ ts: Date.now(), type: 'res', method, url, result: response.data })
+      _rememberCall(method, url, ts, { status: response.status ?? 200, data: response.data })
       resolve(response.data)
     })
   })
@@ -363,8 +389,11 @@ export async function getOrCreateQAFolder(stack) {
 /**
  * Creates a target Data Extension to receive query results.
  *
+ * With `retentionDays`, rows older than that are deleted by SFMC (row-based retention).
+ * If SFMC refuses the retention properties, the DE is created without them.
+ *
  * @param {string} stack
- * @param {{ name: string, fields: object[], categoryID: number }} payload
+ * @param {{ name: string, fields: object[], categoryID: number, retentionDays?: number }} payload
  * @returns {Promise<{ id: string, customerKey: string, name: string }>}
  */
 export async function createTargetDE(stack, payload) {
@@ -383,7 +412,33 @@ export async function createTargetDE(stack, payload) {
     isSendable: false,
     fields: payload.fields,
   }
-  return proxyFetch(url, 'POST', body)
+  const days = payload.retentionDays
+  if (!(days > 0)) return proxyFetch(url, 'POST', body)
+  try {
+    return await proxyFetch(url, 'POST', { ...body, dataRetentionProperties: retentionProperties(days) })
+  } catch (err) {
+    if (!/retention/i.test(err.message)) throw err
+    _logInfo(`SFMC refused the ${days}-day data retention (${err.message}); creating the Data Extension without it`)
+    return proxyFetch(url, 'POST', body)
+  }
+}
+
+// Run Query's target DEs keep rows this many days unless Settings says otherwise
+// (feedback #27). 0 means no retention.
+export const DEFAULT_RETENTION_DAYS = 7
+export function parseRetentionDays(v) {
+  return Number.isInteger(v) && v >= 0 && v <= 3650 ? v : DEFAULT_RETENTION_DAYS
+}
+
+/** Row-based retention: each row is deleted `days` days after it was added. */
+export function retentionProperties(days) {
+  return {
+    isRowBasedRetention: true,
+    isDeleteAtEndOfRetentionPeriod: false,
+    isResetRetentionPeriodOnImport: false,
+    dataRetentionPeriodLength: days,
+    dataRetentionPeriodUnitOfMeasure: 3, // days
+  }
 }
 
 // ── Run step 2: Create Query Activity ────────────────────

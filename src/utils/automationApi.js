@@ -6,12 +6,28 @@ import { RESULTS_PAGE_SIZE } from './paging.js'
 export const AUTOMATION_PAGE_SIZE = RESULTS_PAGE_SIZE
 const AS = (stack) => `https://mc.${stack}.marketingcloudapps.com/AutomationStudioFuel3/fuelapi`
 
-export async function searchAutomations(stack, query, skip = 0) {
+export async function searchAutomations(stack, query, skip = 0, top = AUTOMATION_PAGE_SIZE) {
   const name = query.trim()
   const where = name ? `&$where=${encodeURIComponent(`name like ${name}`)}` : ''
-  const data = await sfmcFetch(`${AS(stack)}/legacy/v1/beta/automations/automation/definition/?$top=${AUTOMATION_PAGE_SIZE}&$skip=${skip}&$sort=${encodeURIComponent('lastRunTime desc')}&view=gridView${where}`, 'GET')
+  const data = await sfmcFetch(`${AS(stack)}/legacy/v1/beta/automations/automation/definition/?$top=${top}&$skip=${skip}&$sort=${encodeURIComponent('lastRunTime desc')}&view=gridView${where}`, 'GET')
   const entries = data?.entry || []
   return { entries, total: data?.totalResults ?? entries.length }
+}
+
+/**
+ * The next page after the automations in `have`, without repeats. When the $skip page
+ * brings nothing new (SFMC repeated the first page or returned none, feedback #28),
+ * asks for everything from the start up to one page more and keeps the new ones.
+ */
+export async function loadMoreAutomations(stack, query, have) {
+  const known = new Set(have.map((a) => a.id))
+  const r = await searchAutomations(stack, query, have.length)
+  let entries = r.entries.filter((a) => !known.has(a.id))
+  if (!entries.length) {
+    const all = await searchAutomations(stack, query, 0, have.length + AUTOMATION_PAGE_SIZE)
+    entries = all.entries.filter((a) => !known.has(a.id))
+  }
+  return { entries, total: r.total }
 }
 
 /** The automation and its error notifications (null when those can't be read). */
@@ -50,12 +66,33 @@ export const ACTIVITY_SEARCH_TYPES = [
   { id: 'filter', label: 'Filter', endpoint: 'filters', objectTypeId: 303 },
 ]
 
+// Endpoints that refuse $orderBy=modifiedDate (filters on some stacks: "Order field is
+// invalid, the following field is not allowed: 'modifiedDate'", feedback #29). Those
+// are listed in SFMC's own order, and each page is sorted here.
+const unsortable = new Set()
+const isOrderError = (e) => /order field is invalid/i.test(e?.message || '')
+const byModifiedDesc = (a, b) => String(b.modifiedDate || '').localeCompare(String(a.modifiedDate || ''))
+
+/** One page of activities, newest first. `unsorted` is true when SFMC could not sort the list. */
 export async function searchActivities(stack, endpoint, query, page = 1, pageSize = RESULTS_PAGE_SIZE) {
   const name = query.trim()
   const filter = name ? `&$filter=${encodeURIComponent(`name like "${name}"`)}` : ''
-  const data = await sfmcFetch(`${AS(stack)}/automation/v1/${endpoint}/?$page=${page}&$pageSize=${pageSize}&$orderBy=${encodeURIComponent('modifiedDate desc')}&retrievalType=1${filter}`, 'GET')
+  const url = (orderBy) => `${AS(stack)}/automation/v1/${endpoint}/?$page=${page}&$pageSize=${pageSize}${orderBy ? `&$orderBy=${encodeURIComponent('modifiedDate desc')}` : ''}&retrievalType=1${filter}`
+  const key = `${stack}:${endpoint}`
+  let data
+  if (!unsortable.has(key)) {
+    try {
+      data = await sfmcFetch(url(true), 'GET')
+    } catch (e) {
+      if (!isOrderError(e)) throw e
+      unsortable.add(key)
+    }
+  }
+  const unsorted = unsortable.has(key)
+  if (unsorted) data = await sfmcFetch(url(false), 'GET')
   const items = data?.items || []
-  return { items, total: data?.count ?? data?.totalCount ?? items.length }
+  if (unsorted) items.sort(byModifiedDesc)
+  return { items, total: data?.count ?? data?.totalCount ?? items.length, unsorted }
 }
 
 /** Every activity of a type, 50 per request, at most 40 requests (2,000). */

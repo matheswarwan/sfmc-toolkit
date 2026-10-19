@@ -7,7 +7,7 @@ import { X, Camera, MonitorUp, ImageUp, Trash2, Loader2, ChevronDown, ChevronRig
 import ScreenshotEditor from '@/components/feedback/ScreenshotEditor.vue'
 import { useStack } from '@/composables/useStack.js'
 import { useTheme } from '@/composables/useTheme.js'
-import { fetchCurrentBU, recentApiErrors } from '@/utils/sfmcApi.js'
+import { fetchCurrentBU, recentApiErrors, recentApiCalls } from '@/utils/sfmcApi.js'
 import { collectFeedbackMetadata, metadataLines } from '@/utils/feedbackMeta.js'
 import { capturePage, captureDisplay, loadImage, fileToDataUrl, toUploadableDataUrl } from '@/utils/screenshot.js'
 
@@ -45,7 +45,7 @@ onMounted(async () => {
 onUnmounted(() => window.removeEventListener('paste', onPaste))
 
 const meta = computed(() => collectFeedbackMetadata({
-  route: props.screen, stack: stack.value, businessUnit: bu.value, theme: currentTheme.value, apiErrors: recentApiErrors(),
+  route: props.screen, stack: stack.value, businessUnit: bu.value, theme: currentTheme.value, apiErrors: recentApiErrors(), apiCalls: recentApiCalls(),
 }))
 const metaLines = computed(() => metadataLines(meta.value))
 

@@ -11,6 +11,7 @@ import {
   deleteDE, deleteQueryActivity, getOrCreateDEFolder, getOrCreateQAFolder,
   getAnyQueryActivityId, validateQueryText, listQueryActivities, listQAFolders,
   DEFAULT_TEXT_LENGTH, fetchCurrentBU,
+  parseRetentionDays,
 } from '../utils/sfmcApi.js'
 
 export function useQueryPanel(options) {
@@ -253,6 +254,13 @@ export function useQueryPanel(options) {
   function isReuseEnabled() {
     return new Promise((resolve) => {
       chrome.storage.local.get('_reuseQueryDE', (res) => resolve(res._reuseQueryDE === true))
+    })
+  }
+
+  // Days a row stays in a new target DE (0 = keep forever). Settings > Running queries.
+  function retentionDays() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get('_queryDERetentionDays', (res) => resolve(parseRetentionDays(res._queryDERetentionDays)))
     })
   }
 
@@ -681,7 +689,8 @@ export function useQueryPanel(options) {
         // is only captured passively from real core traffic (see CLAUDE.md "Core CSRF
         // has no known silent-bootstrap path"). Loading Contact Builder produces that
         // traffic, so on failure the user is asked whether to open it and retry.
-        const createDE = (categoryID) => createTargetDE(stack.value, { name: deName, fields, categoryID })
+        const days = await retentionDays()
+        const createDE = (categoryID) => createTargetDE(stack.value, { name: deName, fields, categoryID, retentionDays: days })
         let deResult
         try {
           deResult = await createDE(deCategoryID)

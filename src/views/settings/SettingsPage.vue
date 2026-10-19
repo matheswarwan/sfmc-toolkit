@@ -11,6 +11,7 @@ import { buildBackup, backupFileName, parseBackup, planImport, describeImport } 
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
+import { DEFAULT_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
@@ -20,6 +21,11 @@ const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
   (v) => (typeof v === 'number' && v >= 0 ? v : 5))
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
 const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
+const { value: retentionDays } = useStoredSetting('_queryDERetentionDays', DEFAULT_RETENTION_DAYS, parseRetentionDays)
+const retentionInput = computed({
+  get: () => retentionDays.value,
+  set: (v) => { const n = Math.round(Number(v)); if (Number.isFinite(n)) retentionDays.value = parseRetentionDays(n) },
+})
 
 const offRules = ref([...disabledRules()].sort())
 const stopLint = onLintSettingsChange((set) => { offRules.value = [...set].sort() })
@@ -123,6 +129,17 @@ function setDebounce(e) {
           <p class="text-xs text-muted-foreground">Running the same query again reuses its last target DE and Query Activity instead of creating new ones.</p>
         </div>
         <Switch v-model="reuseQueryDE" aria-label="Reuse the data extension and Query Activity" />
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Data retention for new data extensions</div>
+          <p class="text-xs text-muted-foreground">Data extensions created by Run Query delete each row this many days after it was added. 0 keeps rows until you delete the data extension.</p>
+        </div>
+        <label class="flex items-center gap-1.5 text-xs">
+          <input v-model.lazy="retentionInput" type="number" min="0" max="3650" step="1" aria-label="Data retention in days"
+            class="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs" />
+          days
+        </label>
       </div>
       <div>
         <div class="flex items-center gap-2">

@@ -10,7 +10,7 @@ import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchAutomations } from '@/utils/automationApi.js'
+import { searchAutomations, loadMoreAutomations } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
 
 const router = useRouter()
@@ -42,8 +42,11 @@ async function search() {
 async function loadMore() {
   loadingMore.value = true
   try {
-    const r = await searchAutomations(stack.value, searched.value, entries.value.length)
+    const r = await loadMoreAutomations(stack.value, searched.value, entries.value)
     entries.value = [...entries.value, ...r.entries]
+    // Nothing new although SFMC counts more: stop offering Load more.
+    total.value = r.entries.length ? r.total : entries.value.length
+    if (!r.entries.length) showToast('SFMC returned no more automations.')
   } catch (e) {
     showToast(`Could not load more: ${e.message}`)
   } finally {

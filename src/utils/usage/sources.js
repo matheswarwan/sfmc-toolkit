@@ -5,7 +5,7 @@
 // definitions) are fetched again only for items that changed. Saving and the
 // business unit key are in index.js and store.js.
 import { sfmcFetch } from '../sfmcApi.js'
-import { searchActivities, searchAutomations } from '../automationApi.js'
+import { searchActivities, searchAutomations, loadMoreAutomations } from '../automationApi.js'
 import { fetchEventDefinitions } from '../journeyApi.js'
 import { CLOUD_PAGE_ASSET_TYPE_IDS } from '../cloudPagesApi.js'
 import { activityEndpoint } from '../activityTypes.js'
@@ -75,7 +75,8 @@ export async function deltaList({ saved, fetchPage, idOf, modOf, progress, stop,
       known.set(k, old && modOf(old) === modOf(it) ? old : it)
     }
     progress(read, total, 'checking for changes')
-    if (!r.items.length || read >= total || !newest || r.items.some((it) => time(modOf(it)) < newest)) break
+    // An unsorted list (SFMC refused the sort) can hold newer items on any page.
+    if (!r.items.length || read >= total || !newest || (!r.unsorted && r.items.some((it) => time(modOf(it)) < newest))) break
   }
   const items = [...known.values()].sort((a, b) => time(modOf(b)) - time(modOf(a)))
   return { items, total, capped: items.length < total, changed, complete: items.length === total }
@@ -144,10 +145,19 @@ async function readAutomations(stack, list, reuse, { progress, stop }) {
   return { details, errors, read: todo.length }
 }
 
-const listAutomations = (stack, progress, stop) => pagesOf(async (p) => {
-  const r = await searchAutomations(stack, '', p * PAGE)
-  return { items: r.entries, total: r.total }
-}, (d, t) => progress(d, t, 'listing'), stop)
+async function listAutomations(stack, progress, stop) {
+  let items = []
+  let total = 0
+  for (let page = 0; page < MAX_PAGES; page++) {
+    if (stop()) throw new StoppedError()
+    const r = page ? await loadMoreAutomations(stack, '', items) : await searchAutomations(stack, '', 0)
+    total = r.total
+    items = items.concat(r.entries)
+    progress(items.length, total, 'listing')
+    if (!r.entries.length || items.length >= total) break
+  }
+  return { items, total, capped: items.length < total }
+}
 
 const listJourneys = (stack, progress, stop) => pagesOf(async (p) => {
   const params = new URLSearchParams({ $page: String(p + 1), $pageSize: String(PAGE), $orderBy: 'ModifiedDate DESC', mostRecentVersionOnly: 'true' })
