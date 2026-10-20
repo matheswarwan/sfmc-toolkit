@@ -9,6 +9,9 @@ export const FEATURE_GROUPS = [
     title: 'Getting around',
     intro: 'SFMC Toolkit replaces SFMC Query Saver and includes everything SFMC Automation Viewer did. Click the toolbar icon to open it in a new tab.',
     items: [
+      { title: 'Restart to update', since: '2.0.4', detail: 'When Chrome has downloaded a new version, a card offers to restart SFMC Toolkit into it.' },
+      { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
+      { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
       { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
@@ -189,6 +192,7 @@ export const FEATURE_GROUPS = [
       { title: 'Overview and Full view', detail: 'Overview shows the steps side by side, like Automation Studio; click an activity for its details. Full view lists every activity with its details, SQL and scripts highlighted, and Show additional details for the rest.' },
       { title: 'Every activity type', detail: 'Queries, scripts, imports, data extracts, file transfers, filters, email sends, waits, journeys and every other type. Types SFMC has no API for show what the automation step holds.' },
       { title: 'Download the automation', detail: 'The whole automation, with every activity\'s details, as Markdown, Word or HTML.' },
+      { title: 'Download several automations', since: '2.0.4', how: 'Tick automations in the list, then Download', detail: 'Ticked automations, or all shown when none is ticked, in one document with every activity\'s details.' },
       { title: 'Open in Automation Studio', since: '2.0.3', detail: 'The Automation Studio button opens this automation, not the Automation Studio home page.' },
       { title: 'Data extensions on activity cards', since: '2.0.3', how: 'View or SFMC next to a target or result', detail: 'View finds the data extension in Data Extensions; SFMC opens it in Contact Builder.' },
       { title: 'Run this query', since: '2.0.3', how: 'On a SQL Query activity', detail: 'Run in Toolkit opens the SQL in Run Query (results go to a new data extension). Run activity in SFMC starts the Query activity itself, after asking, and says when it has finished; it writes to its own target data extension.' },
@@ -202,6 +206,7 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Orphan contacts', since: '2.0.3', detail: 'After Mateusz Dabrowski\'s Contact Deletion article: collects contacts whose Salesforce record is gone (Leads and Users no longer synced, Contacts deleted in CRM) into a sendable Contact Deletion Pending data extension, with an optional archive of hashed emails. Shows how to make the All Contacts mobile list it reads, and how to delete the contacts in Contact Builder.' },
       { title: 'Data view archive', since: '2.0.3', detail: 'A data extension for each of Sent, Open, Click, Bounce, Unsubscribe, Complaint and Job, and a daily automation that copies the last few days into them, so tracking older than six months is kept.' },
+      { title: 'Checked before anything is created', since: '2.0.4', detail: 'SFMC checks each query first, so a missing list or data extension stops the run with nothing created. If a run stops partway, Delete what was created removes it.' },
       { title: 'See before you create', detail: 'Every data extension (fields, keys), Query activity (with its SQL) and automation step is listed before anything is created. If a step fails, the page lists what was already created.' },
     ],
   },
@@ -222,6 +227,7 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Find data extensions', detail: 'Search by name, or any part of it ("120" finds BS_Klaviyo_120D_Snapshot; names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
+      { title: 'Row counts', since: '2.0.4', how: 'Get count on a row, or Get all counts', detail: 'How many rows each data extension holds; also in Download and Excel.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
       { title: 'Where used', how: 'Where used on a data extension\'s row, or on a field', detail: 'Opens the Where used panel for the data extension or one field (see Where used below).' },
       { title: 'Build a query from fields', how: 'Tick fields in one or more DEs', detail: 'Writes a SELECT that joins the DEs on a column name they share (and says so when it had to guess). Run it in Run Query or copy it.' },
