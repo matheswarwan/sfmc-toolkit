@@ -79,6 +79,8 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
+2.0.5: automation run history; four more Automation Templates (Unengaged subscribers, Held and bouncing subscribers, Automation run log, Unsubscribes for CRM).
+
 2.0.4: Settings > Storage by section and business unit (delete one part, keep only the newest email versions), download several or all automations, data extension row counts, templates check their queries with SFMC before creating anything and can delete what a stopped run made, file names with business unit and date, readable journey step settings, and a prompt to restart when an update is ready.
 
 2.0.3: Automation Templates (Orphan contacts, Data view archive): the Toolkit creates the data extensions, queries and automation, and never schedules or runs them. Run a SQL activity from its card, Clean up SFMC for data extensions and queries Run Query created, optional data retention on new data extensions, saving Query Studio 2 runs (optional permission), and fixes to data extension search, Load more automations, Filter activities and the Automation Studio link.
