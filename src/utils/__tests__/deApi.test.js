@@ -108,9 +108,32 @@ describe('deSearchTerms (feedback #22)', () => {
     } } })
     const { searchLocalDEs } = await import('../deApi.js')
     const r = await searchLocalDEs('s7', 'Master - Backup')
-    expect(calls[0]).toMatch(/\$search=Master$/)
+    expect(calls[0]).toMatch(/&name=%25Master%25$/)
     expect(r).toMatchObject({ total: 3, fetched: 3, filtered: true })
     expect(r.items.map((d) => d.name)).toEqual(['Master - Backup'])
+    vi.unstubAllGlobals()
+  })
+
+  it('finds text in the middle of a name with name=%text% (feedback #34)', async () => {
+    vi.resetModules()
+    const calls = stub((url) => (url.includes('name=%25120%25') ? { count: 1, items: [{ id: '9', name: 'BS_Klaviyo_120D_Snapshot' }] } : { count: 0, items: [] }))
+    const { searchLocalDEs } = await import('../deApi.js')
+    const r = await searchLocalDEs('s13', '120')
+    expect(r.items.map((d) => d.name)).toEqual(['BS_Klaviyo_120D_Snapshot'])
+    expect(calls).toHaveLength(1)
+    vi.unstubAllGlobals()
+  })
+  it('goes back to $search when SFMC ignores name= (and remembers it)', async () => {
+    vi.resetModules()
+    const calls = stub((url) => {
+      if (url.includes('name=')) return { count: 2, items: [{ id: '1', name: 'Other' }, { id: '2', name: 'Unrelated' }] }
+      if (url.includes('$search=Orders')) return { count: 1, items: [{ id: '3', name: 'Orders' }] }
+      return { count: 0, items: [] }
+    })
+    const { searchLocalDEs } = await import('../deApi.js')
+    expect((await searchLocalDEs('s1', 'Orders')).items.map((d) => d.name)).toEqual(['Orders'])
+    await searchLocalDEs('s1', 'Orders', 2)
+    expect(calls.filter((u) => u.includes('name='))).toHaveLength(1)
     vi.unstubAllGlobals()
   })
 })

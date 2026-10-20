@@ -43,6 +43,19 @@ export function automationStudioUrl(stack) {
   return `https://mc.${stack}.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/`
 }
 
+/**
+ * One automation in Automation Studio (feedback #35). The `#Instance/<id>` route is
+ * what Automation Studio shows when an automation is open; not yet checked live.
+ */
+export function automationUrl(stack, id) {
+  return id ? `${automationStudioUrl(stack)}%23Instance/${encodeURIComponent(id)}` : automationStudioUrl(stack)
+}
+
+/** A data extension in Contact Builder (needs its ID). */
+export function contactBuilderDEUrl(stack, id) {
+  return id ? `https://mc.${stack}.marketingcloudapps.com/contactsmeta/admin.html#admin/data-extension/${encodeURIComponent(id)}/properties/` : null
+}
+
 // ── Values ─────────────────────────────────────────────────
 export function formatValue(v) {
   if (v === null || v === undefined || v === '') return '—'
@@ -94,6 +107,12 @@ function build(details, typeId, stack, spec) {
     extra: [...extra, ...rest(d, used)],
     code: codeText ? { label: spec.code.label, text: String(codeText), lang: spec.code.lang } : null,
     tables: (spec.tables ? spec.tables(d) : []).filter(Boolean),
+    // Data extensions behind main rows, by label, so the card can link them (feedback #36).
+    deRefs: Object.fromEntries(Object.entries(spec.deRefs ? spec.deRefs(d) : {})
+      .filter(([, r]) => r && typeof r.name === 'string' && r.name.trim())
+      .map(([label, r]) => [label, { name: r.name, id: r.id || null, key: r.key || null }])),
+    // A SQL Query activity that can be run (feedback #37).
+    run: spec.run ? spec.run(d) : null,
   }
 }
 
@@ -105,6 +124,11 @@ const SPECS = {
       ['Update type ID', 'targetUpdateTypeId'], ['Created', 'createdDate'], ['Modified', 'modifiedDate'], ['Frozen', 'isFrozen']],
     alsoUsed: ['targetUpdateTypeName'],
     code: { key: 'queryText', label: 'SQL', lang: 'sql' },
+    deRefs: (d) => ({ Target: { name: d.targetName, id: d.targetId, key: d.targetKey } }),
+    run: (d) => (d.queryDefinitionId ? {
+      queryDefinitionId: d.queryDefinitionId, sql: d.queryText || '', targetName: d.targetName || '',
+      updateType: d.targetUpdateTypeName || UPDATE_TYPES[d.targetUpdateTypeId] || '',
+    } : null),
   },
   423: {
     link: (d, s) => AS_LINK(s, 'ActivityModal', 423, d.ssjsActivityId),
@@ -115,6 +139,7 @@ const SPECS = {
   303: {
     link: (d, s) => AS_LINK(s, 'ActivityModal', 303, d.filterActivityId),
     main: [['Description', 'description'], ['Source', (d) => d.sourceObjectName || d.sourceObjectId], ['Result', (d) => d.resultDEName || d.destinationObjectName || d.resultDEKey]],
+    deRefs: (d) => ({ Result: { name: d.resultDEName || d.destinationObjectName, key: d.resultDEKey } }),
     tables: (d) => [kvTable('Filter definition', d.additionalStepDetails)],
   },
   73: {
@@ -142,6 +167,9 @@ const SPECS = {
       ['Notification email', 'notificationEmailAddress'], ['Send email notification', 'sendEmailNotification'], ['Subscriber import type ID', 'subscriberImportTypeId'],
       ['Max file age (hours)', 'maxFileAgeHours'], ['Max import frequency (hours)', 'maxImportFrequencyHours'], ['Standard quoted strings', 'standardQuotedStrings']],
     alsoUsed: ['destinationObjectTypeId', 'targetDataExtension', 'updateTypeId', 'fieldMappings', 'importDefinitionId'],
+    deRefs: (d) => ({ 'Target data extension': typeof d.targetDataExtension === 'object' && d.targetDataExtension
+      ? { name: d.targetDataExtension.name, id: d.targetDataExtension.id, key: d.targetDataExtension.customerKey ?? d.targetDataExtension.key }
+      : { name: typeof d.targetDataExtension === 'string' ? d.targetDataExtension : '' } }),
     tables: (d) => [nvtTable('Field mappings', d.fieldMappings, true)],
   },
   42: {
@@ -184,6 +212,8 @@ export function describeActivity(objectTypeId, details, stack) {
     extra: [],
     code: null,
     tables: [],
+    deRefs: {},
+    run: null,
   }
 }
 

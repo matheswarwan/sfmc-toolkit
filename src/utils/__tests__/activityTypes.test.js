@@ -59,3 +59,25 @@ describe('activityTypes', () => {
     expect(blocks[2]).toEqual({ type: 'code', text: 'Platform.Load("core","1")', lang: 'javascript' })
   })
 })
+
+describe('links and run data (feedback #35 to #37)', () => {
+  it('describes the SQL target DE and how to run the activity', async () => {
+    const { describeActivity } = await import('../activityTypes.js')
+    const d = describeActivity(300, { name: 'Q', queryDefinitionId: 'q1', queryText: 'SELECT 1', targetName: 'BS_X', targetId: 't1', targetKey: 'k1', targetUpdateTypeId: 0 }, 's13')
+    expect(d.deRefs).toEqual({ Target: { name: 'BS_X', id: 't1', key: 'k1' } })
+    expect(d.run).toMatchObject({ queryDefinitionId: 'q1', sql: 'SELECT 1', targetName: 'BS_X' })
+  })
+  it('leaves out DE refs without a name, and has none for other types', async () => {
+    const { describeActivity } = await import('../activityTypes.js')
+    expect(describeActivity(303, { name: 'F' }, 's1').deRefs).toEqual({})
+    expect(describeActivity(43, { targetDataExtension: { name: 'Imp', id: 'i1' } }, 's1').deRefs['Target data extension']).toMatchObject({ name: 'Imp', id: 'i1' })
+    expect(describeActivity(9999, { a: 1 }, 's1')).toMatchObject({ deRefs: {}, run: null })
+  })
+  it('builds Automation Studio and Contact Builder links', async () => {
+    const { automationUrl, contactBuilderDEUrl } = await import('../activityTypes.js')
+    expect(automationUrl('s13', 'e23117f0')).toBe('https://mc.s13.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/%23Instance/e23117f0')
+    expect(automationUrl('s13')).toBe('https://mc.s13.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/')
+    expect(contactBuilderDEUrl('s13', 'd1')).toBe('https://mc.s13.marketingcloudapps.com/contactsmeta/admin.html#admin/data-extension/d1/properties/')
+    expect(contactBuilderDEUrl('s13', null)).toBeNull()
+  })
+})

@@ -5,6 +5,7 @@ const PAGES = {
   '/queries/saved': () => import('../views/queries/SavedQueriesPage.vue'),
   '/queries/workspace': () => import('../views/queries/WorkspacePage.vue'),
   '/queries/builder': () => import('../views/queries/BuilderPage.vue'),
+  '/queries/cleanup': () => import('../views/queries/CleanupPage.vue'),
   '/emails': () => import('../views/emails/EmailsPage.vue'),
   '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
   '/where-used': () => import('../views/data/WhereUsedPage.vue'),

@@ -21,6 +21,8 @@ const props = defineProps({
 const emit = defineEmits(['load-more', 'load-all'])
 
 const total = computed(() => props.totalCount ?? props.rows.length)
+// Zero rows can still be exported: the SQL, the columns and "0 rows" (feedback #31).
+const canExport = computed(() => props.rows.length > 0 || props.columns.length > 0 || !!props.sql.trim())
 const moreToLoad = computed(() => props.canLoadMore && total.value > props.rows.length)
 
 const page = ref(0)
@@ -108,17 +110,17 @@ function downloadCSV() {
         </div>
 
         <!-- CSV download -->
-        <Button variant="outline" size="sm" :disabled="rows.length === 0" @click="downloadCSV"
+        <Button variant="outline" size="sm" :disabled="columns.length === 0" @click="downloadCSV"
           class="h-7 text-xs gap-1.5">
           <Download class="h-3 w-3" />
           CSV
         </Button>
-        <Button variant="outline" size="sm" :disabled="rows.length === 0" @click="downloadMarkdown"
+        <Button variant="outline" size="sm" :disabled="!canExport" @click="downloadMarkdown"
           class="h-7 text-xs gap-1.5" :title="`Download the SQL and up to ${MARKDOWN_ROW_LIMIT} rows as Markdown`">
           <FileText class="h-3 w-3" />
           MD
         </Button>
-        <Button variant="outline" size="sm" :disabled="rows.length === 0" @click="copyMarkdown"
+        <Button variant="outline" size="sm" :disabled="!canExport" @click="copyMarkdown"
           class="h-7 text-xs gap-1.5" title="Copy the SQL and results as Markdown, to paste into Claude or ChatGPT">
           <Check v-if="copied" class="h-3 w-3" />
           <Copy v-else class="h-3 w-3" />

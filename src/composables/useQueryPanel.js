@@ -62,6 +62,8 @@ export function useQueryPanel(options) {
 
   const resultRows      = ref([])
   const resultColumns   = ref([])
+  // Columns of the target DE this run created, shown when a run returns no rows (feedback #31).
+  let targetFieldNames = []
   const totalRowCount   = ref(0)
   const isFetchingMore  = ref(false)
 
@@ -684,6 +686,7 @@ export function useQueryPanel(options) {
           typedColumns = typedColumns.map(c => renames.has(c.name) ? { ...c, name: renames.get(c.name) } : c)
         }
         const fields = buildDEFields(typedColumns)
+        targetFieldNames = fields.map((f) => f.name)
 
         // createTargetDE POSTs to core (exacttarget.com) and may need a CSRF token that
         // is only captured passively from real core traffic (see CLAUDE.md "Core CSRF
@@ -775,7 +778,7 @@ export function useQueryPanel(options) {
         }
         const flatRows = items.map(item => ({ ...(item.keys || {}), ...(item.values || {}) }))
         resultRows.value    = flatRows
-        resultColumns.value = flatRows.length > 0 ? Object.keys(flatRows[0]) : []
+        resultColumns.value = flatRows.length > 0 ? Object.keys(flatRows[0]) : [...targetFieldNames]
         totalRowCount.value = totalCount
         setStep(4, 'done')
       }

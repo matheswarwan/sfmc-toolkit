@@ -1,6 +1,6 @@
 // Sidebar sections and the routes behind them (pages in router.js).
 import {
-  Bookmark, LayoutGrid, Blocks, Workflow, ListChecks, Database, Route, LogIn, Globe, Mail, Network,
+  Bookmark, LayoutGrid, Blocks, Workflow, ListChecks, Database, Route, LogIn, Globe, Mail, Network, Trash2,
 } from 'lucide-vue-next'
 
 export const NAV_GROUPS = [
@@ -10,6 +10,7 @@ export const NAV_GROUPS = [
       { path: '/queries/saved', name: 'Saved queries', icon: Bookmark },
       { path: '/queries/workspace', name: 'Run Query', icon: LayoutGrid },
       { path: '/queries/builder', name: 'Query Builder', icon: Blocks },
+      { path: '/queries/cleanup', name: 'Clean up SFMC', icon: Trash2 },
     ],
   },
   {

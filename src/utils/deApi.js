@@ -31,7 +31,7 @@ export function toDE(item, sourceType = null) {
 }
 
 /**
- * What to send to SFMC's search, and how to check a name here. SFMC's $search finds
+ * What to send to SFMC's search, and how to check a name here. SFMC's search finds
  * nothing for text with spaces or dashes ("Master - Backup", feedback #22), so for
  * more than one word it gets the longest word and the whole text is matched here.
  * Brackets around the text ([Master - Backup]) are ignored.
@@ -51,12 +51,30 @@ export function deSearchTerms(query) {
  * deSearchTerms) `items` can be fewer than `fetched`, and `total` counts SFMC's
  * matches for the single word sent.
  */
+// Stacks where the `name=%text%` search was ignored (SFMC returned DEs without the
+// text); those use $search, which only matches from the start of a word.
+const nameSearchIgnored = new Set()
+
 export async function searchLocalDEs(stack, query, page = 1) {
   const { term, filter } = deSearchTerms(query)
-  const search = term ? `&$search=${encodeURIComponent(term)}` : ''
-  const url = `${CM(stack)}/data-internal/v1/customobjects/category/0?retrievalType=1&$page=${page}&$pagesize=${DE_PAGE_SIZE}&$orderBy=modifiedDate%20DESC${search}`
-  const data = await sfmcFetch(url, 'GET')
-  if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response from the data extension search.')
+  const base = `${CM(stack)}/data-internal/v1/customobjects/category/0?retrievalType=1&$page=${page}&$pagesize=${DE_PAGE_SIZE}&$orderBy=modifiedDate%20DESC`
+  const get = async (param) => {
+    const data = await sfmcFetch(base + param, 'GET')
+    if (!data || !Array.isArray(data.items)) throw new Error('Unexpected response from the data extension search.')
+    return data
+  }
+  const has = (d, text) => String(d.name || '').toLowerCase().includes(text.toLowerCase())
+  let data
+  // `name=%text%` finds the text anywhere in the name ("120" in
+  // "BS_Klaviyo_120D_Snapshot", feedback #34); $search does not.
+  if (term && !nameSearchIgnored.has(stack)) {
+    data = await get(`&name=${encodeURIComponent(`%${term}%`)}`)
+    if (data.items.length && !data.items.some((d) => has(d, term))) {
+      nameSearchIgnored.add(stack)
+      data = null
+    }
+  }
+  if (!data) data = await get(term ? `&$search=${encodeURIComponent(term)}` : '')
   const all = data.items.map((d) => toDE(d))
   return {
     items: filter ? all.filter((d) => filter(d.name)) : all,

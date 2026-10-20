@@ -1,9 +1,16 @@
 <script setup>
 // One activity's details, from describeActivity() in utils/activityTypes.js: main
 // properties, extra properties behind "Show additional details", code, tables.
-import { computed, ref, watch } from 'vue'
-import { ExternalLink } from 'lucide-vue-next'
+// Data extension values link to the Toolkit and Contact Builder; a SQL Query
+// activity can be run in Run Query or started in SFMC.
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ExternalLink, Play, Loader2 } from 'lucide-vue-next'
 import CodeView from './CodeView.vue'
+import { useStack } from '@/composables/useStack.js'
+import { showToast } from '@/composables/useToast.js'
+import { contactBuilderDEUrl } from '@/utils/activityTypes.js'
+import { startQueryActivity, getQueryActivityStatus } from '@/utils/sfmcApi.js'
 
 const props = defineProps({
   description: { type: Object, required: true },
@@ -17,6 +24,65 @@ watch(() => props.showAllFields, (v) => { showExtra.value = v })
 const d = computed(() => props.description)
 const hasExtra = computed(() => d.value.extra?.length || d.value.tables?.some((t) => t.extra))
 const tables = computed(() => (d.value.tables || []).filter((t) => !t.extra || showExtra.value))
+
+const router = useRouter()
+const { stack } = useStack()
+const deRef = (label) => d.value.deRefs?.[label] || null
+function openDEInToolkit(ref) {
+  router.push({ path: '/data-extensions', query: { q: ref.name } })
+}
+
+// ── Run this query (SQL Query activities) ─────────────────
+const runMenu = ref(false)
+const running = ref(false)
+let pollTimer = null
+onUnmounted(() => clearTimeout(pollTimer))
+
+function runInToolkit() {
+  runMenu.value = false
+  router.push({ path: '/queries/workspace', query: { sql: d.value.run.sql } })
+}
+
+const POLL_MS = 3000
+const MAX_POLL_MS = 30 * 60 * 1000
+
+async function runInSFMC() {
+  runMenu.value = false
+  const r = d.value.run
+  const ok = window.confirm(
+    `Run the Query activity "${d.value.title}" in SFMC now?\n\n` +
+    `It writes to ${r.targetName ? `"${r.targetName}"` : 'its target data extension'}${r.updateType ? ` (${r.updateType})` : ''}, ` +
+    'the same as when its automation runs it.'
+  )
+  if (!ok) return
+  running.value = true
+  const started = Date.now()
+  try {
+    await startQueryActivity(stack.value, r.queryDefinitionId)
+    showToast(`Started "${d.value.title}" in SFMC.`)
+  } catch (e) {
+    running.value = false
+    showToast(`Could not start the activity: ${e.message}`)
+    return
+  }
+  const poll = async () => {
+    try {
+      const s = await getQueryActivityStatus(stack.value, r.queryDefinitionId)
+      if (s?.isRunning && Date.now() - started < MAX_POLL_MS) {
+        pollTimer = setTimeout(poll, POLL_MS)
+        return
+      }
+      running.value = false
+      showToast(s?.isRunning
+        ? `"${d.value.title}" is still running in SFMC; check Automation Studio.`
+        : `"${d.value.title}" finished in SFMC (${Math.round((Date.now() - started) / 1000)} s).`)
+    } catch (e) {
+      running.value = false
+      showToast(`Could not read the activity status: ${e.message}`)
+    }
+  }
+  pollTimer = setTimeout(poll, POLL_MS)
+}
 </script>
 
 <template>
@@ -27,6 +93,24 @@ const tables = computed(() => (d.value.tables || []).filter((t) => !t.extra || s
       <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">{{ d.typeLabel }}</span>
       <h3 class="flex-1 min-w-0 truncate text-sm font-semibold">{{ d.title }}</h3>
       <slot name="actions" />
+      <div v-if="d.run" class="relative flex-shrink-0">
+        <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60" :disabled="running"
+          :aria-expanded="runMenu" aria-haspopup="menu" @click="runMenu = !runMenu">
+          <Loader2 v-if="running" class="h-3 w-3 animate-spin" /><Play v-else class="h-3 w-3" />
+          {{ running ? 'Running in SFMC' : 'Run this query' }}
+        </button>
+        <div v-if="runMenu" class="fixed inset-0 z-10" @click="runMenu = false" />
+        <div v-if="runMenu" class="absolute right-0 top-6 z-20 w-64 rounded-md border border-border bg-card shadow-lg p-1 text-xs" role="menu" @keydown.esc="runMenu = false">
+          <button class="w-full text-left px-2 py-1.5 rounded hover:bg-accent" role="menuitem" :disabled="!d.run.sql" @click="runInToolkit">
+            <span class="block font-medium">Run in Toolkit</span>
+            <span class="block text-muted-foreground">Opens the SQL in Run Query; results go to a new data extension.</span>
+          </button>
+          <button class="w-full text-left px-2 py-1.5 rounded hover:bg-accent" role="menuitem" @click="runInSFMC">
+            <span class="block font-medium">Run activity in SFMC</span>
+            <span class="block text-muted-foreground">Starts this Query activity; it writes to its own target data extension.</span>
+          </button>
+        </div>
+      </div>
       <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0">
         Open in SFMC <ExternalLink class="h-3 w-3" />
       </a>
@@ -35,7 +119,15 @@ const tables = computed(() => (d.value.tables || []).filter((t) => !t.extra || s
       <p v-if="d.note" class="text-muted-foreground italic">{{ d.note }}</p>
       <dl class="grid grid-cols-[minmax(8rem,14rem)_1fr] gap-x-4 gap-y-1">
         <template v-for="([label, value], i) in d.main" :key="'m' + i">
-          <dt class="text-muted-foreground">{{ label }}</dt><dd class="break-words">{{ value }}</dd>
+          <dt class="text-muted-foreground">{{ label }}</dt>
+          <dd class="break-words">
+            {{ value }}
+            <template v-if="deRef(label)">
+              <button class="ml-2 text-primary hover:underline" :title="`Find ${deRef(label).name} in Data Extensions`" @click="openDEInToolkit(deRef(label))">View</button>
+              <a v-if="contactBuilderDEUrl(stack, deRef(label).id)" :href="contactBuilderDEUrl(stack, deRef(label).id)" target="_blank" rel="noopener"
+                class="ml-2 inline-flex items-center gap-0.5 text-primary hover:underline" title="Open in Contact Builder">SFMC <ExternalLink class="h-3 w-3" /></a>
+            </template>
+          </dd>
         </template>
         <template v-if="showExtra">
           <template v-for="([label, value], i) in d.extra" :key="'e' + i">
