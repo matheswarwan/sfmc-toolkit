@@ -3,12 +3,13 @@
 // after. createFromPlan makes them in SFMC; nothing is scheduled or run.
 import { orphanContacts } from './orphanContacts.js'
 import { dataViewArchive } from './dataViewArchive.js'
+import { unengagedSubscribers, heldBounced, automationRunLog, crmUnsubscribes } from './engagement.js'
 import {
   buildDEFields, createTemplateDE, createQueryActivity, createAutomation, getDERootFolderId, getQueryRootFolderId,
   getAnyQueryActivityId, validateQueryText, deleteDE, deleteQueryActivity, deleteAutomation,
 } from '../sfmcApi.js'
 
-export const TEMPLATES = [orphanContacts, dataViewArchive]
+export const TEMPLATES = [orphanContacts, dataViewArchive, unengagedSubscribers, heldBounced, automationRunLog, crmUnsubscribes]
 
 const mentions = (sql, name) => sql.toLowerCase().includes(`[${name.toLowerCase()}]`)
 

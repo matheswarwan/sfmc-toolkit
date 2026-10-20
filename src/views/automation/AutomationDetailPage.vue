@@ -9,6 +9,7 @@ import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
+import RunHistory from '@/components/automation/RunHistory.vue'
 import { useStack } from '@/composables/useStack.js'
 import { fetchAutomation, fetchActivityDetails } from '@/utils/automationApi.js'
 import { describeActivity, activityTypeLabel, automationUrl } from '@/utils/activityTypes.js'
@@ -126,6 +127,8 @@ function getDoc() {
             </a>
           </div>
         </section>
+
+        <RunHistory :stack="stack" :automation-id="id" />
 
         <!-- Overview: steps left to right, like Automation Studio -->
         <section v-if="view === 'overview'" class="overflow-x-auto pb-2">

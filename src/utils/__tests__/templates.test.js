@@ -148,3 +148,45 @@ describe('Data view archive fields (feedback #43)', () => {
     expect(f.FromEmail).toMatchObject({ type: 'text', length: 254 })
   })
 })
+
+describe('more templates (user, 2026-10-20)', () => {
+  it('unengaged: sent in the window, no open or click, at least N sends; sendable', async () => {
+    const { unengagedSubscribers: t } = await import('../templates/engagement.js')
+    const p = t.plan({ ...t.defaults, days: 60, minSends: 4 })
+    expect(p.des[0]).toMatchObject({ name: 'Unengaged Subscribers', sendableField: 'SubscriberKey' })
+    const sql = p.queries[0].sql
+    expect(sql).toContain('DATEADD(day, -60, GETDATE())')
+    expect(sql).toMatch(/NOT EXISTS \(SELECT 1 FROM _Open/)
+    expect(sql).toMatch(/NOT EXISTS \(SELECT 1 FROM _Click/)
+    expect(sql).toContain('HAVING COUNT(*) >= 4')
+    expect(sql).toContain('LEFT JOIN _Subscribers')
+    expect(t.plan({ ...t.defaults, fromParent: true }).queries[0].sql).toContain('LEFT JOIN ENT._Subscribers')
+  })
+  it('held and bouncing: held/bounced status or recent hard bounces', async () => {
+    const { heldBounced: t } = await import('../templates/engagement.js')
+    const sql = t.plan(t.defaults).queries[0].sql
+    expect(sql).toMatch(/LOWER\(sub\.Status\) IN \('held', 'bounced'\) OR b\.HardBounces > 0/)
+    expect(sql).toContain("BounceCategory LIKE 'Hard%'")
+  })
+  it('automation run log: runs and activities keyed on their instance IDs, upserted', async () => {
+    const { automationRunLog: t } = await import('../templates/engagement.js')
+    const p = t.plan(t.defaults)
+    expect(p.des.map((d) => d.fields.filter((f) => f.isPrimaryKey).map((f) => f.name))).toEqual([['AutomationInstanceID'], ['ActivityInstanceID']])
+    expect(p.queries.map((q) => q.updateType)).toEqual([1, 1])
+    expect(p.queries[0].sql).toContain('FROM _AutomationInstance')
+    expect(p.des[0].fields.find((f) => f.name === 'AutomationInstanceStartTime_UTC').type).toBe('date')
+  })
+  it('unsubscribes for CRM: email and business unit unsubscribes, upserted by subscriber', async () => {
+    const { crmUnsubscribes: t } = await import('../templates/engagement.js')
+    const p = t.plan({ ...t.defaults, days: 3 })
+    expect(p.queries[0].updateType).toBe(1)
+    expect(p.queries[0].sql).toContain('FROM _Unsubscribe')
+    expect(p.queries[0].sql).toContain('FROM _BusinessUnitUnsubscribes')
+    expect(p.queries[0].sql).toContain('DATEADD(day, -3, GETDATE())')
+  })
+  it('every template is listed and plans with its defaults', async () => {
+    const { TEMPLATES } = await import('../templates/index.js')
+    expect(TEMPLATES.map((t) => t.id)).toEqual(['orphan-contacts', 'data-view-archive', 'unengaged-subscribers', 'held-bounced', 'automation-run-log', 'crm-unsubscribes'])
+    for (const t of TEMPLATES) expect(() => t.plan({ ...t.defaults })).not.toThrow()
+  })
+})

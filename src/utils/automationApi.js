@@ -108,3 +108,46 @@ export async function fetchAllActivities(stack, endpoint, onPage) {
   }
   return { items: all, total, capped: all.length < total }
 }
+
+// ── Run history (feedback #41) ─────────────────────────────
+// The requests Automation Studio's run log makes (from the user's HAR, 2026-10-20).
+// The response bodies were not in the HAR, so runs are read by the likely field
+// names and each run keeps its raw record.
+const ymd = (d) => d.toISOString().slice(0, 10)
+const pick = (o, names) => {
+  for (const n of names) {
+    const k = Object.keys(o || {}).find((x) => x.toLowerCase() === n.toLowerCase())
+    if (k && o[k] != null && o[k] !== '') return o[k]
+  }
+  return null
+}
+
+export function normalizeRun(r) {
+  const start = pick(r, ['startTime', 'start', 'startedTime', 'startDate'])
+  const end = pick(r, ['endTime', 'completedTime', 'end', 'endDate'])
+  const ms = start && end ? Date.parse(end) - Date.parse(start) : null
+  return {
+    id: pick(r, ['id', 'instanceId', 'automationInstanceId']),
+    start,
+    end,
+    durationMs: Number.isFinite(ms) && ms >= 0 ? ms : null,
+    status: pick(r, ['status', 'statusName', 'runStatus', 'state']),
+    message: pick(r, ['statusMessage', 'message', 'errorMessage', 'details']),
+    raw: r,
+  }
+}
+
+/** Runs of one automation between `days` ago and today, newest first. `id` is the legacy (list) ID. */
+export async function fetchRunHistory(stack, id, { days = 30, top = 50, now = new Date() } = {}) {
+  const begin = new Date(now.getTime() - days * 86400000)
+  const url = `${AS(stack)}/legacy/v1/beta/automations/automation/instance/?definition_id=${encodeURIComponent(id)}&$top=${top}`
+    + `&begin_date=${ymd(begin)}&end_date=${ymd(now)}&order_by=${encodeURIComponent('StartTime desc')}&to_server_time=1`
+  const data = await sfmcFetch(url, 'GET')
+  const list = data?.entry ?? data?.items ?? (Array.isArray(data) ? data : [])
+  return { runs: list.map(normalizeRun), total: data?.totalResults ?? data?.count ?? list.length }
+}
+
+/** Automation Studio's health summary for one automation (shape not known; shown as is). */
+export async function fetchAutomationHealth(stack, id) {
+  return sfmcFetch(`${AS(stack)}/legacy/v1/beta/automations/automation/definition/health/${encodeURIComponent(id)}/`, 'GET')
+}

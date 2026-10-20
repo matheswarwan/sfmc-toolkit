@@ -21,6 +21,7 @@ export const orphanContacts = {
     userDE: 'User_Salesforce',
     contactDE: 'Contact_Salesforce',
     archive: true,
+    fromParent: false,
     pendingName: 'Contact Deletion Pending',
     archiveName: 'Contact Deletion Archive',
     automationName: 'Orphan contacts - find',
@@ -36,6 +37,7 @@ export const orphanContacts = {
     { key: 'archive', label: 'Keep an archive (hashed email, reason, date) of contacts collected for deletion', type: 'checkbox' },
     { key: 'pendingName', label: 'Pending data extension name', type: 'text' },
     { key: 'archiveName', label: 'Archive data extension name', type: 'text', showIf: 'archive' },
+    { key: 'fromParent', label: 'Read subscribers from the parent business unit (ENT._Subscribers; needed in a child business unit)', type: 'checkbox', showIf: 'archive' },
     { key: 'automationName', label: 'Automation name', type: 'text' },
   ],
 
@@ -104,7 +106,7 @@ WHERE contact.SubscriberKey LIKE '003%' AND crm.Id IS NULL`,
     pending.DeletionReason,
     pending.DeletionDate AS LastDeletionDate
 FROM [${o.pendingName}] AS pending
-    LEFT JOIN _Subscribers AS sub ON sub.SubscriberKey = pending.SubscriberKey`,
+    LEFT JOIN ${o.fromParent ? 'ENT._Subscribers' : '_Subscribers'} AS sub ON sub.SubscriberKey = pending.SubscriberKey`,
       })
     }
     return {

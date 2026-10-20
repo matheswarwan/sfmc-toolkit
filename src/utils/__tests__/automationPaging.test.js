@@ -103,3 +103,21 @@ describe('apiCallPath', () => {
       .toBe('mc.s4.marketingcloudapps.com/x/automations/?$top=50&$skip=50&$where=…')
   })
 })
+
+describe('run history (feedback #41)', () => {
+  beforeEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
+
+  it('asks for runs the way Automation Studio does and reads them', async () => {
+    const calls = stub(() => ({ totalResults: 2, entry: [
+      { id: 'r1', startTime: '2026-10-20T10:00:00', endTime: '2026-10-20T10:02:30', status: 'Complete' },
+      { InstanceId: 'r2', StartTime: '2026-10-19T10:00:00', StatusName: 'Error', StatusMessage: 'Query failed' },
+    ] }))
+    const { fetchRunHistory } = await import('../automationApi.js')
+    const r = await fetchRunHistory('s12', 'MHla:25:0', { days: 30, now: new Date('2026-10-20T16:00:00Z') })
+    expect(calls[0]).toBe('https://mc.s12.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/legacy/v1/beta/automations/automation/instance/?definition_id=MHla%3A25%3A0&$top=50&begin_date=2026-09-20&end_date=2026-10-20&order_by=StartTime%20desc&to_server_time=1')
+    expect(r.total).toBe(2)
+    expect(r.runs[0]).toMatchObject({ id: 'r1', status: 'Complete', durationMs: 150000 })
+    expect(r.runs[1]).toMatchObject({ id: 'r2', status: 'Error', message: 'Query failed', durationMs: null })
+    expect(r.runs[1].raw.InstanceId).toBe('r2')
+  })
+})
