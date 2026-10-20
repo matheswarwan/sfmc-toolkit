@@ -10,6 +10,7 @@
 //   SAVE_RECORDS { records }, RENAME_QUERY { id, name }, IMPORT_SHARED_QUERY { records }
 //   TRACK_EVENT { clientId, name, params }
 //   WATCH_CHECK { stack, force }, WATCH_BADGE          watched automations (watches.js)
+//   OPEN_APP { path }                                 open app.html#<path> (Automation Summary tab)
 //   SFMC_CONTEXT_CAPTURED, MCA_TOKEN_CAPTURED         from content.js
 //   PING
 
@@ -129,6 +130,12 @@ const handlers = {
   },
   WATCH_CHECK: async (m) => ({ result: await checkWatches(m.stack || (await resolveAndPublish()).stack, { force: !!m.force }) }),
   WATCH_BADGE: async () => { await updateBadge(); return { ok: true } },
+  // From the Automation Summary tab on Automation Studio pages (public/automationPanel.js).
+  OPEN_APP: (m) => {
+    const path = typeof m.path === 'string' && m.path.startsWith('/') ? m.path : '/'
+    createTab({ url: chrome.runtime.getURL(`${APP_PAGE}#${path}`) })
+    return { ok: true }
+  },
   MCA_TOKEN_CAPTURED: (m, sender) => { handleCapturedToken(sender, m.accessToken); return null },
 }
 

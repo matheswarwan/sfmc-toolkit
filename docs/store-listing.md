@@ -79,6 +79,8 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
+2.0.7: Automation Summary tab on Automation Studio automation pages (from SFMC Automation Viewer), data view joins in Query Builder filled in straight away.
+
 2.0.6: Automation overview (by status, needs a look, run trends), watch automations (paused, activated, runs, fails) with a bell, a toolbar badge and optional desktop notifications, Journey overview (by status, what live journeys send), saved queries for the current business unit first, CloudPages Get URL for landing pages.
 
 2.0.5: automation run history; four more Automation Templates (Unengaged subscribers, Held and bouncing subscribers, Automation run log, Unsubscribes for CRM).

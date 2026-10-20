@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SFMC Toolkit",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "Run and save SFMC SQL, and explore automations, journeys, data extensions, CloudPages and saved email versions in one place.",
   "action": {
     "default_title": "Open SFMC Toolkit",
@@ -44,7 +44,7 @@
         "https://*.salesforce-marketingcloud.com/*",
         "https://querystudio.herokuapp.com/*"
       ],
-      "js": ["content.js"]
+      "js": ["content.js", "automationPanel.js"]
     },
     {
       "matches": ["https://sfmc-share-worker.mathes-btech.workers.dev/share/*"],

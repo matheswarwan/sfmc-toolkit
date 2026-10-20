@@ -23,6 +23,7 @@ const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
   (v) => (typeof v === 'number' && v >= 0 ? v : 5))
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
 const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
+const { value: automationPanel } = useStoredSetting('_automationPanel', true, (v) => v !== false)
 const { value: retentionDays } = useStoredSetting('_queryDERetentionDays', DEFAULT_RETENTION_DAYS, parseRetentionDays)
 
 // Desktop notifications for watched automations: the optional notifications
@@ -226,6 +227,13 @@ function setDebounce(e) {
           <p class="text-xs text-muted-foreground">Changes to automations you watch always show on the bell and the toolbar icon. Switch this on to also get a desktop notification; Chrome asks for permission the first time.</p>
         </div>
         <Switch :model-value="desktopNotify" aria-label="Desktop notifications for watched automations" @update:model-value="setDesktopNotify" />
+      </div>
+      <div class="flex items-start gap-3 mt-4">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Automation Summary tab in Automation Studio</div>
+          <p class="text-xs text-muted-foreground">On an automation's page in Automation Studio, a tab on the right edge opens a summary of it (status, last run, schedule, steps) with a link into SFMC Toolkit.</p>
+        </div>
+        <Switch v-model="automationPanel" aria-label="Automation Summary tab in Automation Studio" />
       </div>
 </section>
 

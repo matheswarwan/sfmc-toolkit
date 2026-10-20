@@ -188,6 +188,7 @@ export const FEATURE_GROUPS = [
     title: 'Automations',
     intro: 'Automation > Automations. Viewing an automation never pauses or changes it.',
     items: [
+      { title: 'Automation Summary in Automation Studio', since: '2.0.7', how: 'The tab on the right edge of an automation\'s page in Automation Studio', detail: 'Status, last run, schedule, next run and each step\'s activities, with Open in SFMC Toolkit. Turn it off in Settings > Connection.' },
       { title: 'Automation overview', since: '2.0.6', how: 'Automation > Automation overview', detail: 'Every automation counted by status and last run, the ones that need a look (failed last run, in error, running for hours), the automations you watch, and run trends per day from the run logs.' },
       { title: 'Watch an automation', since: '2.0.6', how: 'Watch on an automation\'s page', detail: 'Be told when it is paused, activated, runs or fails. Checked when SFMC Toolkit opens and at most every 15 minutes while you use SFMC; changes show on the bell and the toolbar icon, and as desktop notifications if you switch them on in Settings.' },
       { title: 'Find an automation', detail: 'Search by name, or list all, most recently run first, with status, last run and modified date. Hide columns you do not need.' },
