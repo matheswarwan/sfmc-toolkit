@@ -11,6 +11,7 @@ const PAGES = {
   '/where-used': () => import('../views/data/WhereUsedPage.vue'),
   '/automations': () => import('../views/automation/AutomationsPage.vue'),
   '/activities': () => import('../views/automation/ActivitiesPage.vue'),
+  '/templates': () => import('../views/automation/TemplatesPage.vue'),
   '/journeys': () => import('../views/journey/JourneysPage.vue'),
   '/journey-entry': () => import('../views/journey/JourneyEntryPage.vue'),
   '/cloudpages': () => import('../views/content/CloudPagesPage.vue'),

@@ -451,23 +451,83 @@ export function retentionProperties(days) {
  * @param {{ name: string, queryText: string, targetName: string, targetKey: string, targetId: string, categoryId: number }} payload
  * @returns {Promise<{ queryDefinitionId: string, key: string, name: string }>}
  */
+// Query Activity update types (targetUpdateTypeId); Import activities number theirs differently.
+export const QUERY_UPDATE_TYPES = { 0: 'Overwrite', 1: 'Update', 2: 'Append' }
+
 export async function createQueryActivity(stack, payload) {
   _logInfo(`Creating Query Activity "${payload.name}" - wraps the SQL query and points to target DE "${payload.targetName}"`)
   const url = `${AS_BASE(stack)}/automation/v1/queries`
+  const updateType = QUERY_UPDATE_TYPES[payload.updateType] ? payload.updateType : 0
   const body = {
     name: payload.name,
-    description: 'Auto-created by SFMC Query Saver',
+    ...(payload.key ? { key: payload.key } : {}),
+    description: payload.description ?? 'Auto-created by SFMC Query Saver',
     queryText: payload.queryText,
     targetName: payload.targetName,
     targetKey: payload.targetKey,
     targetId: payload.targetId,
-    targetUpdateTypeId: '0',
-    targetUpdateTypeName: 'Overwrite',
+    targetUpdateTypeId: String(updateType),
+    targetUpdateTypeName: QUERY_UPDATE_TYPES[updateType],
     validatedQueryText: '',
     isFrozen: false,
     ...(payload.categoryId != null ? { categoryId: payload.categoryId } : {}),
   }
   return proxyFetch(url, 'POST', body)
+}
+
+/**
+ * Creates an automation with no schedule (Automation Templates). steps: [{ name,
+ * activities: [{ name, id }] }], each activity a Query Activity. Not checked live.
+ */
+export async function createAutomation(stack, { name, key, description, steps }) {
+  _logInfo(`Creating automation "${name}" with ${steps.length} step(s), not scheduled`)
+  const url = `${AS_BASE(stack)}/automation/v1/automations`
+  return proxyFetch(url, 'POST', {
+    name,
+    ...(key ? { key } : {}),
+    description: description || '',
+    steps: steps.map((s, i) => ({
+      name: s.name,
+      step: i + 1,
+      activities: s.activities.map((a, j) => ({ name: a.name, objectTypeId: 300, activityObjectId: a.id, displayOrder: j + 1 })),
+    })),
+  })
+}
+
+/**
+ * A data extension for Automation Templates: given customer key, optionally
+ * sendable (send relationship `sendableField` -> Subscriber Key). If SFMC refuses
+ * the sendable settings, the DE is created without them and `sendableFailed` is set.
+ */
+export async function createTemplateDE(stack, { name, key, fields, categoryID, sendableField }) {
+  _logInfo(`Creating data extension "${name}" (${fields.length} fields${sendableField ? ', sendable' : ''})`)
+  const url = `${CM_BASE(stack)}/v1/customobjects/`
+  const body = {
+    importActivity: {}, name, customerKey: key, categoryID, isActive: true, status: 0,
+    isObjectDeletable: true, isFieldAdditionAllowed: true, isFieldModificationAllowed: true,
+    isTestable: false, isSendable: false, fields,
+  }
+  if (!sendableField) return proxyFetch(url, 'POST', body)
+  try {
+    return await proxyFetch(url, 'POST', { ...body, isSendable: true, sendableCustomObjectField: sendableField, sendableSubscriberField: '_SubscriberKey' })
+  } catch (err) {
+    if (!/sendable|subscriber/i.test(err.message)) throw err
+    _logInfo(`SFMC refused the sendable settings (${err.message}); creating "${name}" without them`)
+    return { ...(await proxyFetch(url, 'POST', body)), sendableFailed: true }
+  }
+}
+
+/** ID of the root "Data Extensions" folder. */
+export async function getDERootFolderId(stack) {
+  const rootDE = ((await listDERootFolders(stack)).entry || []).find((f) => f.name === 'Data Extensions' && f.type === 'dataextension')
+  if (!rootDE) throw new Error('Could not find the "Data Extensions" folder.')
+  return parseInt(rootDE.id, 10)
+}
+
+/** ID of the root "Query" folder in Automation Studio, or null. */
+export async function getQueryRootFolderId(stack) {
+  const root = ((await listQAFolders(stack)).items || []).find((f) => f.name === 'Query' && f.parentId === 0)
+  return root?.categoryId ?? null
 }
 
 // ── Run step 3a: Start Query Activity ────────────────────
