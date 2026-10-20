@@ -417,7 +417,10 @@ export function dataViewJoin(left, right) {
   const ln = String(left?.name || '').replace(/^ENT\./i, '').toUpperCase()
   const rn = String(right?.name || '').replace(/^ENT\./i, '').toUpperCase()
   if (!DATA_VIEWS_UPPER.has(ln) || !DATA_VIEWS_UPPER.has(rn) || (ln === rn && !TRACKING_VIEWS.includes(ln))) return null
-  const fieldOf = (de, name) => (de.fields || []).find((f) => f.name.toLowerCase() === name.toLowerCase())?.name
+  // A data view added before its fields have loaded still gets its join (feedback #52):
+  // fall back to the known fields of that data view.
+  const fieldsOf = (de) => (de.fields?.length ? de.fields : DATA_VIEW_FIELDS[String(de.name || '').replace(/^ENT\./i, '').toUpperCase()] || [])
+  const fieldOf = (de, name) => fieldsOf(de).find((f) => f.name.toLowerCase() === name.toLowerCase())?.name
   for (const [lefts, rights, keys] of JOIN_RULES) {
     for (const [a, b, flip] of [[ln, rn, false], [rn, ln, true]]) {
       if (!lefts.includes(a) || !rights.includes(b)) continue

@@ -5,7 +5,7 @@ import Button from '../ui/button/Button.vue'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
 import { fetchDEFieldsCached } from '../../utils/sfmcApi.js'
-import { DATA_VIEW_FIELDS } from '../../utils/dataViews.js'
+import { DATA_VIEW_FIELDS, DATA_VIEWS } from '../../utils/dataViews.js'
 import { suggestJoinConditions, aliasFor, aliasOf } from '../../utils/sqlBuilder.js'
 import { defaultQueryOptions } from '../../utils/builderStorage.js'
 
@@ -74,7 +74,7 @@ watch(() => selectedList.value.map((d) => d.id).join('|'), () => {
   emit('update:joins', joins.value)
   // New join rows: suggest a condition when both sides already have their fields
   // (data views have theirs at once, before this row existed).
-  for (const de of selectedList.value) if (de.fields?.length) autoSuggestJoinsForDe(de.id)
+  for (const de of selectedList.value) if (de.fields?.length || isDataView(de)) autoSuggestJoinsForDe(de.id)
 }, { immediate: true })
 
 function emitJoins() {
@@ -82,10 +82,16 @@ function emitJoins() {
   emit('update:joins', joins.value)
 }
 
+// A data view by name (also ENT._Sent), however it was added: from the data views
+// list or from a search (feedback #52).
+const DATA_VIEW_NAMES = new Set([...DATA_VIEWS].map((v) => v.toUpperCase()))
+const dataViewName = (de) => String(de?.name || '').replace(/^ENT\./i, '').toUpperCase()
+const isDataView = (de) => !!de && (de.isDataView || de.sourceType === 'dataview' || DATA_VIEW_NAMES.has(dataViewName(de)))
+
 async function loadFieldsForDe(de) {
   if (de.fields?.length) return de.fields
-  if (de.isDataView || de.sourceType === 'dataview') {
-    return DATA_VIEW_FIELDS[de.name.toUpperCase()] || []
+  if (isDataView(de)) {
+    return DATA_VIEW_FIELDS[dataViewName(de)] || []
   }
   if (!props.stack) return []
   loadingIds.value = new Set(loadingIds.value).add(de.id)
@@ -162,7 +168,8 @@ function autoSuggestJoinsForDe(deId) {
     if ((join.conditions || []).some((c) => c.leftField && c.rightField)) return
     const left = selectedList.value.find((d) => d.id === join.leftDeId)
     const right = selectedList.value.find((d) => d.id === join.rightDeId)
-    if (!left?.fields?.length || !right?.fields?.length) return
+    // Two data views have known joins, so their fields need not have loaded.
+    if (!(isDataView(left) && isDataView(right)) && (!left?.fields?.length || !right?.fields?.length)) return
     const suggested = suggestJoinConditions(left, right)
     if (suggested.length) {
       join.conditions = suggested

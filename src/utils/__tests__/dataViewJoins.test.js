@@ -30,3 +30,13 @@ describe('data view joins (feedback #18)', () => {
     expect(on(suggestJoinConditions({ name: 'My DE', fields: [{ name: 'SubscriberKey' }] }, dv('_Sent')))).toBe('SubscriberKey=SubscriberKey')
   })
 })
+
+describe('data view joins before fields load (feedback #52)', () => {
+  it('joins _Click and _Job on JobID with no fields loaded yet', async () => {
+    const { suggestJoinConditions } = await import('../sqlBuilder.js')
+    expect(suggestJoinConditions({ name: '_Click', fields: [] }, { name: '_Job', fields: [] }))
+      .toEqual([{ leftField: 'JobID', operator: '=', rightField: 'JobID' }])
+    expect(dataViewJoin({ name: 'ENT._Subscribers' }, { name: '_Sent', fields: [] }))
+      .toEqual([{ leftField: 'SubscriberKey', operator: '=', rightField: 'SubscriberKey' }])
+  })
+})
