@@ -8,6 +8,7 @@ import CommandPalette from '@/components/shell/CommandPalette.vue'
 import ToastHost from '@/components/shell/ToastHost.vue'
 import ApiConsole from '@/components/shell/ApiConsole.vue'
 import WhatsNew from '@/components/shell/WhatsNew.vue'
+import UpdateBanner from '@/components/shell/UpdateBanner.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import UsagePanel from '@/components/usage/UsagePanel.vue'
@@ -89,6 +90,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
     <UsagePanel />
     <ToastHost />
     <WhatsNew />
+    <UpdateBanner />
     <FeedbackModal v-if="showFeedback" :screen="route.path" @close="showFeedback = false" />
   </div>
 </template>

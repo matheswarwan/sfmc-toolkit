@@ -28,11 +28,13 @@ import {
 import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
+import { watchForUpdates } from './updates.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
 restoreCsrfTokens()
 loadEmailSaverPrefs()
+watchForUpdates()
 
 const APP_PAGE = 'app.html'
 
