@@ -11,7 +11,7 @@ import { buildBackup, backupFileName, parseBackup, planImport, describeImport } 
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
-import { DEFAULT_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
+import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
 import { QUERY_STUDIO_2_ORIGINS } from '@/utils/queryStudio.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
@@ -39,7 +39,11 @@ function setQs2(on) {
 }
 const retentionInput = computed({
   get: () => retentionDays.value,
-  set: (v) => { const n = Math.round(Number(v)); if (Number.isFinite(n)) retentionDays.value = parseRetentionDays(n) },
+  set: (v) => { const n = Math.round(Number(v)); if (Number.isFinite(n) && n > 0) retentionDays.value = parseRetentionDays(n) },
+})
+const retentionOn = computed({
+  get: () => retentionDays.value > 0,
+  set: (on) => { retentionDays.value = on ? SUGGESTED_RETENTION_DAYS : 0 },
 })
 
 const offRules = ref([...disabledRules()].sort())
@@ -154,14 +158,16 @@ function setDebounce(e) {
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">
-          <div class="text-sm font-medium">Data retention for new data extensions</div>
-          <p class="text-xs text-muted-foreground">Data extensions created by Run Query delete each row this many days after it was added. 0 keeps rows until you delete the data extension.</p>
+          <div class="text-sm font-medium">Add data retention to new data extensions</div>
+          <p class="text-xs text-muted-foreground">Off: data extensions created by Run Query keep their rows until you delete them. On: SFMC deletes each row the given number of days after it was added.</p>
+          <label v-if="retentionOn" class="mt-2 flex items-center gap-1.5 text-xs">
+            Delete rows after
+            <input v-model.lazy="retentionInput" type="number" min="1" max="3650" step="1" aria-label="Data retention in days"
+              class="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs" />
+            days
+          </label>
         </div>
-        <label class="flex items-center gap-1.5 text-xs">
-          <input v-model.lazy="retentionInput" type="number" min="0" max="3650" step="1" aria-label="Data retention in days"
-            class="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs" />
-          days
-        </label>
+        <Switch v-model="retentionOn" aria-label="Add data retention to new data extensions" />
       </div>
       <div>
         <div class="flex items-center gap-2">

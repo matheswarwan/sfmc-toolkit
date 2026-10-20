@@ -63,14 +63,14 @@ describe('searchActivities without sorting (feedback #29)', () => {
 describe('Run Query target DE retention (feedback #27)', () => {
   beforeEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
 
-  it('parses the setting with a 7-day default', async () => {
+  it('parses the setting: no retention unless set', async () => {
     const { parseRetentionDays, DEFAULT_RETENTION_DAYS } = await import('../sfmcApi.js')
-    expect(DEFAULT_RETENTION_DAYS).toBe(7)
-    expect(parseRetentionDays(undefined)).toBe(7)
+    expect(DEFAULT_RETENTION_DAYS).toBe(0)
+    expect(parseRetentionDays(undefined)).toBe(0)
     expect(parseRetentionDays(0)).toBe(0)
     expect(parseRetentionDays(30)).toBe(30)
-    expect(parseRetentionDays(-1)).toBe(7)
-    expect(parseRetentionDays(1.5)).toBe(7)
+    expect(parseRetentionDays(-1)).toBe(0)
+    expect(parseRetentionDays(1.5)).toBe(0)
   })
 
   it('sends row-based retention and falls back without it when SFMC refuses', async () => {

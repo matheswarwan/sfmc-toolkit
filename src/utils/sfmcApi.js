@@ -423,9 +423,10 @@ export async function createTargetDE(stack, payload) {
   }
 }
 
-// Run Query's target DEs keep rows this many days unless Settings says otherwise
-// (feedback #27). 0 means no retention.
-export const DEFAULT_RETENTION_DAYS = 7
+// Days a row stays in Run Query's new target DEs (feedback #27). Off (0) unless
+// switched on in Settings; 7 is offered when it is.
+export const DEFAULT_RETENTION_DAYS = 0
+export const SUGGESTED_RETENTION_DAYS = 7
 export function parseRetentionDays(v) {
   return Number.isInteger(v) && v >= 0 && v <= 3650 ? v : DEFAULT_RETENTION_DAYS
 }
