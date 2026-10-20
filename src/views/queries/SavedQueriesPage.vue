@@ -1,7 +1,7 @@
 <script setup>
 // Saved queries: captured from Query Studio, added by hand, imported, or saved from
 // the Workspace and Query Builder (from SFMC Query Saver's main page).
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, Download, Upload, Trash2, Star, Rows3, LayoutGrid, X, Play, Blocks } from 'lucide-vue-next'
 import QueryCard from '@/components/cards/QueryCard.vue'
@@ -14,6 +14,8 @@ import { queriesToCsv, csvToQueryRecords, csvFileName } from '@/utils/queryCsv.j
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { useStoredSetting } from '@/composables/useStoredSetting.js'
 import { showToast } from '@/composables/useToast.js'
+import { useStack } from '@/composables/useStack.js'
+import { fetchCurrentBU } from '@/utils/sfmcApi.js'
 
 const router = useRouter()
 
@@ -63,6 +65,38 @@ function onStorageChange(changes, area) {
 }
 onMounted(() => { loadData(); chrome.storage.onChanged.addListener(onStorageChange) })
 onUnmounted(() => chrome.storage.onChanged.removeListener(onStorageChange))
+
+// ── Current business unit first (feedback #49) ────────────
+// When the business unit you are logged in to is known and has saved queries, only
+// its queries are shown; Show all (remembered) lists every business unit again.
+const SHOW_ALL_KEY = 'toolkit_savedQueries_allBUs'
+const { stack } = useStack()
+const currentBU = ref(null)
+const showAllBUs = ref((() => { try { return localStorage.getItem(SHOW_ALL_KEY) === '1' } catch { return false } })())
+const autoBU = ref(false) // the BU filter was set from the current BU, not by hand
+function applyCurrentBU() {
+  if (showAllBUs.value || !currentBU.value || activeBuFilters.value.size) return
+  if (!queries.value.some((q) => q.businessUnit?.name === currentBU.value)) return
+  activeBuFilters.value = new Set([currentBU.value])
+  autoBU.value = true
+}
+watch(stack, async (s) => {
+  if (!s) return
+  try { currentBU.value = (await fetchCurrentBU(s))?.name || null } catch { currentBU.value = null }
+  if (autoBU.value) { activeBuFilters.value = new Set(); autoBU.value = false }
+  applyCurrentBU()
+}, { immediate: true })
+watch(queries, applyCurrentBU)
+function setShowAll(all) {
+  showAllBUs.value = all
+  try { localStorage.setItem(SHOW_ALL_KEY, all ? '1' : '0') } catch { /* storage blocked */ }
+  if (all) { activeBuFilters.value = new Set(); autoBU.value = false } else applyCurrentBU()
+}
+function onBuFilterChange(set) {
+  activeBuFilters.value = set
+  autoBU.value = false
+}
+const currentBUCount = computed(() => queries.value.filter((q) => q.businessUnit?.name === currentBU.value).length)
 
 // ── Filters and groups ───────────────────────────────────
 const buOptions = computed(() => {
@@ -218,9 +252,17 @@ async function onSaved(result) {
     <div class="flex-1 min-h-0 flex">
       <DateSidebar v-if="queries.length" :groups="sidebarGroups" :active-key="activeDateFilter" :total-count="filtered.length"
         :bu-options="buOptions" :active-bu-filters="activeBuFilters"
-        @select="activeDateFilter = $event" @bu-filter-change="activeBuFilters = $event" />
+        @select="activeDateFilter = $event" @bu-filter-change="onBuFilterChange" />
 
       <div class="flex-1 min-w-0 overflow-y-auto p-6">
+        <div v-if="autoBU && activeBuFilters.size === 1" class="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+          <span class="flex-1">Showing the {{ currentBUCount }} queries from <strong>{{ currentBU }}</strong>, the business unit you are logged in to.</span>
+          <button class="text-primary hover:underline" @click="setShowAll(true)">Show all business units</button>
+        </div>
+        <div v-else-if="showAllBUs && currentBU && currentBUCount && !activeBuFilters.size" class="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
+          <span class="flex-1">Showing every business unit.</span>
+          <button class="text-primary hover:underline" @click="setShowAll(false)">Only {{ currentBU }}</button>
+        </div>
         <div v-if="!queries.length" class="flex flex-col items-center gap-3 py-16 text-center">
           <p class="text-lg font-semibold">No queries saved yet</p>
           <p class="text-sm text-muted-foreground max-w-sm">Run a query in SFMC Query Studio and it appears here. You can also add one, import a CSV, or import a Query Saver backup in Settings.</p>

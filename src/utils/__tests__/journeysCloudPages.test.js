@@ -66,3 +66,14 @@ describe('CloudPage folder path', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('CloudPage URL in content (feedback #51)', () => {
+  it('reads the url from the JSON string in content', async () => {
+    const { urlFromAsset } = await import('../cloudPagesApi.js')
+    const asset = { id: 460934, assetType: { id: 247, name: 'landingpage' }, content: '{"url":"https://fe9315747d62067877.pub.s4.sfmc-content.com/1ibaq3af2d4"}', meta: { cloudPages: { publishDate: '2025-09-26' } } }
+    expect(urlFromAsset(asset)).toBe('https://fe9315747d62067877.pub.s4.sfmc-content.com/1ibaq3af2d4')
+    expect(urlFromAsset({ content: '<html>' })).toBeNull()
+    expect(urlFromAsset({ content: '{"url":"javascript:alert(1)"}' })).toBeNull()
+    expect(urlFromAsset({ content: { url: 'https://x.example/p' } })).toBe('https://x.example/p')
+  })
+})
