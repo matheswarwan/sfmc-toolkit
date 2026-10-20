@@ -5,8 +5,10 @@
 import { ref } from 'vue'
 import { Download, ChevronDown, Loader2 } from 'lucide-vue-next'
 import MarkdownModal from './MarkdownModal.vue'
-import { toMarkdown, toHtml, toDocxBlob, safeFileName, saveBlob } from '@/utils/exportDoc.js'
+import { toMarkdown, toHtml, toDocxBlob, saveBlob } from '@/utils/exportDoc.js'
 import { showToast } from '@/composables/useToast.js'
+import { useStack } from '@/composables/useStack.js'
+import { exportBaseName } from '@/utils/exportName.js'
 
 const props = defineProps({
   getDoc: { type: Function, required: true },
@@ -15,6 +17,7 @@ const props = defineProps({
   label: { type: String, default: 'Download' },
 })
 
+const { stack } = useStack()
 const open = ref(false)
 const busy = ref(false)
 const markdown = ref(null) // { title, text } while the viewer is open
@@ -24,7 +27,7 @@ async function run(kind) {
   busy.value = true
   try {
     const doc = await props.getDoc()
-    const base = safeFileName(props.fileName)
+    const base = await exportBaseName(stack.value, props.fileName)
     if (kind === 'view') markdown.value = { title: doc.title, text: toMarkdown(doc), base }
     else if (kind === 'copy') {
       await navigator.clipboard.writeText(toMarkdown(doc))

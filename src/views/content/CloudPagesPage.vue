@@ -8,6 +8,7 @@ import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
+import { exportBaseName } from '@/utils/exportName.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchCloudPages, resolveCloudPageUrl, fetchCloudPageFolderPath, clearCloudPageCaches, isSystemCloudPage, CP_PAGE_SIZE } from '@/utils/cloudPagesApi.js'
@@ -100,7 +101,7 @@ async function runExport() {
       name: 'CloudPages',
       columns: ['Name', 'Key', 'Type', 'Status', 'Asset ID', 'URL', 'Created', 'Modified', ...(exportPaths.value ? ['Path'] : [])],
       rows: shown.value.map((p) => [p.name, p.customerKey, p.assetType, p.status, p.id, urls[p.id]?.url || '', formatDate(p.createdDate), formatDate(p.modifiedDate), ...(exportPaths.value ? [paths[p.id]?.path || ''] : [])]),
-    }], `CloudPages_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    }], `${await exportBaseName(stack.value, `cloudpages-${searched.value || 'all'}`)}.xlsx`)
   } catch (e) {
     showToast(`Export failed: ${e.message}`)
   } finally {

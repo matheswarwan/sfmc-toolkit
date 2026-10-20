@@ -1,10 +1,11 @@
 <script setup>
 // Automations (SFMC Automation Viewer's Automation Viewer tab): search by name or list
 // all, newest run first; View opens the automation without pausing it.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Loader2 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
+import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
@@ -12,6 +13,7 @@ import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchAutomations, loadMoreAutomations } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
+import { automationsDoc } from '@/utils/automationDoc.js'
 
 const router = useRouter()
 const { stack } = useStack()
@@ -31,6 +33,7 @@ async function search() {
     const r = await searchAutomations(stack.value, query.value, 0)
     entries.value = r.entries
     total.value = r.total
+    picked.value = new Set()
     searched.value = query.value.trim()
   } catch (e) {
     error.value = `Could not search automations: ${e.message}`
@@ -54,9 +57,32 @@ async function loadMore() {
   }
 }
 
+// ── Download one, several or all shown (feedback #40) ───
+const picked = ref(new Set())
+const allPicked = computed(() => entries.value.length > 0 && entries.value.every((a) => picked.value.has(a.id)))
+function togglePick(id) {
+  const next = new Set(picked.value)
+  next.has(id) ? next.delete(id) : next.add(id)
+  picked.value = next
+}
+function togglePickAll() {
+  picked.value = allPicked.value ? new Set() : new Set(entries.value.map((a) => a.id))
+}
+const docProgress = ref(null) // { done, total } while the export loads
+async function buildDoc() {
+  const list = picked.value.size ? entries.value.filter((a) => picked.value.has(a.id)) : entries.value
+  docProgress.value = { done: 0, total: list.length }
+  try {
+    return await automationsDoc(stack.value, list, { onProgress: (done, total) => { docProgress.value = { done, total } } })
+  } finally {
+    docProgress.value = null
+  }
+}
+
 useRouteSearch('/automations', (q) => { query.value = q; whenStack(search) })
 
 const columns = [
+  { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
   { key: 'status', label: 'Status' },
   { key: 'lastRunStatus', label: 'Last run' },
@@ -85,8 +111,19 @@ const columns = [
         Search for an automation by name, or search with an empty box to list all, most recently run first.
       </div>
       <template v-else-if="searched !== null">
-        <p class="mb-2 text-xs text-muted-foreground">{{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}.</p>
+        <div class="mb-2 flex flex-wrap items-center gap-2">
+          <p class="text-xs text-muted-foreground flex-1">{{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}.{{ entries.length < total ? ` Download covers the ${entries.length} shown; load more to include more.` : '' }}</p>
+          <span v-if="docProgress" class="text-xs text-muted-foreground tabular-nums">Loading {{ docProgress.done }} of {{ docProgress.total }}...</span>
+          <DownloadMenu v-if="entries.length" :get-doc="buildDoc" :file-name="picked.size === 1 ? entries.find((a) => picked.has(a.id))?.name || 'automation' : `automations-${searched || 'all'}`"
+            :label="picked.size ? `Download ${picked.size}` : `Download all ${entries.length}`" />
+        </div>
         <DataTable :columns="columns" :rows="entries" row-key="id" storage-key="automations" empty-text="No automations found.">
+          <template #head-pick>
+            <input type="checkbox" :checked="allPicked" aria-label="Select every automation shown" @change="togglePickAll" />
+          </template>
+          <template #cell-pick="{ row }">
+            <input type="checkbox" :checked="picked.has(row.id)" :aria-label="`Select ${row.name}`" @change="togglePick(row.id)" />
+          </template>
           <template #cell-name="{ row }">
             <RouterLink :to="`/automations/${encodeURIComponent(row.id)}`" class="font-medium hover:underline">{{ row.name || 'Untitled automation' }}</RouterLink>
           </template>

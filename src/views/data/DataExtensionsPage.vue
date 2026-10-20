@@ -4,15 +4,16 @@
 // query, export to Excel or a document.
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Loader2, RefreshCw, FolderTree, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink } from 'lucide-vue-next'
+import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
+import { exportBaseName } from '@/utils/exportName.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, clearDECaches, isSystemDE, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
+import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, fetchDERowCount, clearDECaches, isSystemDE, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
@@ -54,6 +55,7 @@ const totalIsPartial = computed(() => shared.value === null || (localFiltered.va
 // Per-DE state, keyed by DE id.
 const fields = reactive({}) // id → { status: 'loading' | 'ok' | 'error', list, error }
 const paths = reactive({}) // id → { status, path, error }
+const counts = reactive({}) // id → { status, count, error }
 const expanded = ref(new Set())
 const selected = ref(new Map()) // id → { de, fields: Set } in the order first ticked (query building)
 const picked = ref(new Set()) // ids of rows ticked for Download and Excel
@@ -134,6 +136,7 @@ function refresh() {
   clearSharedDECache(stack.value)
   for (const k of Object.keys(fields)) delete fields[k]
   for (const k of Object.keys(paths)) delete paths[k]
+  for (const k of Object.keys(counts)) delete counts[k]
   if (searched.value !== null) search()
 }
 
@@ -183,6 +186,24 @@ async function loadPath(de) {
     paths[de.id] = { status: 'error', error: e.message }
   }
 }
+// ── Row counts (feedback #46) ────────────────────────────
+async function loadCount(de) {
+  if (counts[de.id]?.status === 'ok' || counts[de.id]?.status === 'loading') return
+  counts[de.id] = { status: 'loading' }
+  try {
+    counts[de.id] = { status: 'ok', count: await fetchDERowCount(stack.value, de.id) }
+  } catch (e) {
+    counts[de.id] = { status: 'error', error: e.message }
+  }
+}
+const countsBusy = ref(false)
+async function loadAllCounts() {
+  countsBusy.value = true
+  await runInBatches(shown.value, 4, (de) => loadCount(de))
+  countsBusy.value = false
+}
+const countText = (de) => (counts[de.id]?.status === 'ok' ? counts[de.id].count.toLocaleString() : '')
+
 const pathsBusy = ref(false)
 async function loadAllPaths() {
   pathsBusy.value = true
@@ -237,12 +258,11 @@ async function runExcelExport() {
       if (exportPaths.value) await loadPath(de)
       if (exportKind.value === 'fields') await loadFields(de)
     }, { onProgress: (d) => { exporting.done = d } })
-    const date = new Date().toISOString().slice(0, 10)
     const pathOf = (de) => paths[de.id]?.path || ''
     const index = {
       name: exportKind.value === 'fields' ? 'Index' : 'Data Extensions',
-      columns: ['DE Name', 'Customer Key', 'ID', 'Source', 'Created', 'Modified', ...(exportPaths.value ? ['Path'] : [])],
-      rows: list.map((de) => [de.name, de.customerKey, de.id, de.sourceType || 'local', de.createdDate || '', de.modifiedDate || '', ...(exportPaths.value ? [pathOf(de)] : [])]),
+      columns: ['DE Name', 'Customer Key', 'ID', 'Source', 'Rows', 'Created', 'Modified', ...(exportPaths.value ? ['Path'] : [])],
+      rows: list.map((de) => [de.name, de.customerKey, de.id, de.sourceType || 'local', counts[de.id]?.status === 'ok' ? counts[de.id].count : '', de.createdDate || '', de.modifiedDate || '', ...(exportPaths.value ? [pathOf(de)] : [])]),
     }
     const sheets = [index]
     if (exportKind.value === 'fields') {
@@ -256,7 +276,7 @@ async function runExcelExport() {
         })
       }
     }
-    await downloadWorkbook(sheets, exportKind.value === 'fields' ? `DE_All_Fields_${date}.xlsx` : `DE_Names_${date}.xlsx`)
+    await downloadWorkbook(sheets, `${await exportBaseName(stack.value, exportKind.value === 'fields' ? 'data-extensions-fields' : 'data-extensions')}.xlsx`)
   } catch (e) {
     showToast(`Export failed: ${e.message}`)
   } finally {
@@ -271,7 +291,7 @@ async function buildDoc() {
   return {
     title: picked.value.size ? `${list.length} data extensions` : searched.value ? `Data extensions matching "${searched.value}"` : 'Data extensions',
     blocks: [
-      { type: 'table', columns: ['Name', 'Customer Key', 'Source', 'Folder', 'Modified'], rows: list.map((de) => [de.name, de.customerKey, de.sourceType || 'local', paths[de.id]?.path || '', formatDateTime(de.modifiedDate)]) },
+      { type: 'table', columns: ['Name', 'Customer Key', 'Source', 'Folder', 'Rows', 'Modified'], rows: list.map((de) => [de.name, de.customerKey, de.sourceType || 'local', paths[de.id]?.path || '', countText(de), formatDateTime(de.modifiedDate)]) },
       ...list.slice(0, 200).flatMap((de) => [
         { type: 'h', level: 2, text: de.name },
         fields[de.id]?.status === 'ok'
@@ -290,6 +310,7 @@ const columns = [
   { key: 'name', label: 'Name', hideable: false },
   { key: 'customerKey', label: 'Customer key' },
   { key: 'path', label: 'Folder' },
+  { key: 'rows', label: 'Rows', class: 'text-right whitespace-nowrap' },
   { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap' },
   { key: 'createdDate', label: 'Created', class: 'whitespace-nowrap' },
   { key: 'id', label: 'ID' },
@@ -317,6 +338,9 @@ const columns = [
         <Button v-else variant="outline" size="sm" class="h-8 text-xs" @click="hideAllFields"><ListTree class="h-3.5 w-3.5 mr-1" /> Hide all fields</Button>
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="pathsBusy" @click="loadAllPaths">
           <Loader2 v-if="pathsBusy" class="h-3.5 w-3.5 mr-1 animate-spin" /><FolderTree v-else class="h-3.5 w-3.5 mr-1" /> Get all folders
+        </Button>
+        <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="countsBusy" @click="loadAllCounts">
+          <Loader2 v-if="countsBusy" class="h-3.5 w-3.5 mr-1 animate-spin" /><Hash v-else class="h-3.5 w-3.5 mr-1" /> Get all counts
         </Button>
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="exporting.running" @click="exportOpen = true"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> {{ picked.size ? `Excel (${picked.size})` : 'Excel' }}</Button>
         <DownloadMenu :get-doc="buildDoc" :file-name="`data-extensions-${searched || 'all'}`" :label="picked.size ? `Download ${picked.size}` : 'Download'" />
@@ -364,6 +388,12 @@ const columns = [
             <Loader2 v-else-if="paths[row.id]?.status === 'loading'" class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
             <span v-else-if="paths[row.id]?.status === 'error'" class="text-red-600" :title="paths[row.id].error">Could not load</span>
             <button v-else class="text-primary hover:underline" @click="loadPath(row)">Get folder</button>
+          </template>
+          <template #cell-rows="{ row }">
+            <span v-if="counts[row.id]?.status === 'ok'" class="tabular-nums">{{ counts[row.id].count.toLocaleString() }}</span>
+            <Loader2 v-else-if="counts[row.id]?.status === 'loading'" class="h-3.5 w-3.5 animate-spin text-muted-foreground ml-auto" />
+            <span v-else-if="counts[row.id]?.status === 'error'" class="text-red-600" :title="counts[row.id].error">Could not load</span>
+            <button v-else class="text-primary hover:underline" @click="loadCount(row)">Get count</button>
           </template>
           <template #cell-modifiedDate="{ row }">{{ formatDateTime(row.modifiedDate) }}</template>
           <template #cell-createdDate="{ row }">{{ formatDateTime(row.createdDate) }}</template>

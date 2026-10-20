@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check, Loader2 } from 'lucide-vue-next'
 import { buildResultsMarkdown, MARKDOWN_ROW_LIMIT } from '@/utils/markdownExport.js'
+import { useStack } from '@/composables/useStack.js'
+import { exportBaseName } from '@/utils/exportName.js'
 import Button from '@/components/ui/button/Button.vue'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table/index.js'
 
@@ -31,16 +33,14 @@ const visibleRows = computed(() =>
   props.rows.slice(page.value * PAGE_SIZE, (page.value + 1) * PAGE_SIZE)
 )
 
-function safeFileName() {
-  return props.filename.replace(/[^\w\s\-().]/g, '').trim().replace(/\s+/g, '_') || 'results'
-}
-
-function saveBlob(content, type, ext) {
+async function saveBlob(content, type, ext) {
+  // The stack is only needed for the file name, so the table works without chrome APIs.
+  const { stack } = useStack()
   const blob = new Blob([content], { type })
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
   a.href     = url
-  a.download = `SFMC_QuerySaver_${safeFileName()}.${ext}`
+  a.download = `${await exportBaseName(stack.value, `query-${props.filename || 'results'}`)}.${ext}`
   a.click()
   URL.revokeObjectURL(url)
 }

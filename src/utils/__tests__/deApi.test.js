@@ -137,3 +137,19 @@ describe('deSearchTerms (feedback #22)', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('fetchDERowCount (feedback #46)', () => {
+  it('reads totalRowCount from the DE record', async () => {
+    vi.resetModules()
+    const calls = []
+    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage(msg, cb) {
+      calls.push(msg.url)
+      cb({ data: msg.url.includes('/bad') ? { name: 'x' } : { name: 'BS_Klaviyo_All_Profiles_Stage', totalRowCount: 601597 } })
+    } } })
+    const { fetchDERowCount } = await import('../deApi.js')
+    expect(await fetchDERowCount('s13', '6c9d95e6-40cc')).toBe(601597)
+    expect(calls[0]).toBe('https://mc.s13.marketingcloudapps.com/contactsmeta/fuelapi/internal/v1/customobjects/6c9d95e6-40cc')
+    await expect(fetchDERowCount('s13', 'bad')).rejects.toThrow('No row count')
+    vi.unstubAllGlobals()
+  })
+})

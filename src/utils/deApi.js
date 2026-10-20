@@ -122,6 +122,13 @@ export function mergeDEPages({ local, localDone, shared = [], limit }) {
   return { visible: ready.slice(0, limit), hasMore: ready.length > limit || !localDone, duplicates: local.length - loc.length }
 }
 
+/** Number of rows in one DE (totalRowCount of its record; feedback #46). */
+export async function fetchDERowCount(stack, id) {
+  const d = await sfmcFetch(`${CM(stack)}/internal/v1/customobjects/${encodeURIComponent(id)}`, 'GET')
+  if (typeof d?.totalRowCount !== 'number') throw new Error('No row count in the response.')
+  return d.totalRowCount
+}
+
 const fieldsCache = new Map() // `${stack}:${id}` → Promise<fields>
 
 /** The fields of one DE, primary keys first, then in DE order. Cached per page. */
