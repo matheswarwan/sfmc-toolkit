@@ -9,6 +9,7 @@
 //   SFMC_FETCH { url, method, body, bootstrap }       → { data } or { error, code, status }
 //   SAVE_RECORDS { records }, RENAME_QUERY { id, name }, IMPORT_SHARED_QUERY { records }
 //   TRACK_EVENT { clientId, name, params }
+//   WATCH_CHECK { stack, force }, WATCH_BADGE          watched automations (watches.js)
 //   SFMC_CONTEXT_CAPTURED, MCA_TOKEN_CAPTURED         from content.js
 //   PING
 
@@ -29,12 +30,14 @@ import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 import { watchForUpdates } from './updates.js'
+import { checkWatches, updateBadge } from './watches.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
 restoreCsrfTokens()
 loadEmailSaverPrefs()
 watchForUpdates()
+updateBadge()
 
 const APP_PAGE = 'app.html'
 
@@ -118,7 +121,14 @@ const handlers = {
   IMPORT_SHARED_QUERY: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
   RENAME_QUERY: async (m) => { await renameQuery(m.id, m.name); return { status: 'OK' } },
   TRACK_EVENT: (m) => { sendAnalyticsEvent(m); return null },
-  SFMC_CONTEXT_CAPTURED: (m) => { captureContext(m.context); return null },
+  SFMC_CONTEXT_CAPTURED: (m) => {
+    captureContext(m.context)
+    // An SFMC page loaded: check watched automations (at most every 15 minutes).
+    if (m.context?.stackKey) checkWatches(m.context.stackKey).catch(() => undefined)
+    return null
+  },
+  WATCH_CHECK: async (m) => ({ result: await checkWatches(m.stack || (await resolveAndPublish()).stack, { force: !!m.force }) }),
+  WATCH_BADGE: async () => { await updateBadge(); return { ok: true } },
   MCA_TOKEN_CAPTURED: (m, sender) => { handleCapturedToken(sender, m.accessToken); return null },
 }
 

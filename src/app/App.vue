@@ -9,6 +9,7 @@ import ToastHost from '@/components/shell/ToastHost.vue'
 import ApiConsole from '@/components/shell/ApiConsole.vue'
 import WhatsNew from '@/components/shell/WhatsNew.vue'
 import UpdateBanner from '@/components/shell/UpdateBanner.vue'
+import NoticesMenu from '@/components/shell/NoticesMenu.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import UsagePanel from '@/components/usage/UsagePanel.vue'
@@ -31,6 +32,8 @@ const usagePercent = computed(() => Math.round(100 * usage.progress()))
 // Settings). With none, the user is probably not logged in, so nothing is opened.
 const { stack } = useStack()
 watch(stack, (s) => { if (s) sendToBackground({ type: 'SFMC_WARM_UP', stack: s }) }, { immediate: true })
+// Watched automations are checked when the Toolkit opens (feedback #50).
+watch(stack, (s) => { if (s) sendToBackground({ type: 'WATCH_CHECK', stack: s, force: true }).catch(() => undefined) }, { immediate: true })
 
 function onKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -70,6 +73,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
           <span v-if="usage.state.running" class="text-muted-foreground">{{ usagePercent }}%</span>
         </button>
         <ConnectionMenu />
+        <NoticesMenu />
         <button class="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent" title="Send feedback" @click="showFeedback = true">
           <MessageSquare class="h-4 w-4" />
         </button>

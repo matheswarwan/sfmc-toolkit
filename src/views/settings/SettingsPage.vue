@@ -13,6 +13,7 @@ import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
 import { QUERY_STUDIO_2_ORIGINS } from '@/utils/queryStudio.js'
+import { NOTIFY_KEY } from '@/utils/watches.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
@@ -23,6 +24,23 @@ const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
 const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
 const { value: retentionDays } = useStoredSetting('_queryDERetentionDays', DEFAULT_RETENTION_DAYS, parseRetentionDays)
+
+// Desktop notifications for watched automations: the optional notifications
+// permission plus a setting (feedback #50).
+const desktopNotify = ref(false)
+chrome.storage?.local.get(NOTIFY_KEY, (r) => {
+  chrome.permissions?.contains({ permissions: ['notifications'] }, (has) => { desktopNotify.value = !!has && r?.[NOTIFY_KEY] === true })
+})
+function setDesktopNotify(on) {
+  const done = (ok) => {
+    void chrome.runtime.lastError
+    desktopNotify.value = !!on && !!ok
+    chrome.storage.local.set({ [NOTIFY_KEY]: desktopNotify.value })
+    if (on && !ok) showToast('Desktop notifications are off: Chrome did not get the permission.')
+  }
+  if (on) chrome.permissions.request({ permissions: ['notifications'] }, done)
+  else chrome.permissions.remove({ permissions: ['notifications'] }, () => done(false))
+}
 
 // Query Studio 2 capture is the optional host permission itself (feedback #32).
 const qs2 = ref(false)
@@ -202,7 +220,14 @@ function setDebounce(e) {
         </div>
         <Switch v-model="autoStartSessions" aria-label="Start the other app sessions" />
       </div>
-    </section>
+          <div class="flex items-start gap-3 mt-4">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Desktop notifications for watched automations</div>
+          <p class="text-xs text-muted-foreground">Changes to automations you watch always show on the bell and the toolbar icon. Switch this on to also get a desktop notification; Chrome asks for permission the first time.</p>
+        </div>
+        <Switch :model-value="desktopNotify" aria-label="Desktop notifications for watched automations" @update:model-value="setDesktopNotify" />
+      </div>
+</section>
 
     <section class="rounded-lg border border-border bg-card p-4">
       <h2 class="text-sm font-semibold mb-3">Troubleshooting</h2>

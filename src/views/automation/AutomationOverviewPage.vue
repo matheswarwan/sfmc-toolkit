@@ -1,0 +1,146 @@
+<script setup>
+// Automation overview (feedback #50): every automation in the business unit counted
+// by status and last run, what needs a look, watched automations, and run trends
+// from the run log on request.
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { Loader2, RefreshCw, TrendingUp, Eye } from 'lucide-vue-next'
+import StatusBadge from '@/components/results/StatusBadge.vue'
+import StackedBars from '@/components/results/StackedBars.vue'
+import Button from '@/components/ui/button/Button.vue'
+import { useStack, whenStack } from '@/composables/useStack.js'
+import { listAllAutomations, summarizeAutomations, runTrends } from '@/utils/overview.js'
+import { automationStatusName, WATCHES_KEY } from '@/utils/watches.js'
+import { formatDateTime } from '@/utils/format.js'
+
+const { stack } = useStack()
+const list = ref(null)
+const loading = ref(false)
+const progress = ref({ done: 0, total: 0 })
+const error = ref('')
+const summary = computed(() => (list.value ? summarizeAutomations(list.value) : null))
+
+async function load() {
+  if (!stack.value) { error.value = 'Not connected to Marketing Cloud.'; return }
+  loading.value = true
+  error.value = ''
+  trends.value = null
+  try {
+    list.value = await listAllAutomations(stack.value, (done, total) => { progress.value = { done, total } })
+  } catch (e) {
+    error.value = `Could not read the automations: ${e.message}`
+  } finally {
+    loading.value = false
+  }
+}
+
+// ── Run trends (on request: one run-log call per automation) ──
+const trendDays = ref(30)
+const trends = ref(null)
+const trendBusy = ref(false)
+const trendProgress = ref({ done: 0, total: 0 })
+async function loadTrends() {
+  trendBusy.value = true
+  error.value = ''
+  try {
+    trends.value = await runTrends(stack.value, list.value, { days: trendDays.value, onProgress: (done, total) => { trendProgress.value = { done, total } } })
+  } catch (e) {
+    error.value = `Could not read the run logs: ${e.message}`
+  } finally {
+    trendBusy.value = false
+  }
+}
+const trendTotals = computed(() => trends.value?.days.reduce((t, d) => ({ ok: t.ok + d.ok, failed: t.failed + d.failed }), { ok: 0, failed: 0 }))
+const dayLabel = (r) => new Date(`${r.key}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+const SERIES = [{ key: 'ok', label: 'Succeeded', color: '#0ca30c' }, { key: 'failed', label: 'Failed', color: '#d03b3b' }]
+
+// ── Watched automations ─────────────────────────────────
+const watches = ref({})
+const watchedHere = computed(() => Object.values(watches.value).filter((w) => w.stack === stack.value))
+const loadWatches = () => chrome.storage.local.get(WATCHES_KEY, (r) => { watches.value = r?.[WATCHES_KEY] || {} })
+const onChange = (c, area) => { if (area === 'local' && WATCHES_KEY in c) watches.value = c[WATCHES_KEY].newValue || {} }
+onMounted(() => { try { loadWatches(); chrome.storage.onChanged.addListener(onChange) } catch { /* not in an extension */ } })
+onUnmounted(() => { try { chrome.storage.onChanged.removeListener(onChange) } catch { /* ignore */ } })
+const link = (id) => `/automations/${encodeURIComponent(id)}`
+// Last, so everything load() touches is defined when it runs straight away.
+whenStack(load)
+</script>
+
+<template>
+  <div class="h-full overflow-y-auto p-4 space-y-4 text-sm">
+    <div class="flex items-center gap-2">
+      <h1 class="text-base font-semibold flex-1">Automations in this business unit</h1>
+      <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
+      <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
+        <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
+      </Button>
+    </div>
+    <p v-if="error" class="text-red-600 text-xs" role="alert">{{ error }}</p>
+
+    <template v-if="summary">
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="rounded-lg border border-border bg-card p-3"><div class="text-xs text-muted-foreground">Automations</div><div class="text-2xl font-semibold tabular-nums">{{ summary.total.toLocaleString() }}</div></div>
+        <div class="rounded-lg border border-border bg-card p-3"><div class="text-xs text-muted-foreground">Last run failed</div><div class="text-2xl font-semibold tabular-nums" :class="summary.failedLastRun ? 'text-red-600' : ''">{{ summary.failedLastRun }}</div></div>
+        <div class="rounded-lg border border-border bg-card p-3 col-span-2">
+          <div class="text-xs text-muted-foreground mb-1">By status</div>
+          <div class="flex flex-wrap gap-1.5">
+            <span v-for="s in summary.byStatus" :key="s.label" class="inline-flex items-center gap-1"><StatusBadge :status="s.label" /> <span class="tabular-nums text-xs">{{ s.count }}</span></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-border bg-card p-3">
+        <h2 class="font-semibold mb-2">Needs a look <span class="text-xs font-normal text-muted-foreground">({{ summary.attention.length }})</span></h2>
+        <p v-if="!summary.attention.length" class="text-xs text-muted-foreground">Nothing: no failed last runs, no automations in error, none running for more than 6 hours.</p>
+        <table v-else class="w-full text-xs">
+          <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Automation</th><th class="py-1 pr-3">Status</th><th class="py-1 pr-3">Why</th><th class="py-1 pr-3">Last run</th></tr></thead>
+          <tbody><tr v-for="x in summary.attention" :key="x.automation.id" class="border-b border-border/50">
+            <td class="py-1 pr-3"><RouterLink :to="link(x.automation.id)" class="font-medium hover:underline">{{ x.automation.name }}</RouterLink></td>
+            <td class="py-1 pr-3"><StatusBadge :status="automationStatusName(x.automation.status)" /></td>
+            <td class="py-1 pr-3">{{ x.reason }}</td>
+            <td class="py-1 pr-3 whitespace-nowrap">{{ formatDateTime(x.automation.lastRunTime) }}</td>
+          </tr></tbody>
+        </table>
+      </section>
+
+      <section class="rounded-lg border border-border bg-card p-3">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <h2 class="font-semibold flex-1">Run trends</h2>
+          <select v-model.number="trendDays" class="h-7 rounded-md border border-border bg-background px-1.5 text-xs" aria-label="Days of runs">
+            <option :value="7">Last 7 days</option><option :value="30">Last 30 days</option><option :value="90">Last 90 days</option>
+          </select>
+          <Button size="sm" variant="outline" class="h-7 text-xs" :disabled="trendBusy" @click="loadTrends">
+            <Loader2 v-if="trendBusy" class="h-3.5 w-3.5 mr-1 animate-spin" /><TrendingUp v-else class="h-3.5 w-3.5 mr-1" />
+            {{ trendBusy ? `Reading run logs ${trendProgress.done} of ${trendProgress.total}` : trends ? 'Load again' : 'Load run trends' }}
+          </Button>
+        </div>
+        <p v-if="!trends" class="text-xs text-muted-foreground">Reads the run log of the 40 automations that ran most recently (one request each), then shows runs and failures per day.</p>
+        <template v-else>
+          <p class="text-xs text-muted-foreground mb-2">{{ trendTotals.ok + trendTotals.failed }} runs, {{ trendTotals.failed }} failed, across {{ trends.read }} automations{{ trends.errors ? ` (${trends.errors} run logs could not be read)` : '' }}.</p>
+          <StackedBars :rows="trends.days" :series="SERIES" :label-of="dayLabel" :title="`Runs per day, last ${trendDays} days`" />
+          <table v-if="trends.perAutomation.some((p) => p.failed)" class="w-full text-xs mt-3">
+            <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Most failures</th><th class="py-1 pr-3 text-right">Runs</th><th class="py-1 pr-3 text-right">Failed</th><th class="py-1 pr-3">Last failure</th></tr></thead>
+            <tbody><tr v-for="p in trends.perAutomation.filter((x) => x.failed).slice(0, 10)" :key="p.automation.id" class="border-b border-border/50">
+              <td class="py-1 pr-3"><RouterLink :to="link(p.automation.id)" class="font-medium hover:underline">{{ p.automation.name }}</RouterLink></td>
+              <td class="py-1 pr-3 text-right tabular-nums">{{ p.runs }}</td><td class="py-1 pr-3 text-right tabular-nums text-red-600">{{ p.failed }}</td>
+              <td class="py-1 pr-3">{{ formatDateTime(p.lastFailure?.start) }} {{ p.lastFailure?.message || '' }}</td>
+            </tr></tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <section class="rounded-lg border border-border bg-card p-3">
+      <h2 class="font-semibold mb-2 flex items-center gap-1.5"><Eye class="h-4 w-4" /> Watched here <span class="text-xs font-normal text-muted-foreground">({{ watchedHere.length }})</span></h2>
+      <p v-if="!watchedHere.length" class="text-xs text-muted-foreground">Open an automation and click Watch to be told when it is paused, activated, runs or fails.</p>
+      <table v-else class="w-full text-xs">
+        <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Automation</th><th class="py-1 pr-3">Status</th><th class="py-1 pr-3">Last run</th><th class="py-1 pr-3">Checked</th></tr></thead>
+        <tbody><tr v-for="w in watchedHere" :key="w.id" class="border-b border-border/50">
+          <td class="py-1 pr-3"><RouterLink :to="link(w.id)" class="font-medium hover:underline">{{ w.name }}</RouterLink></td>
+          <td class="py-1 pr-3"><StatusBadge :status="automationStatusName(w.last?.status)" /></td>
+          <td class="py-1 pr-3">{{ formatDateTime(w.last?.lastRunTime) }} {{ w.last?.lastRunStatus || '' }}</td>
+          <td class="py-1 pr-3 text-muted-foreground">{{ w.checkedAt ? formatDateTime(new Date(w.checkedAt).toISOString()) : 'Not yet' }}<span v-if="w.error" class="block text-red-600">{{ w.error }}</span></td>
+        </tr></tbody>
+      </table>
+    </section>
+  </div>
+</template>

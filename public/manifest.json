@@ -23,6 +23,7 @@
     "type": "module"
   },
   "permissions": ["storage", "unlimitedStorage", "webRequest", "tabs", "cookies"],
+  "optional_permissions": ["notifications"],
   "optional_host_permissions": ["https://*.herokuapp.com/*"],
   "host_permissions": [
     "https://*.exacttarget.com/*",
