@@ -25,6 +25,7 @@ export const FEATURE_GROUPS = [
     title: 'Saved queries',
     intro: 'Queries > Saved queries.',
     items: [
+      { title: 'Query Studio 2 runs', since: '2.0.3', how: 'Settings > Running queries > Save Query Studio 2 runs', detail: 'Queries run in the new Query Studio 2 are saved like Query Studio runs. Turning it on asks Chrome for access to Query Studio 2\'s site; turning it off removes it.' },
       { title: 'Automatic capture from Query Studio', how: 'Automatic', detail: 'Every query you run in Query Studio is saved, named with the date and time, with the business unit you were in. New captures appear without a reload.' },
       { title: 'Search and filters', detail: 'Search names, SQL and business unit names; bu:<name or MID> filters by business unit. Browse by Today, Yesterday, This Week and so on in the sidebar, filter by business unit, or show only favourites.' },
       { title: 'Quick preview', how: 'Click a card', detail: 'See the full SQL, copy it, share it (a link valid for 24 hours), or open it in Run Query or the Query Builder.' },
@@ -37,6 +38,9 @@ export const FEATURE_GROUPS = [
     title: 'Run Query',
     intro: 'Queries > Run Query in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
     items: [
+      { title: 'Clean up SFMC', since: '2.0.3', how: 'Queries > Clean up SFMC', detail: 'Lists the data extensions and Query activities Run Query created (names starting SFMCQS_) and deletes the ones you tick, after asking. Nothing else is ever listed.' },
+      { title: 'Data retention on new data extensions', since: '2.0.3', how: 'Settings > Running queries', detail: 'Off by default. Switched on, SFMC deletes each row of a new Run Query data extension after the number of days you set.' },
+      { title: 'Export with no rows', since: '2.0.3', detail: 'When a query returns nothing, Copy for AI and MD still give the SQL and the columns, and CSV gives the header.' },
       {
         title: 'Up to 6 queries side by side',
         how: 'Layout buttons 1×1, 1×2, 2×2, 2×3 and + Panel',
@@ -185,6 +189,20 @@ export const FEATURE_GROUPS = [
       { title: 'Overview and Full view', detail: 'Overview shows the steps side by side, like Automation Studio; click an activity for its details. Full view lists every activity with its details, SQL and scripts highlighted, and Show additional details for the rest.' },
       { title: 'Every activity type', detail: 'Queries, scripts, imports, data extracts, file transfers, filters, email sends, waits, journeys and every other type. Types SFMC has no API for show what the automation step holds.' },
       { title: 'Download the automation', detail: 'The whole automation, with every activity\'s details, as Markdown, Word or HTML.' },
+      { title: 'Open in Automation Studio', since: '2.0.3', detail: 'The Automation Studio button opens this automation, not the Automation Studio home page.' },
+      { title: 'Data extensions on activity cards', since: '2.0.3', how: 'View or SFMC next to a target or result', detail: 'View finds the data extension in Data Extensions; SFMC opens it in Contact Builder.' },
+      { title: 'Run this query', since: '2.0.3', how: 'On a SQL Query activity', detail: 'Run in Toolkit opens the SQL in Run Query (results go to a new data extension). Run activity in SFMC starts the Query activity itself, after asking, and says when it has finished; it writes to its own target data extension.' },
+      { title: 'Load more automations', since: '2.0.3', detail: 'Works when SFMC repeats the first page instead of sending the next.' },
+    ],
+  },
+  {
+    id: 'templates',
+    title: 'Automation Templates',
+    intro: 'Automation > Templates. The Toolkit creates the data extensions, Query activities and automation; it never schedules or runs them.',
+    items: [
+      { title: 'Orphan contacts', since: '2.0.3', detail: 'After Mateusz Dabrowski\'s Contact Deletion article: collects contacts whose Salesforce record is gone (Leads and Users no longer synced, Contacts deleted in CRM) into a sendable Contact Deletion Pending data extension, with an optional archive of hashed emails. Shows how to make the All Contacts mobile list it reads, and how to delete the contacts in Contact Builder.' },
+      { title: 'Data view archive', since: '2.0.3', detail: 'A data extension for each of Sent, Open, Click, Bounce, Unsubscribe, Complaint and Job, and a daily automation that copies the last few days into them, so tracking older than six months is kept.' },
+      { title: 'See before you create', detail: 'Every data extension (fields, keys), Query activity (with its SQL) and automation step is listed before anything is created. If a step fails, the page lists what was already created.' },
     ],
   },
   {
@@ -192,6 +210,7 @@ export const FEATURE_GROUPS = [
     title: 'Activities',
     intro: 'Automation > Activities.',
     items: [
+      { title: 'Filters on every stack', since: '2.0.3', detail: 'Filter activities load where SFMC refuses to sort them.' },
       { title: 'Activities by type', detail: 'Query, Script, Import, Data Extract, File Transfer and Filter. Search by name, list all (newest first), or Fetch all to load every one (up to 2,000).' },
       { title: 'Details for each', detail: 'The same details as in an automation, with All fields to show every property. Filters can load their filter definitions.' },
     ],
@@ -201,7 +220,7 @@ export const FEATURE_GROUPS = [
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',
     items: [
-      { title: 'Find data extensions', detail: 'Search by name (names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
+      { title: 'Find data extensions', detail: 'Search by name, or any part of it ("120" finds BS_Klaviyo_120D_Snapshot; names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Folders and fields', detail: 'Get a DE\'s folder path, or all of them; open its fields, or View all fields to open every listed DE (10 at a time, with a progress bar and Stop).' },
       { title: 'Where used', how: 'Where used on a data extension\'s row, or on a field', detail: 'Opens the Where used panel for the data extension or one field (see Where used below).' },

@@ -79,6 +79,10 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
+2.0.3: Automation Templates (Orphan contacts, Data view archive): the Toolkit creates the data extensions, queries and automation, and never schedules or runs them. Run a SQL activity from its card, Clean up SFMC for data extensions and queries Run Query created, optional data retention on new data extensions, saving Query Studio 2 runs (optional permission), and fixes to data extension search, Load more automations, Filter activities and the Automation Studio link.
+
+2.0.0:
+
 SFMC Query Saver is now SFMC Toolkit. Everything you saved is still here. New: Automations, Activities, Journeys (with a journey canvas), Journey Entry, Data Extensions and CloudPages; a full-tab layout with a sidebar; Ctrl+K search; backups; feedback with screenshots; every SQL check can be turned off in Settings.
 
 ## Category
@@ -98,6 +102,7 @@ SFMC Toolkit helps Salesforce Marketing Cloud users work with their own account:
 - **Host permissions:**
   - `*.exacttarget.com`, `*.marketingcloudapps.com`, `*.marketingcloud.com`, `*.salesforce-marketingcloud.com`: Marketing Cloud's own domains, which the extension calls on the user's behalf.
   - `querystudio.herokuapp.com`: Query Studio, to save the queries the user runs there.
+  - Optional, `*.herokuapp.com` (from 2.0.3): requested only when the user turns on Settings > Running queries > Save Query Studio 2 runs, and then only for Query Studio 2's site (`querystudio2-dev-89f7e4653c61.herokuapp.com`), to save the queries the user runs there. Turning the setting off removes the access. A wildcard is needed in the manifest because Query Studio 2's address may change.
   - `sfmc-share-worker.mathes-btech.workers.dev`: creates and opens share links for queries, when the user chooses to share one.
   - `query-saver-feedback.mathes-btech.workers.dev`: receives feedback the user chooses to send.
   - `www.google-analytics.com`: anonymous usage counts (see below).

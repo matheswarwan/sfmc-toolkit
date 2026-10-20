@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.2'
+const VERSION = '2.0.3'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,11 +35,11 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">Where used</strong><span class="text-muted-foreground">Data > Where used, or the Where used buttons on data extensions, fields, activities and entry events: see what uses a data extension (with its lineage), a field, a data view, an email, a content block, a file location or a profile, and what an automation touches. Each step of the scan shows a progress bar.</span></li>
-        <li><strong class="block">Faster data extension search</strong><span class="text-muted-foreground">The first 50 show straight away; Shared and Synchronized data extensions join in the background. Names with spaces or dashes are found, and SFMC on a row opens the data extension in Contact Builder.</span></li>
-        <li><strong class="block">Download chosen data extensions</strong><span class="text-muted-foreground">Tick rows, then Download or Excel covers only those, with their fields.</span></li>
-        <li><strong class="block">App sessions started for you</strong><span class="text-muted-foreground">When one SFMC app already has a session, the others are started in the background, so Data Extensions, Content Builder and Journeys work straight away. Turn it off in Settings.</span></li>
-        <li><strong class="block">50 results at a time</strong><span class="text-muted-foreground">Every SFMC search shows 50 results; Load 50 more shows the next.</span></li>
+        <li><strong class="block">Automation Templates</strong><span class="text-muted-foreground">Automation > Templates creates ready-made automations: Orphan contacts (find contacts whose Salesforce record is gone, for deletion) and Data view archive (keep tracking beyond six months). You see everything before it is created; nothing is scheduled or run.</span></li>
+        <li><strong class="block">Run this query</strong><span class="text-muted-foreground">On a SQL activity: open it in Run Query, or start the activity in SFMC. Target data extensions link to Data Extensions and Contact Builder.</span></li>
+        <li><strong class="block">Clean up SFMC</strong><span class="text-muted-foreground">Queries > Clean up SFMC deletes the data extensions and Query activities Run Query created.</span></li>
+        <li><strong class="block">Query Studio 2</strong><span class="text-muted-foreground">Switch on Settings > Running queries > Save Query Studio 2 runs to save its queries too.</span></li>
+        <li><strong class="block">Fixes</strong><span class="text-muted-foreground">Data extension search finds any part of a name, Load more automations, Filter activities, the Automation Studio link, and exports when a query returns no rows.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
