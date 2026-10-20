@@ -27,7 +27,7 @@ function close() {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 p-4" @mousedown.self="close">
+  <div v-if="open" class="fixed inset-0 z-150 flex items-center justify-center bg-black/50 p-4" @mousedown.self="close">
     <div class="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="whatsnew-title">
       <div class="flex items-center justify-between px-5 pt-5">
         <span class="text-[11px] font-bold text-primary bg-primary/10 rounded-full px-3 py-1 uppercase tracking-wide">Version {{ VERSION }}</span>

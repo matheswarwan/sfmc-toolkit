@@ -20,7 +20,7 @@ function toggle() {
     aria-label="Sections"
   >
     <div class="flex items-center gap-2 h-12 px-3 border-b border-border">
-      <img src="/images/icon32x32.png" alt="" class="h-6 w-6 flex-shrink-0" />
+      <img src="/images/icon32x32.png" alt="" class="h-6 w-6 shrink-0" />
       <span v-if="!collapsed" class="font-semibold text-sm truncate">SFMC Toolkit</span>
     </div>
 
@@ -36,9 +36,9 @@ function toggle() {
           :to="item.path"
           :title="collapsed ? item.name : undefined"
           class="flex items-center gap-2.5 mx-2 px-2 h-8 rounded-md text-sm text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-          active-class="!bg-primary/10 !text-primary font-medium"
+          active-class="bg-primary/10! text-primary! font-medium"
         >
-          <component :is="item.icon" class="h-4 w-4 flex-shrink-0" />
+          <component :is="item.icon" class="h-4 w-4 shrink-0" />
           <span v-if="!collapsed" class="truncate">{{ item.name }}</span>
         </RouterLink>
       </div>
@@ -49,9 +49,9 @@ function toggle() {
         to="/settings"
         :title="collapsed ? 'Settings' : undefined"
         class="flex items-center gap-2.5 mx-2 px-2 h-8 rounded-md text-sm text-foreground/80 hover:bg-accent"
-        active-class="!bg-primary/10 !text-primary font-medium"
+        active-class="bg-primary/10! text-primary! font-medium"
       >
-        <Settings class="h-4 w-4 flex-shrink-0" />
+        <Settings class="h-4 w-4 shrink-0" />
         <span v-if="!collapsed">Settings</span>
       </RouterLink>
       <button
@@ -59,8 +59,8 @@ function toggle() {
         :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         @click="toggle"
       >
-        <PanelLeftOpen v-if="collapsed" class="h-4 w-4 flex-shrink-0" />
-        <PanelLeftClose v-else class="h-4 w-4 flex-shrink-0" />
+        <PanelLeftOpen v-if="collapsed" class="h-4 w-4 shrink-0" />
+        <PanelLeftClose v-else class="h-4 w-4 shrink-0" />
         <span v-if="!collapsed">Collapse</span>
       </button>
     </div>

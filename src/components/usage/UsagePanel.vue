@@ -88,7 +88,7 @@ function buildDoc() {
 </script>
 
 <template>
-  <aside v-if="state.open && state.target" class="fixed top-12 bottom-0 right-0 z-[110] w-full sm:w-[600px] flex flex-col border-l border-border bg-card text-foreground shadow-2xl" role="dialog" aria-labelledby="usage-title">
+  <aside v-if="state.open && state.target" class="fixed top-12 bottom-0 right-0 z-110 w-full sm:w-[600px] flex flex-col border-l border-border bg-card text-foreground shadow-2xl" role="dialog" aria-labelledby="usage-title">
     <header class="flex items-start gap-2 px-4 py-3 border-b border-border">
       <button v-if="state.history.length" class="mt-0.5 p-0.5 rounded hover:bg-accent text-muted-foreground" title="Back" @click="back"><ArrowLeft class="h-4 w-4" /></button>
       <Network v-else class="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />

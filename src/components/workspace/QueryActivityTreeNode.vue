@@ -22,11 +22,11 @@ function key(n) {
       :style="{ paddingLeft: depth * 14 + 8 + 'px' }"
       @click="emit('toggle', node)"
     >
-      <ChevronDown v-if="expanded.has(key(node))" class="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-      <ChevronRight v-else class="h-3 w-3 flex-shrink-0 text-muted-foreground" />
-      <Folder class="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+      <ChevronDown v-if="expanded.has(key(node))" class="h-3 w-3 shrink-0 text-muted-foreground" />
+      <ChevronRight v-else class="h-3 w-3 shrink-0 text-muted-foreground" />
+      <Folder class="h-3.5 w-3.5 shrink-0 text-primary" />
       <span class="text-sm font-medium text-foreground truncate flex-1">{{ node.name }}</span>
-      <span class="text-[10px] text-muted-foreground flex-shrink-0">{{ node.activities.length + node.children.length }}</span>
+      <span class="text-[10px] text-muted-foreground shrink-0">{{ node.activities.length + node.children.length }}</span>
     </button>
 
     <div v-if="expanded.has(key(node))">
@@ -49,10 +49,10 @@ function key(n) {
         @click="emit('select', item)"
       >
         <span class="flex items-center gap-1.5 min-w-0 flex-1">
-          <FileCode class="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+          <FileCode class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span class="text-sm text-foreground truncate">{{ item.name }}</span>
         </span>
-        <span class="text-[10px] text-muted-foreground flex-shrink-0">{{ relativeDate(item.modifiedDate) }}</span>
+        <span class="text-[10px] text-muted-foreground shrink-0">{{ relativeDate(item.modifiedDate) }}</span>
       </button>
 
       <div

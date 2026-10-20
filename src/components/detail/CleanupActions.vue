@@ -15,7 +15,7 @@ const confirmActivity = ref(false)
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30 flex-shrink-0">
+  <div class="flex flex-wrap items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/30 shrink-0">
 
     <!-- Delete DE -->
     <template v-if="deKey">

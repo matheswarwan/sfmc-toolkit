@@ -93,7 +93,7 @@ async function runInSFMC() {
       <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">{{ d.typeLabel }}</span>
       <h3 class="flex-1 min-w-0 truncate text-sm font-semibold">{{ d.title }}</h3>
       <slot name="actions" />
-      <div v-if="d.run" class="relative flex-shrink-0">
+      <div v-if="d.run" class="relative shrink-0">
         <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60" :disabled="running"
           :aria-expanded="runMenu" aria-haspopup="menu" @click="runMenu = !runMenu">
           <Loader2 v-if="running" class="h-3 w-3 animate-spin" /><Play v-else class="h-3 w-3" />
@@ -111,7 +111,7 @@ async function runInSFMC() {
           </button>
         </div>
       </div>
-      <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0">
+      <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0">
         Open in SFMC <ExternalLink class="h-3 w-3" />
       </a>
     </header>
@@ -120,7 +120,7 @@ async function runInSFMC() {
       <dl class="grid grid-cols-[minmax(8rem,14rem)_1fr] gap-x-4 gap-y-1">
         <template v-for="([label, value], i) in d.main" :key="'m' + i">
           <dt class="text-muted-foreground">{{ label }}</dt>
-          <dd class="break-words">
+          <dd class="wrap-break-word">
             {{ value }}
             <template v-if="deRef(label)">
               <button class="ml-2 text-primary hover:underline" :title="`Find ${deRef(label).name} in Data Extensions`" @click="openDEInToolkit(deRef(label))">View</button>
@@ -131,7 +131,7 @@ async function runInSFMC() {
         </template>
         <template v-if="showExtra">
           <template v-for="([label, value], i) in d.extra" :key="'e' + i">
-            <dt class="text-muted-foreground">{{ label }}</dt><dd class="break-words font-mono text-[11px]">{{ value }}</dd>
+            <dt class="text-muted-foreground">{{ label }}</dt><dd class="wrap-break-word font-mono text-[11px]">{{ value }}</dd>
           </template>
         </template>
       </dl>
@@ -144,7 +144,7 @@ async function runInSFMC() {
         <div v-if="t.rows.length" class="overflow-x-auto">
           <table class="w-full border border-border">
             <thead><tr class="bg-muted/40 text-left"><th v-for="c in t.columns" :key="c" class="px-2 py-1 font-semibold">{{ c }}</th></tr></thead>
-            <tbody><tr v-for="(r, j) in t.rows" :key="j" class="border-t border-border"><td v-for="(c, k) in r" :key="k" class="px-2 py-1 align-top break-words">{{ c }}</td></tr></tbody>
+            <tbody><tr v-for="(r, j) in t.rows" :key="j" class="border-t border-border"><td v-for="(c, k) in r" :key="k" class="px-2 py-1 align-top wrap-break-word">{{ c }}</td></tr></tbody>
           </table>
         </div>
         <p v-else class="text-muted-foreground">None.</p>

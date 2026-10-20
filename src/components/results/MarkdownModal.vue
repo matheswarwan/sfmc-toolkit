@@ -16,7 +16,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="emit('close')">
+  <div class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="emit('close')">
     <div class="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl" role="dialog" aria-modal="true" :aria-label="title">
       <div class="flex items-center gap-2 px-4 py-3 border-b border-border">
         <h2 class="flex-1 text-sm font-semibold truncate">{{ title }}</h2>

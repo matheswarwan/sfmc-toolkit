@@ -100,7 +100,7 @@ function badgeClass(sourceType) {
 
 <template>
   <div class="de-browser flex flex-col h-full border-r border-border bg-card">
-    <div class="p-2 border-b border-border flex-shrink-0">
+    <div class="p-2 border-b border-border shrink-0">
       <div class="relative">
         <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input v-model="searchQuery" class="pl-8 h-8 text-xs" placeholder="Search all DEs…" @input="onSearchInput" />
@@ -120,7 +120,7 @@ function badgeClass(sourceType) {
           @dragstart="onDeDragStart($event, node)"
           @click="selectDe(node)"
         >
-          <Database class="h-3 w-3 flex-shrink-0" />
+          <Database class="h-3 w-3 shrink-0" />
           <span class="truncate flex-1">{{ node.name }}</span>
           <span class="text-[9px] px-1 rounded" :class="badgeClass(node.sourceType)">{{ node.sourceType }}</span>
         </button>

@@ -82,7 +82,7 @@ function downloadCSV() {
 <template>
   <div class="flex flex-col flex-1 overflow-hidden min-h-0">
     <!-- Toolbar -->
-    <div class="flex items-center justify-between px-4 py-2 bg-card border-b border-border flex-shrink-0">
+    <div class="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0">
       <span class="text-xs font-bold text-foreground">
         <template v-if="total > rows.length">Showing {{ rows.length.toLocaleString() }} of {{ total.toLocaleString() }} rows</template>
         <template v-else>{{ rows.length.toLocaleString() }} rows</template>

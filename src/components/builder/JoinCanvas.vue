@@ -442,8 +442,8 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); if (rafId) c
             @mousedown.stop
             @click="onFieldClick(node.id, f.name)"
           >
-            <KeyRound v-if="isKey(f)" class="h-3 w-3 text-amber-500 flex-shrink-0" />
-            <component :is="typeIcon(f)" v-else class="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <KeyRound v-if="isKey(f)" class="h-3 w-3 text-amber-500 shrink-0" />
+            <component :is="typeIcon(f)" v-else class="h-3 w-3 text-muted-foreground shrink-0" />
             <span class="truncate">{{ f.name }}</span>
           </button>
         </template>

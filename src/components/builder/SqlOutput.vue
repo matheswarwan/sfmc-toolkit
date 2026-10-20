@@ -72,7 +72,7 @@ function openInWorkspace() {
 
 <template>
   <div class="sql-output flex flex-col h-full border-l border-border">
-    <div class="px-3 py-2 border-b border-border flex items-center justify-between flex-shrink-0">
+    <div class="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
       <span class="text-xs font-bold text-muted-foreground uppercase">Generated SQL</span>
       <div class="flex gap-1">
         <Button variant="outline" size="sm" class="h-7 text-[10px]" @click="copySql">

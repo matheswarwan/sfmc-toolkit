@@ -87,7 +87,7 @@ const KIND = {
       :style="{ left: `${n.box.x}px`, top: `${n.box.y}px`, width: `${NODE_W}px`, height: `${n.kind === 'exit' ? 40 : NODE_H}px` }"
       :aria-pressed="selected === n.key" :title="n.name" @click="emit('select', n.key)">
       <div class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide" :class="KIND[n.kind].tag">
-        <component :is="KIND[n.kind].icon" class="h-3 w-3 flex-shrink-0" />
+        <component :is="KIND[n.kind].icon" class="h-3 w-3 shrink-0" />
         <span class="truncate">{{ n.kind === 'entry' ? 'Entry' : n.kind === 'exit' ? 'Exit' : nodeTypeLabel(n.type) }}</span>
       </div>
       <div v-if="n.kind !== 'exit'" class="text-xs font-medium truncate text-foreground">{{ n.name }}</div>

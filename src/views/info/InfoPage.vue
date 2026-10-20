@@ -93,7 +93,7 @@ function scrollTo(id) {
           <h3 class="text-base font-bold border-b border-border pb-1">{{ g.title }}</h3>
           <ul class="mt-3 space-y-3">
             <li v-for="t in g.items" :key="t.title" class="flex gap-3">
-              <span class="mt-0.5 h-4 flex-shrink-0 text-[10px] font-medium px-1.5 rounded-full bg-muted text-muted-foreground leading-4">
+              <span class="mt-0.5 h-4 shrink-0 text-[10px] font-medium px-1.5 rounded-full bg-muted text-muted-foreground leading-4">
                 {{ TODO_STATUS_LABELS[g.id] }}
               </span>
               <div>

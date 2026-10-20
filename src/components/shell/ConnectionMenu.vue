@@ -131,9 +131,9 @@ const pickerOptions = computed(() => {
       :aria-expanded="open"
       @click="toggleOpen"
     >
-      <span class="h-2 w-2 rounded-full flex-shrink-0" :class="dotClass" />
+      <span class="h-2 w-2 rounded-full shrink-0" :class="dotClass" />
       <span class="font-medium">{{ summary }}</span>
-      <span v-if="bu?.name" class="hidden md:inline max-w-[14rem] truncate text-muted-foreground">· {{ bu.name }}</span>
+      <span v-if="bu?.name" class="hidden md:inline max-w-56 truncate text-muted-foreground">· {{ bu.name }}</span>
       <ChevronDown class="h-3.5 w-3.5 text-muted-foreground" />
     </button>
 
@@ -149,7 +149,7 @@ const pickerOptions = computed(() => {
 
         <ul class="space-y-1.5">
           <li class="flex items-center gap-2">
-            <span class="h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0"
+            <span class="h-4 w-4 rounded-full flex items-center justify-center shrink-0"
               :class="status.connected ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'">
               <Check v-if="status.connected" class="h-2.5 w-2.5" /><X v-else class="h-2.5 w-2.5" />
             </span>
@@ -164,7 +164,7 @@ const pickerOptions = computed(() => {
             </button>
           </li>
           <li class="flex items-center gap-2">
-            <span class="h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0"
+            <span class="h-4 w-4 rounded-full flex items-center justify-center shrink-0"
               :class="status.mcaTokenReady ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
               <Check v-if="status.mcaTokenReady" class="h-2.5 w-2.5" /><Loader2 v-else class="h-2.5 w-2.5 animate-spin" />
             </span>
@@ -186,7 +186,7 @@ const pickerOptions = computed(() => {
           <p class="text-muted-foreground mb-1.5">When one app has a session, the others are started in the background. Connect starts one now.</p>
           <ul class="space-y-1">
             <li v-for="app in apps" :key="app.id" class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full flex-shrink-0" :class="app.ok ? 'bg-emerald-500' : app.starting ? 'bg-amber-500' : 'bg-muted-foreground/40'" />
+              <span class="h-2 w-2 rounded-full shrink-0" :class="app.ok ? 'bg-emerald-500' : app.starting ? 'bg-amber-500' : 'bg-muted-foreground/40'" />
               <span class="flex-1 truncate">{{ app.name }}</span>
               <span v-if="app.ok" class="text-muted-foreground">Ready</span>
               <span v-else-if="app.starting" class="flex items-center gap-1 text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Starting…</span>

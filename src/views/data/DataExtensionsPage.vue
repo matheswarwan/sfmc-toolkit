@@ -426,7 +426,7 @@ const columns = [
     </div>
 
     <!-- Excel export -->
-    <div v-if="exportOpen" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
+    <div v-if="exportOpen" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
       <div class="w-full max-w-sm rounded-lg border border-border bg-card p-4 shadow-xl text-sm" role="dialog" aria-modal="true" aria-labelledby="de-export-title">
         <h2 id="de-export-title" class="font-semibold mb-3">Export {{ exportList.length }} {{ picked.size ? 'ticked' : '' }} data extensions to Excel</h2>
         <label class="flex items-start gap-2 mb-2"><input v-model="exportKind" type="radio" value="names" class="mt-1" /><span>Names only<br /><span class="text-xs text-muted-foreground">One sheet: name, customer key, ID, source, dates.</span></span></label>

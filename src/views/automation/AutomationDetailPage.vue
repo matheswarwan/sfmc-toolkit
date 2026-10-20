@@ -100,7 +100,7 @@ function getDoc() {
       <template v-else-if="details">
         <section class="rounded-lg border border-border bg-card p-3">
           <dl class="grid grid-cols-[minmax(7rem,10rem)_1fr_minmax(7rem,10rem)_1fr] gap-x-4 gap-y-1 text-xs">
-            <template v-for="[k, v] in automationOverviewRows(details)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-words">{{ v }}</dd></template>
+            <template v-for="[k, v] in automationOverviewRows(details)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="wrap-break-word">{{ v }}</dd></template>
           </dl>
         </section>
 
@@ -175,7 +175,7 @@ function getDoc() {
     </div>
 
     <!-- Activity modal (Overview) -->
-    <div v-if="modal && acts[modal]" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="modal = null" @keydown.esc="modal = null">
+    <div v-if="modal && acts[modal]" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="modal = null" @keydown.esc="modal = null">
       <div class="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-lg bg-background shadow-xl" role="dialog" aria-modal="true">
         <div class="sticky top-0 z-10 flex justify-end bg-background p-1"><button class="p-1 rounded hover:bg-accent" title="Close" @click="modal = null"><X class="h-4 w-4" /></button></div>
         <div v-if="acts[modal].status === 'loading'" class="p-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Loading…</div>

@@ -62,7 +62,7 @@ function toggleWarnings(idx) {
     <!-- Completed summary banner -->
     <div v-if="completedSummary"
       class="flex items-center gap-2 px-3.5 py-2.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-      <Check class="h-4 w-4 flex-shrink-0" />
+      <Check class="h-4 w-4 shrink-0" />
       {{ completedSummary }}
     </div>
 
@@ -76,10 +76,10 @@ function toggleWarnings(idx) {
       >
         <!-- Chevron pill -->
         <div class="step-pill flex items-center justify-center gap-1.5 w-full h-8 px-2">
-          <Check v-if="stepStatuses[idx] === 'done'" class="h-3 w-3 flex-shrink-0 step-icon" />
-          <span v-else-if="stepStatuses[idx] === 'error'" class="text-[11px] font-bold flex-shrink-0 step-icon">✕</span>
-          <span v-else-if="stepStatuses[idx] === 'running'" class="step-spinner flex-shrink-0" />
-          <span v-else class="text-[10px] font-bold flex-shrink-0 step-num">{{ idx + 1 }}</span>
+          <Check v-if="stepStatuses[idx] === 'done'" class="h-3 w-3 shrink-0 step-icon" />
+          <span v-else-if="stepStatuses[idx] === 'error'" class="text-[11px] font-bold shrink-0 step-icon">✕</span>
+          <span v-else-if="stepStatuses[idx] === 'running'" class="step-spinner shrink-0" />
+          <span v-else class="text-[10px] font-bold shrink-0 step-num">{{ idx + 1 }}</span>
           <span class="text-[11px] font-semibold truncate step-label">{{ label }}</span>
         </div>
 
@@ -150,7 +150,7 @@ function toggleWarnings(idx) {
               </Button>
             </template>
             <template v-else>
-              <span class="text-[10px] text-red-700 dark:text-red-400 leading-snug break-words">{{ stepErrors[idx] }}</span>
+              <span class="text-[10px] text-red-700 dark:text-red-400 leading-snug wrap-break-word">{{ stepErrors[idx] }}</span>
               <Button variant="outline" size="sm" class="h-6 text-[10px] border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" @click="emit('retry', idx)">
                 <RefreshCw class="h-3 w-3 mr-1" /> Retry
               </Button>

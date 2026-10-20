@@ -96,11 +96,11 @@ const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
       <div class="flex-1 min-w-0 overflow-auto">
         <section class="m-4 rounded-lg border border-border bg-card p-3">
           <dl class="grid grid-cols-[minmax(7rem,9rem)_1fr_minmax(7rem,9rem)_1fr] gap-x-4 gap-y-1 text-xs">
-            <template v-for="[k, v] in journeyOverviewRows(journey)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-words">{{ v }}</dd></template>
+            <template v-for="[k, v] in journeyOverviewRows(journey)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="wrap-break-word">{{ v }}</dd></template>
           </dl>
         </section>
         <p class="mx-4 mb-2 text-xs text-muted-foreground">Click a step to see what it does.</p>
-        <div ref="canvasBox" class="mx-4 mb-4 overflow-auto max-h-[70vh] rounded-lg border border-border bg-[radial-gradient(circle,_hsl(var(--border))_1px,_transparent_1px)] [background-size:16px_16px]">
+        <div ref="canvasBox" class="mx-4 mb-4 overflow-auto max-h-[70vh] rounded-lg border border-border bg-[radial-gradient(circle,hsl(var(--border))_1px,transparent_1px)] bg-size-[16px_16px]">
           <JourneyCanvas :graph="graph" :layout="layout" :orientation="orientation" :selected="selected" @select="selected = selected === $event ? null : $event" />
         </div>
         <section v-if="journey.goals?.length || journey.exits?.length" class="mx-4 mb-4 text-xs text-muted-foreground">
@@ -110,7 +110,7 @@ const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
         </section>
       </div>
 
-      <aside v-if="selectedDesc" class="w-[26rem] max-w-[45%] flex-shrink-0 border-l border-border bg-background overflow-y-auto" aria-label="Step details">
+      <aside v-if="selectedDesc" class="w-104 max-w-[45%] shrink-0 border-l border-border bg-background overflow-y-auto" aria-label="Step details">
         <div class="sticky top-0 z-10 flex justify-end bg-background p-1"><button class="p-1 rounded hover:bg-accent" title="Close" @click="selected = null"><X class="h-4 w-4" /></button></div>
         <div class="px-3 pb-4 space-y-3">
           <ActivityCard :description="selectedDesc" />
@@ -119,7 +119,7 @@ const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
             <div v-if="preview.status === 'loading'" class="p-3 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 class="h-3.5 w-3.5 animate-spin" /> Finding the email in Content Builder…</div>
             <p v-else-if="preview.status === 'none'" class="p-3 text-xs text-muted-foreground">This email was not found in Content Builder.</p>
             <p v-else-if="preview.status === 'error'" class="p-3 text-xs text-red-600">Could not load the email: {{ preview.error }}</p>
-            <iframe v-else :srcdoc="preview.html" sandbox class="w-full h-[28rem] border-0 bg-white rounded-b-lg" title="Email preview" />
+            <iframe v-else :srcdoc="preview.html" sandbox class="w-full h-112 border-0 bg-white rounded-b-lg" title="Email preview" />
           </div>
         </div>
       </aside>

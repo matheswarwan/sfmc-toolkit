@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.cjs";
 
 @layer base {
   :root {
@@ -65,6 +64,12 @@
 
   * {
     @apply border-border;
+  }
+
+  /* Tailwind 4 gives buttons the default cursor; keep Tailwind 3's pointer. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 
   body {

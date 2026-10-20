@@ -114,7 +114,7 @@ function removeComputed(index) {
         >
           <option v-for="opt in fieldOptions" :key="opt.label" :value="`${opt.alias}::${opt.field}`">{{ opt.label }}</option>
         </select>
-        <Button variant="ghost" size="icon" class="h-5 w-5 flex-shrink-0" title="Remove group by" @click="removeGroupBy(i)"><X class="h-2.5 w-2.5" /></Button>
+        <Button variant="ghost" size="icon" class="h-5 w-5 shrink-0" title="Remove group by" @click="removeGroupBy(i)"><X class="h-2.5 w-2.5" /></Button>
       </div>
       <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" :disabled="!fieldOptions.length" @click="addGroupBy">
         <Plus class="h-2.5 w-2.5" /> Add group by
@@ -143,7 +143,7 @@ function removeComputed(index) {
           <option value="ASC">ASC</option>
           <option value="DESC">DESC</option>
         </select>
-        <Button variant="ghost" size="icon" class="h-5 w-5 flex-shrink-0" title="Remove order by" @click="removeOrderBy(i)"><X class="h-2.5 w-2.5" /></Button>
+        <Button variant="ghost" size="icon" class="h-5 w-5 shrink-0" title="Remove order by" @click="removeOrderBy(i)"><X class="h-2.5 w-2.5" /></Button>
       </div>
       <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" :disabled="!fieldOptions.length" @click="addOrderBy">
         <Plus class="h-2.5 w-2.5" /> Add order by
@@ -155,7 +155,7 @@ function removeComputed(index) {
       <div class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Computed / aggregate columns</div>
       <div v-for="(c, i) in opts.computedColumns" :key="'c' + i" class="flex items-center gap-1">
         <input
-          class="flex-[2] min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
+          class="flex-2 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
           :value="c.expression"
           placeholder="COUNT(t1.[SubscriberKey])"
           @input="updateComputed(i, 'expression', $event.target.value)"
@@ -167,7 +167,7 @@ function removeComputed(index) {
           placeholder="alias"
           @input="updateComputed(i, 'alias', $event.target.value)"
         />
-        <Button variant="ghost" size="icon" class="h-5 w-5 flex-shrink-0" title="Remove computed column" @click="removeComputed(i)"><X class="h-2.5 w-2.5" /></Button>
+        <Button variant="ghost" size="icon" class="h-5 w-5 shrink-0" title="Remove computed column" @click="removeComputed(i)"><X class="h-2.5 w-2.5" /></Button>
       </div>
       <div class="flex items-center flex-wrap gap-1">
         <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" @click="addComputed('')">

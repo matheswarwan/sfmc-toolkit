@@ -181,8 +181,8 @@ function setDebounce(e) {
           class="mt-2 h-8 w-full rounded-md border border-border bg-background px-2 text-xs" />
         <ul class="mt-2 max-h-80 overflow-y-auto divide-y divide-border rounded-md border border-border">
           <li v-for="r in rules" :key="r.code" class="flex items-center gap-2 px-2 py-1.5 text-xs">
-            <code class="w-12 flex-shrink-0">{{ r.code }}</code>
-            <span class="text-[10px] rounded px-1 flex-shrink-0"
+            <code class="w-12 shrink-0">{{ r.code }}</code>
+            <span class="text-[10px] rounded px-1 shrink-0"
               :class="r.severity === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' : r.severity === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-muted text-muted-foreground'">{{ r.severity }}</span>
             <span class="flex-1">{{ r.title }}</span>
             <span v-if="ALWAYS_OFF.has(r.code)" class="text-muted-foreground" title="SELECT * works in Run Query, so this check is not used">Always off</span>

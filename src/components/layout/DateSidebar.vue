@@ -45,7 +45,7 @@ function clearBuFilters() {
 
 <template>
   <aside
-    class="relative flex-shrink-0 h-full bg-card border-r border-border py-3 px-2 overflow-y-auto"
+    class="relative shrink-0 h-full bg-card border-r border-border py-3 px-2 overflow-y-auto"
     :style="{ width: sidebarWidth + 'px' }"
   >
 
@@ -85,7 +85,7 @@ function clearBuFilters() {
             :class="activeBuFilters.has(bu.name) ? 'text-primary font-semibold' : 'text-muted-foreground'">
             {{ bu.name }}
           </span>
-          <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 flex-shrink-0 tabular-nums"
+          <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 shrink-0 tabular-nums"
             :class="activeBuFilters.has(bu.name)
               ? 'bg-primary text-white'
               : 'bg-muted text-muted-foreground'">
@@ -118,7 +118,7 @@ function clearBuFilters() {
     >
       <span class="text-xs font-medium"
         :class="activeKey === null ? 'text-primary font-semibold' : ''">All</span>
-      <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 flex-shrink-0 tabular-nums"
+      <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 shrink-0 tabular-nums"
         :class="activeKey === null ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
         {{ totalCount }}
       </span>
@@ -139,7 +139,7 @@ function clearBuFilters() {
         :class="activeKey === group.key ? 'text-primary font-semibold' : ''">
         {{ group.label }}
       </span>
-      <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 flex-shrink-0 tabular-nums"
+      <span class="text-[10px] font-semibold rounded-full px-1.5 py-px ml-1 shrink-0 tabular-nums"
         :class="activeKey === group.key ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'">
         {{ group.count }}
       </span>

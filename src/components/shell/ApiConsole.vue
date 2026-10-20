@@ -30,7 +30,7 @@ function startResize(e) {
 </script>
 
 <template>
-  <div v-if="enabled" class="flex-shrink-0 border-t border-slate-700 bg-[#1E1E1E]">
+  <div v-if="enabled" class="shrink-0 border-t border-slate-700 bg-[#1E1E1E]">
     <div v-if="open" class="h-1.5 bg-[#333] cursor-ns-resize hover:bg-primary" @mousedown="startResize" />
     <div class="flex items-center justify-between px-3 py-1.5 cursor-pointer select-none bg-[#2D2D2D] hover:bg-[#333]" @click="open = !open">
       <span class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">

@@ -70,7 +70,7 @@ function formatQuery() {
 
 <template>
   <div class="query-panel flex flex-col min-h-0 min-w-0 rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-    <div class="flex items-center gap-1.5 px-2 py-1.5 border-b border-border flex-shrink-0">
+    <div class="flex items-center gap-1.5 px-2 py-1.5 border-b border-border shrink-0">
       <span class="text-[10px] font-bold text-muted-foreground">#{{ panelIndex + 1 }}</span>
       <template v-if="!isEditingName">
         <span class="text-xs font-semibold truncate flex-1" @dblclick="enableNameEditing">{{ panelTitle }}</span>
@@ -97,14 +97,14 @@ function formatQuery() {
     <!-- Query Activity picker ("Open from AS") -->
     <DialogRoot :open="showQueryPicker">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-[9999] bg-black/45" @click="showQueryPicker = false" />
+        <DialogOverlay class="fixed inset-0 z-9999 bg-black/45" @click="showQueryPicker = false" />
         <DialogContent
-          class="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-[480px] max-h-[70vh] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col focus:outline-none"
+          class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[480px] max-h-[70vh] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col focus:outline-none"
           @click.stop
         >
           <DialogTitle class="sr-only">Open Query Activity</DialogTitle>
 
-          <div class="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
             <div class="flex items-center gap-2">
               <FolderOpen class="h-4 w-4 text-primary" />
               <span class="text-sm font-bold text-foreground">Open Query Activity</span>
@@ -124,7 +124,7 @@ function formatQuery() {
             </div>
           </div>
 
-          <div class="px-4 pt-3 pb-2 flex-shrink-0">
+          <div class="px-4 pt-3 pb-2 shrink-0">
             <div class="relative">
               <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <Input v-model="queryPickerSearch" class="pl-8 h-8 text-sm" placeholder="Search by name…" autofocus />
@@ -154,7 +154,7 @@ function formatQuery() {
                 @click="selectQueryActivity(item)"
               >
                 <span class="text-sm font-medium text-foreground truncate flex-1 min-w-0">{{ item.name }}</span>
-                <span class="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5">{{ relativeDate(item.modifiedDate) }}</span>
+                <span class="text-[10px] text-muted-foreground shrink-0 mt-0.5">{{ relativeDate(item.modifiedDate) }}</span>
               </button>
             </div>
 
@@ -175,11 +175,11 @@ function formatQuery() {
           </div>
 
           <div v-if="!queryPickerLoading && queryPickerSearch.trim() && filteredPickerItems.length > 0"
-            class="px-4 py-2 border-t border-border flex-shrink-0 text-[11px] text-muted-foreground">
+            class="px-4 py-2 border-t border-border shrink-0 text-[11px] text-muted-foreground">
             {{ filteredPickerItems.length }} {{ filteredPickerItems.length === 1 ? 'activity' : 'activities' }} matching "{{ queryPickerSearch.trim() }}"
           </div>
           <div v-else-if="!queryPickerLoading && !queryPickerSearch.trim() && queryPickerItems.length > 0"
-            class="px-4 py-2 border-t border-border flex-shrink-0 text-[11px] text-muted-foreground">
+            class="px-4 py-2 border-t border-border shrink-0 text-[11px] text-muted-foreground">
             {{ queryPickerItems.length }} {{ queryPickerItems.length === 1 ? 'activity' : 'activities' }} in {{ queryPickerTree.length }} {{ queryPickerTree.length === 1 ? 'folder' : 'folders' }}
           </div>
         </DialogContent>
@@ -189,11 +189,11 @@ function formatQuery() {
     <!-- Share query -->
     <DialogRoot :open="showShare">
       <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-[9999] bg-black/45" @click="showShare = false" />
-        <DialogContent class="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-[420px] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col focus:outline-none" @click.stop>
+        <DialogOverlay class="fixed inset-0 z-9999 bg-black/45" @click="showShare = false" />
+        <DialogContent class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[420px] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col focus:outline-none" @click.stop>
           <DialogTitle class="sr-only">Share Query</DialogTitle>
 
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border flex-shrink-0">
+          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
             <div class="flex items-center gap-2">
               <Share2 class="h-4 w-4 text-primary" />
               <span class="text-sm font-bold text-foreground">Share Query</span>
@@ -225,7 +225,7 @@ function formatQuery() {
                 <Button
                   variant="outline"
                   size="sm"
-                  class="h-8 text-xs gap-1.5 flex-shrink-0 transition-colors"
+                  class="h-8 text-xs gap-1.5 shrink-0 transition-colors"
                   :class="copiedText === shareUrl ? 'border-emerald-400 text-emerald-600' : ''"
                   @click="copyToClipboard(shareUrl)"
                 >
@@ -243,19 +243,19 @@ function formatQuery() {
             </template>
           </div>
 
-          <div class="px-5 pb-4 flex-shrink-0">
+          <div class="px-5 pb-4 shrink-0">
             <Button class="w-full" @click="showShare = false">Close</Button>
           </div>
         </DialogContent>
       </DialogPortal>
     </DialogRoot>
 
-    <div v-if="formatNote" class="px-2 py-1 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-b border-border flex-shrink-0">{{ formatNote }}</div>
+    <div v-if="formatNote" class="px-2 py-1 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-b border-border shrink-0">{{ formatNote }}</div>
     <div v-show="activeTab === 'editor'" class="flex-1 flex flex-col min-h-0">
-      <div class="overflow-hidden flex-shrink-0" :style="{ height: editorHeightPct + '%' }">
+      <div class="overflow-hidden shrink-0" :style="{ height: editorHeightPct + '%' }">
         <QueryEditor ref="editorRef" :modelValue="queryText" :stack="stack" @update:modelValue="onEditorChange" @format="onFormatResult" />
       </div>
-      <div class="h-1 bg-border cursor-ns-resize flex-shrink-0" @mousedown="onResizeStart($event)" />
+      <div class="h-1 bg-border cursor-ns-resize shrink-0" @mousedown="onResizeStart($event)" />
       <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
         <ValidationPanel v-if="resultsMode === 'validating' || resultsMode === 'validation'" :results="validationResults" :isRunning="resultsMode === 'validating'" />
         <RunStepper v-else-if="showRunStepper" :stepStatuses="stepStatuses" :stepErrors="stepErrors" :stepDetails="stepDetails" :elapsedSeconds="elapsedSeconds" :completedSummary="null" @retry="runQuery" @login="openSfmcLogin" @prompt="answerPrompt" />

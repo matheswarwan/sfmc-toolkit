@@ -301,10 +301,10 @@ function toggleSection(name) {
                   @change="updateAlias(idx, $event.target.value)"
                 />
                 <span class="text-xs font-bold text-foreground truncate">{{ de.name }}</span>
-                <span class="text-[9px] px-1 rounded bg-muted text-muted-foreground flex-shrink-0">{{ de.sourceType }}</span>
-                <Loader2 v-if="loadingIds.has(de.id)" class="h-3 w-3 animate-spin text-muted-foreground flex-shrink-0" />
+                <span class="text-[9px] px-1 rounded bg-muted text-muted-foreground shrink-0">{{ de.sourceType }}</span>
+                <Loader2 v-if="loadingIds.has(de.id)" class="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
               </div>
-              <Button variant="ghost" size="icon" class="h-6 w-6 flex-shrink-0" title="Remove data extension" @click="removeDe(idx)">
+              <Button variant="ghost" size="icon" class="h-6 w-6 shrink-0" title="Remove data extension" @click="removeDe(idx)">
                 <X class="h-3 w-3" />
               </Button>
             </div>
@@ -355,7 +355,7 @@ function toggleSection(name) {
                   <option value="" disabled>{{ aliasOf(selectedList[idx + 1], idx + 1) }}.field…</option>
                   <option v-for="f in fieldsForDe(joins[idx].rightDeId)" :key="f.name" :value="f.name">{{ f.name }}</option>
                 </select>
-                <Button variant="ghost" size="icon" class="h-5 w-5 flex-shrink-0" title="Remove join condition" @click="removeJoinCondition(idx, cIdx)">
+                <Button variant="ghost" size="icon" class="h-5 w-5 shrink-0" title="Remove join condition" @click="removeJoinCondition(idx, cIdx)">
                   <X class="h-2.5 w-2.5" />
                 </Button>
               </div>
@@ -414,11 +414,11 @@ function toggleSection(name) {
               @click="toggleFieldSection(de.id)"
             >
               <div class="flex items-center gap-1.5 min-w-0">
-                <ChevronDown v-if="openFieldDEs.has(de.id)" class="h-3 w-3 flex-shrink-0" />
-                <ChevronRight v-else class="h-3 w-3 flex-shrink-0" />
+                <ChevronDown v-if="openFieldDEs.has(de.id)" class="h-3 w-3 shrink-0" />
+                <ChevronRight v-else class="h-3 w-3 shrink-0" />
                 <span class="text-[11px] font-bold truncate">{{ de.name }}</span>
               </div>
-              <span class="text-[9px] text-muted-foreground flex-shrink-0">
+              <span class="text-[9px] text-muted-foreground shrink-0">
                 {{ de.selectedFields === null ? 'All fields (*)' : de.selectedFields.length + ' selected' }}
               </span>
             </button>

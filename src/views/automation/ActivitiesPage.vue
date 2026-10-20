@@ -166,7 +166,7 @@ function getDoc() {
         <div class="space-y-3">
           <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="i" :description="d" :show-all-fields="showAllFields">
             <template #actions>
-              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0" title="Automations that run this activity" @click="whereUsed(items[i])"><Network class="h-3 w-3" /> Where used</button>
+              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0" title="Automations that run this activity" @click="whereUsed(items[i])"><Network class="h-3 w-3" /> Where used</button>
             </template>
           </ActivityCard>
         </div>

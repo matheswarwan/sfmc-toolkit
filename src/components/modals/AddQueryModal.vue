@@ -53,15 +53,15 @@ async function saveSQL() {
   <DialogRoot :open="true">
     <DialogPortal>
       <!-- Overlay -->
-      <DialogOverlay class="fixed inset-0 z-[9998] bg-black/50" @click="emit('close')" />
+      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" @click="emit('close')" />
 
       <!-- Modal container -->
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[860px] max-h-[90vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[860px] max-h-[90vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
         @click.stop
       >
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-3.5 bg-muted/30 border-b border-border flex-shrink-0">
+        <div class="flex items-center justify-between px-5 py-3.5 bg-muted/30 border-b border-border shrink-0">
           <DialogTitle class="text-[15px] font-bold text-foreground">Add SQL Query</DialogTitle>
           <div class="flex items-center gap-2">
             <Button size="sm" class="gap-1.5" @click="saveSQL">

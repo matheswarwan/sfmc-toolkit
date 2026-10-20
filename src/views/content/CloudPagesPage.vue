@@ -164,7 +164,7 @@ const columns = [
           <template #cell-name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
           <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
           <template #cell-url="{ row }">
-            <a v-if="urls[row.id]?.url" :href="urls[row.id].url" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline break-all">{{ urls[row.id].url }} <ExternalLink class="h-3 w-3 flex-shrink-0" /></a>
+            <a v-if="urls[row.id]?.url" :href="urls[row.id].url" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline break-all">{{ urls[row.id].url }} <ExternalLink class="h-3 w-3 shrink-0" /></a>
             <Loader2 v-else-if="urls[row.id]?.status === 'loading'" class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
             <span v-else-if="urls[row.id]?.status === 'ok'" class="text-muted-foreground">{{ row.status === 'Published' ? 'Not found' : 'No public URL' }}</span>
             <button v-else class="text-primary hover:underline" @click="loadUrl(row)">Get URL</button>
@@ -183,7 +183,7 @@ const columns = [
       </template>
     </div>
 
-    <div v-if="exportOpen" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
+    <div v-if="exportOpen" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
       <div class="w-full max-w-sm rounded-lg border border-border bg-card p-4 shadow-xl text-sm" role="dialog" aria-modal="true" aria-labelledby="cp-export-title">
         <h2 id="cp-export-title" class="font-semibold mb-2">Export {{ shown.length }} CloudPages to Excel</h2>
         <p class="text-xs text-muted-foreground mb-3">Name, key, type, status, asset ID, URL (when looked up), created and modified dates.</p>

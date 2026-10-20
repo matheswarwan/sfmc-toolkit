@@ -119,7 +119,7 @@ const contentBuilderUrl = (stack) => `https://mc.${stack}.exacttarget.com/cloud/
       </div>
 
       <div class="flex-1 flex min-h-0">
-        <aside class="w-72 flex-shrink-0 border-r border-border bg-card flex flex-col min-h-0" aria-label="Versions">
+        <aside class="w-72 shrink-0 border-r border-border bg-card flex flex-col min-h-0" aria-label="Versions">
           <div class="px-4 py-2 border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Version history</div>
           <div class="flex-1 overflow-y-auto">
             <div v-for="(version, idx) in versions" :key="version.versionId"
@@ -156,12 +156,12 @@ const contentBuilderUrl = (stack) => `https://mc.${stack}.exacttarget.com/cloud/
                     <div v-else-if="stateOf(version) === 'success'" class="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800"><Check class="h-3 w-3" /> Reverted</div>
                     <div v-else-if="stateOf(version)?.error" class="flex flex-col gap-1">
                       <div class="flex items-start gap-1.5 text-[10px] text-red-700 dark:text-red-400 px-2.5 py-1.5 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800" role="alert">
-                        <AlertCircle class="h-3 w-3 flex-shrink-0 mt-px" />
+                        <AlertCircle class="h-3 w-3 shrink-0 mt-px" />
                         <span v-if="stateOf(version).error.includes('EBADCSRFTOKEN')">
                           The Content Builder session expired. Open Content Builder once, then try again.
                           <a :href="contentBuilderUrl(version.stack)" target="_blank" class="underline font-semibold inline-flex items-center gap-0.5">Open <ExternalLink class="h-2.5 w-2.5" /></a>
                         </span>
-                        <span v-else class="break-words">{{ stateOf(version).error }}</span>
+                        <span v-else class="wrap-break-word">{{ stateOf(version).error }}</span>
                       </div>
                       <button class="text-[10px] text-primary underline" @click="setState(version, 'idle')">Try again</button>
                     </div>

@@ -39,7 +39,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
 
     <div
       v-if="open"
-      class="absolute right-0 top-full mt-1 z-[9999] w-40 rounded-lg border border-border bg-popover shadow-lg py-1 overflow-hidden"
+      class="absolute right-0 top-full mt-1 z-9999 w-40 rounded-lg border border-border bg-popover shadow-lg py-1 overflow-hidden"
     >
       <button
         v-for="t in themes"
@@ -49,7 +49,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocClick))
         @click="pick(t.id)"
       >
         <span
-          class="h-3 w-3 rounded-full border border-border flex-shrink-0"
+          class="h-3 w-3 rounded-full border border-border shrink-0"
           :style="{ background: t.swatch }"
         />
         {{ t.label }}

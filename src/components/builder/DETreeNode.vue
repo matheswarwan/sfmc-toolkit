@@ -34,7 +34,7 @@ function onDeDragStart(e, n) {
       @dragstart="onDeDragStart($event, node)"
       @click="emit('select', node)"
     >
-      <Database class="h-3 w-3 flex-shrink-0" />
+      <Database class="h-3 w-3 shrink-0" />
       <span class="truncate">{{ node.name }}</span>
     </button>
 
@@ -45,9 +45,9 @@ function onDeDragStart(e, n) {
         :style="{ paddingLeft: depth * 12 + 4 + 'px' }"
         @click="emit('toggle', node)"
       >
-        <ChevronDown v-if="expanded.has(key(node))" class="h-3 w-3 flex-shrink-0" />
-        <ChevronRight v-else class="h-3 w-3 flex-shrink-0" />
-        <Folder class="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+        <ChevronDown v-if="expanded.has(key(node))" class="h-3 w-3 shrink-0" />
+        <ChevronRight v-else class="h-3 w-3 shrink-0" />
+        <Folder class="h-3 w-3 shrink-0 text-muted-foreground" />
         <span class="truncate">{{ node.name }}</span>
       </button>
 

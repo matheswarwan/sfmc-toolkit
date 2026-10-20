@@ -134,7 +134,7 @@ const KINDS = [
 </script>
 
 <template>
-  <div v-show="!hidden" class="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 p-4" @mousedown.self="state === 'sending' || emit('close')">
+  <div v-show="!hidden" class="fixed inset-0 z-130 flex items-center justify-center bg-black/50 p-4" @mousedown.self="state === 'sending' || emit('close')">
     <div class="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
       <div class="flex items-center gap-2 px-5 py-3 border-b border-border">
         <h2 id="feedback-title" class="flex-1 text-base font-semibold">Send feedback</h2>

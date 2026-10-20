@@ -99,7 +99,7 @@ function getDoc() {
         <div class="space-y-3">
           <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields">
             <template #actions>
-              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline flex-shrink-0" title="Journeys that use this entry event" @click="usage.start(stack, { kind: 'event', event: shown[i] })"><Network class="h-3 w-3" /> Where used</button>
+              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0" title="Journeys that use this entry event" @click="usage.start(stack, { kind: 'event', event: shown[i] })"><Network class="h-3 w-3" /> Where used</button>
             </template>
           </ActivityCard>
         </div>

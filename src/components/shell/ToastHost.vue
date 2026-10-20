@@ -6,7 +6,7 @@ const { toast } = useToast()
 <template>
   <Transition name="toast">
     <div v-if="toast" :key="toast.id" role="status"
-      class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] max-w-[90vw] rounded-lg bg-slate-800 text-slate-50 px-4 py-2.5 text-sm font-medium shadow-xl">
+      class="fixed bottom-5 left-1/2 -translate-x-1/2 z-200 max-w-[90vw] rounded-lg bg-slate-800 text-slate-50 px-4 py-2.5 text-sm font-medium shadow-xl">
       {{ toast.message }}
     </div>
   </Transition>

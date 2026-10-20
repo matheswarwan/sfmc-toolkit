@@ -76,7 +76,7 @@ const compiledHtml = computed(() => {
           {{ displayName }}
         </span>
         <button v-if="!deleteMode"
-          class="flex-shrink-0 transition-colors p-0.5 rounded"
+          class="shrink-0 transition-colors p-0.5 rounded"
           :class="isFavourite ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400'"
           title="Toggle favourite"
           @click.stop="emit('toggle-favourite', props.id)"
@@ -89,7 +89,7 @@ const compiledHtml = computed(() => {
           class="inline-flex items-center gap-0.5 text-[9px] font-semibold text-muted-foreground bg-muted border border-border rounded-full px-1.5 py-px truncate max-w-full"
           :title="`Folder: ${categoryName}`">
           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
             <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
           </svg>
           {{ categoryName }}
@@ -122,7 +122,7 @@ const compiledHtml = computed(() => {
         class="h-full flex flex-col items-center justify-center gap-2 p-3 bg-muted/30">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-          class="text-muted-foreground/40 flex-shrink-0">
+          class="text-muted-foreground/40 shrink-0">
           <rect width="20" height="16" x="2" y="4" rx="2"/>
           <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
         </svg>
@@ -137,7 +137,7 @@ const compiledHtml = computed(() => {
     <!-- Card footer -->
     <div class="px-2.5 py-1.5 border-t border-border bg-muted/20 flex items-center justify-between gap-1">
       <span class="text-[9px] text-muted-foreground truncate">{{ humanReadableDate }}</span>
-      <span class="text-[9px] text-muted-foreground/70 flex-shrink-0">{{ versionCount }} {{ versionCount === 1 ? 'version' : 'versions' }}</span>
+      <span class="text-[9px] text-muted-foreground/70 shrink-0">{{ versionCount }} {{ versionCount === 1 ? 'version' : 'versions' }}</span>
     </div>
   </div>
 </template>

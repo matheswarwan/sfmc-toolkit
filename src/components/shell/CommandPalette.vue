@@ -51,7 +51,7 @@ function onKey(e) {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/40" @mousedown.self="emit('close')">
+  <div v-if="open" class="fixed inset-0 z-100 flex items-start justify-center pt-[15vh] bg-black/40" @mousedown.self="emit('close')">
     <div class="w-full max-w-xl mx-4 rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden" role="dialog" aria-label="Search">
       <div class="flex items-center gap-2 px-3 border-b border-border">
         <Search class="h-4 w-4 text-muted-foreground" />
@@ -64,9 +64,9 @@ function onKey(e) {
         <li v-for="(e, i) in entries" :id="`palette-${i}`" :key="`${e.kind}:${JSON.stringify(e.to)}`" role="option" :aria-selected="i === active">
           <button class="w-full flex items-center gap-2.5 px-3 h-9 text-sm text-left" :class="i === active ? 'bg-accent text-accent-foreground' : ''"
             @mouseenter="active = i" @click="go(e)">
-            <component :is="e.icon || KIND_ICONS[e.kind] || ArrowRight" class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <component :is="e.icon || KIND_ICONS[e.kind] || ArrowRight" class="h-4 w-4 shrink-0 text-muted-foreground" />
             <span class="flex-1 truncate">{{ e.label }}</span>
-            <span class="text-xs text-muted-foreground flex-shrink-0">{{ e.hint }}</span>
+            <span class="text-xs text-muted-foreground shrink-0">{{ e.hint }}</span>
           </button>
         </li>
         <li v-if="!entries.length" class="px-3 py-6 text-center text-sm text-muted-foreground">Nothing matches.</li>

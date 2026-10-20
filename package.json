@@ -32,9 +32,9 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.4.6",
-    "autoprefixer": "^10.4.16",
     "jsdom": "^29.0.1",
     "postcss": "^8.4.32",
     "tailwindcss": "^4.3.3",

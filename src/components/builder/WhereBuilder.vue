@@ -113,12 +113,12 @@ function isSubqueryOp(op) {
       />
       <button
         v-if="needsValue(cond.operator)"
-        class="text-[9px] px-1 py-0.5 rounded border flex-shrink-0"
+        class="text-[9px] px-1 py-0.5 rounded border shrink-0"
         :class="cond.raw ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
         title="Pass value through as raw SQL (functions, columns, subqueries)"
         @click="updateCondition(index, 'raw', !cond.raw)"
       >fx</button>
-      <Button variant="ghost" size="icon" class="h-5 w-5 flex-shrink-0" title="Remove condition" @click="removeCondition(index)">
+      <Button variant="ghost" size="icon" class="h-5 w-5 shrink-0" title="Remove condition" @click="removeCondition(index)">
         <X class="h-2.5 w-2.5" />
       </Button>
     </div>

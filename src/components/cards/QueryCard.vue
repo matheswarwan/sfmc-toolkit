@@ -89,7 +89,7 @@ const previewSql = computed(() => {
             {{ displayName }}
           </span>
           <button v-if="!deleteMode"
-            class="flex-shrink-0 transition-colors p-0.5 rounded"
+            class="shrink-0 transition-colors p-0.5 rounded"
             :class="isFavourite ? 'text-amber-400' : 'text-muted-foreground/30 hover:text-amber-400'"
             title="Toggle favourite"
             @click.stop="emit('toggle-favourite', props.id)"

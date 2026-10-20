@@ -233,7 +233,7 @@ function onCanvasDropDe(node) {
 
 <template>
   <div class="flex flex-col h-full bg-background">
-    <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card flex-shrink-0">
+    <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card shrink-0">
       <span class="text-[10px] font-bold uppercase tracking-wide bg-amber-200 text-amber-900 rounded-full px-2 py-0.5">Experimental</span>
       <span v-if="saveStatusLabel" class="flex items-center gap-1 text-xs text-muted-foreground">
         <Loader2 v-if="saveStatus === 'saving'" class="h-3 w-3 animate-spin" />
@@ -269,7 +269,7 @@ function onCanvasDropDe(node) {
         </div>
     </div>
 
-    <div v-if="restoreNotice" class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-200 text-[11px] text-amber-900 flex-shrink-0">
+    <div v-if="restoreNotice" class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-200 text-[11px] text-amber-900 shrink-0">
       <span>{{ restoreNotice }}</span>
       <button class="ml-auto text-amber-700 hover:underline" @click="restoreNotice = ''">Dismiss</button>
     </div>
@@ -277,7 +277,7 @@ function onCanvasDropDe(node) {
     <div ref="stackRef" class="flex-1 flex flex-col min-h-0">
       <div ref="rowRef" class="flex-1 flex min-h-0">
         <!-- Left: DE Browser -->
-        <div class="w-64 flex-shrink-0 min-h-0">
+        <div class="w-64 shrink-0 min-h-0">
           <DEBrowser :stack="stack" @select-de="onSelectDe" />
         </div>
 
@@ -295,7 +295,7 @@ function onCanvasDropDe(node) {
 
           <!-- Visual mode: Filters & options drawer + canvas -->
           <template v-if="visualMode">
-            <div class="border-b border-border flex-shrink-0">
+            <div class="border-b border-border shrink-0">
               <button
                 class="w-full flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
                 @click="showVisualExtras = !showVisualExtras"
@@ -333,7 +333,7 @@ function onCanvasDropDe(node) {
         </div>
 
         <!-- Right dock: SQL output (drag left edge to resize) -->
-        <div v-if="sqlDock === 'right'" class="relative flex-shrink-0 min-h-0 border-l border-border" :style="{ width: sqlSize.right + '%' }">
+        <div v-if="sqlDock === 'right'" class="relative shrink-0 min-h-0 border-l border-border" :style="{ width: sqlSize.right + '%' }">
           <div
             class="absolute left-0 top-0 h-full w-1.5 -ml-0.5 z-20 cursor-col-resize transition-colors hover:bg-primary/40 active:bg-primary/60"
             title="Drag to resize"
@@ -349,7 +349,7 @@ function onCanvasDropDe(node) {
       </div>
 
       <!-- Bottom dock: SQL output (drag top edge to resize) -->
-      <div v-if="sqlDock === 'bottom'" class="relative flex-shrink-0 min-h-0 border-t border-border" :style="{ height: sqlSize.bottom + '%' }">
+      <div v-if="sqlDock === 'bottom'" class="relative shrink-0 min-h-0 border-t border-border" :style="{ height: sqlSize.bottom + '%' }">
         <div
           class="absolute top-0 left-0 w-full h-1.5 -mt-0.5 z-20 cursor-row-resize transition-colors hover:bg-primary/40 active:bg-primary/60"
           title="Drag to resize"

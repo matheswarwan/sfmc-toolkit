@@ -64,15 +64,15 @@ async function shareQuery() {
 <template>
   <DialogRoot :open="true">
     <DialogPortal>
-      <DialogOverlay class="fixed inset-0 z-[9998] bg-black/50" @click="emit('close')" />
+      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" @click="emit('close')" />
 
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[760px] max-h-[85vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[760px] max-h-[85vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
         @click.stop
         @keyup.esc="emit('close')"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between gap-3 px-5 py-3.5 bg-muted/30 border-b border-border flex-shrink-0">
+        <div class="flex items-center justify-between gap-3 px-5 py-3.5 bg-muted/30 border-b border-border shrink-0">
           <div class="min-w-0 flex flex-col gap-0.5">
             <DialogTitle class="text-[15px] font-bold text-foreground truncate">{{ displayName }}</DialogTitle>
             <div class="flex items-center gap-2 min-w-0">
@@ -85,7 +85,7 @@ async function shareQuery() {
             </div>
           </div>
 
-          <div class="flex items-center gap-2 flex-shrink-0">
+          <div class="flex items-center gap-2 shrink-0">
             <button
               class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60"
               :class="shareState === 'copied'
@@ -132,7 +132,7 @@ async function shareQuery() {
 
         <!-- SQL body -->
         <div class="flex-1 overflow-auto bg-[#0f172a] p-4">
-          <pre class="font-mono text-[12.5px] leading-relaxed text-slate-200 whitespace-pre-wrap break-words m-0 select-text">{{ sql }}</pre>
+          <pre class="font-mono text-[12.5px] leading-relaxed text-slate-200 whitespace-pre-wrap wrap-break-word m-0 select-text">{{ sql }}</pre>
         </div>
       </DialogContent>
     </DialogPortal>
