@@ -39,6 +39,9 @@ describe('Data view archive template', () => {
     expect(p.queries.every((q) => q.updateType === 1)).toBe(true)
     expect(p.queries[0].sql).toContain('WHERE EventDate >= DATEADD(day, -5, GETDATE())')
     expect(p.queries[1].sql).toContain("LEFT(ISNULL(LinkName, ''), 500) AS LinkName")
+    expect(p.queries[1].sql).toContain("ROW_NUMBER() OVER (PARTITION BY JobID, ListID, BatchID, SubscriberID, EventDate, LEFT(ISNULL(LinkName, ''), 500) ORDER BY EventDate DESC)")
+    expect(p.queries[1].sql).toMatch(/WHERE RowNum = 1$/)
+    expect(p.queries[1].sql).toContain('LEFT(URL, 4000) AS URL')
     expect(p.queries[2].sql).toContain('WHERE CreatedDate >=')
     expect(p.automation.steps).toHaveLength(1)
   })
@@ -146,6 +149,12 @@ describe('Data view archive fields (feedback #43)', () => {
     const f = Object.fromEntries(archiveFields('_Job').map((x) => [x.name, x]))
     expect(f.BccEmail).toMatchObject({ type: 'text', length: 254 })
     expect(f.FromEmail).toMatchObject({ type: 'text', length: 254 })
+  })
+
+  it('stores _Job DynamicEmailSubject and EventID as text (feedback #56)', () => {
+    const f = Object.fromEntries(archiveFields('_Job').map((x) => [x.name, x]))
+    expect(f.DynamicEmailSubject).toMatchObject({ type: 'text', length: 4000 })
+    expect(f.EventID).toMatchObject({ type: 'text' })
   })
 })
 

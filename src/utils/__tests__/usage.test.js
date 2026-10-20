@@ -391,3 +391,15 @@ describe('saved data (feedback #26)', () => {
     expect(calls.filter((c) => c.includes('/automation/v1/queries/?')).length).toBe(2)
   })
 })
+
+describe('DE named in content outside Lookup calls (feedback #55)', () => {
+  it('finds the name as a whole word, not inside longer names', async () => {
+    const { mentionsName } = await import('../usage/match.js')
+    const de = { name: 'ENS_WhatsApp_Log', customerKey: 'ENS_WhatsApp_Log' }
+    expect(mentionsName('var prox = new Script.Util.WSProxy(); prox.retrieve("DataExtensionObject[ENS_WhatsApp_Log]")', de)).toBe(true)
+    expect(mentionsName('<p>Rows go to ENS_WhatsApp_Log.</p>', de)).toBe(true)
+    expect(mentionsName('var de = "ens_whatsapp_log";', de)).toBe(true)
+    expect(mentionsName('ENS_WhatsApp_Log_Archive', de)).toBe(false)
+    expect(mentionsName('anything', { name: 'Log' })).toBe(false)
+  })
+})

@@ -25,10 +25,19 @@ export async function searchJourneys(stack, { query = '', status = '', page = 1 
   return { items, total: data?.count ?? items.length }
 }
 
+/**
+ * One journey's definition. Some journeys answer 404 "Interaction matching criteria
+ * not found" for the version the list gives; then the call is made again without
+ * a version, which returns the latest one.
+ */
 export async function fetchJourney(stack, id, version) {
-  const params = new URLSearchParams({ extras: 'all' })
-  if (version) params.set('versionNumber', String(version))
-  return sfmcFetch(`${JB(stack)}/interactions/${encodeURIComponent(id)}?${params}`, 'GET')
+  const url = (v) => `${JB(stack)}/interactions/${encodeURIComponent(id)}?extras=all${v ? `&versionNumber=${encodeURIComponent(v)}` : ''}`
+  try {
+    return await sfmcFetch(url(version), 'GET')
+  } catch (e) {
+    if (!version || !(e.status === 404 || /matching criteria not found/i.test(e.message || ''))) throw e
+    return sfmcFetch(url(null), 'GET')
+  }
 }
 
 export function journeyBuilderUrl(stack, journey) {

@@ -17,7 +17,7 @@ export const ARCHIVE_VIEWS = {
   _Job: { keys: ['JobID'], date: 'CreatedDate' },
 }
 
-const TEXT_LENGTHS = { SubscriberKey: 254, Domain: 128, URL: 4000, LinkContent: 4000, SMTPBounceReason: 4000, SMTPMessage: 4000, EmailSubject: 1000, EmailName: 255, LinkName: 500 }
+const TEXT_LENGTHS = { SubscriberKey: 254, Domain: 128, URL: 4000, LinkContent: 4000, SMTPBounceReason: 4000, SMTPMessage: 4000, EmailSubject: 1000, DynamicEmailSubject: 4000, EmailName: 255, LinkName: 500 }
 // Email and Phone become Text: SFMC refused _Job's BccEmail as an Email field
 // ("Length is invalid for field BccEmail", feedback #43), and an archive does not
 // need those types.
@@ -31,6 +31,23 @@ export function archiveFields(view) {
     if (field.type === 'text') field.length = TEXT_LENGTHS[f.name] || (f.type === 4 ? 254 : 255)
     return field
   })
+}
+
+// LinkName is part of _Click's key, so it cannot be null.
+const expr = (f) => (f.name === 'LinkName' ? `LEFT(ISNULL(LinkName, ''), 500)` : f.type === 'text' ? `LEFT(${f.name}, ${f.length})` : f.name)
+
+/**
+ * Data views can hold more than one row for the same key (two clicks on the same
+ * link in the same second), which an Update query refuses ("Violation of PRIMARY
+ * KEY constraint", feedback #56), so only one row per key is kept. Text is cut to
+ * the field length so a long value cannot fail the run.
+ */
+export function archiveSql(view, fields, days) {
+  const spec = ARCHIVE_VIEWS[view]
+  const keyExprs = fields.filter((f) => f.isPrimaryKey).map(expr)
+  return `SELECT\n    ${fields.map((f) => f.name).join(',\n    ')}\nFROM (\n  SELECT\n    ${fields.map((f) => `${expr(f)} AS ${f.name}`).join(',\n    ')},\n` +
+    `    ROW_NUMBER() OVER (PARTITION BY ${keyExprs.join(', ')} ORDER BY ${spec.date} DESC) AS RowNum\n` +
+    `  FROM ${view}\n  WHERE ${spec.date} >= DATEADD(day, -${days}, GETDATE())\n) AS r\nWHERE RowNum = 1`
 }
 
 export const dataViewArchive = {
@@ -54,6 +71,7 @@ export const dataViewArchive = {
   after: (o) => [
     `Schedule "${o.automationName}" to run daily in Automation Studio (it is not scheduled and was not run).`,
     `Each run copies the last ${o.days} days, so a missed day is picked up by the next run.`,
+    'If you made these with an earlier version of the Toolkit, delete the old archive data extensions, queries and automation and run this template again: the queries now keep one row per key, and _Job\'s DynamicEmailSubject and EventID are text.',
     'To copy everything the data views still hold (about six months), change the number of days in each query to 180, run the automation once, then change it back.',
   ],
 
@@ -68,11 +86,7 @@ export const dataViewArchive = {
       const base = `${o.prefix}${view}`
       const fields = archiveFields(view)
       des.push({ ref: view, name: base, key: `${base.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-de`, fields })
-      const cols = fields.map((f) => (f.name === 'LinkName' ? `LEFT(ISNULL(LinkName, ''), 500) AS LinkName` : f.name))
-      queries.push({
-        ref: view, name: `${base} - copy`, target: view, updateType: 1,
-        sql: `SELECT\n    ${cols.join(',\n    ')}\nFROM ${view}\nWHERE ${spec.date} >= DATEADD(day, -${days}, GETDATE())`,
-      })
+      queries.push({ ref: view, name: `${base} - copy`, target: view, updateType: 1, sql: archiveSql(view, fields, days) })
     }
     return {
       des,

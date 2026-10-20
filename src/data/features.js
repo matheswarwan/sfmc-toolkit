@@ -13,7 +13,7 @@ export const FEATURE_GROUPS = [
       { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
       { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
-      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Where used, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
       { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
       { title: 'Results 50 at a time', detail: 'Every SFMC search (data extensions, automations, activities, journeys, journey entry events, CloudPages) shows the first 50 results; Load 50 more shows the next.' },
@@ -252,6 +252,7 @@ export const FEATURE_GROUPS = [
       { title: 'Data views and fields', detail: 'Queries that read a data view and where their results go. For a field: queries that read it (qualified by the data extension or its alias, or marked maybe when unqualified with several tables) or write it, journey criteria and AMPscript lookups that name it.' },
       { title: 'Activities and automations', detail: 'The automations and steps that run an activity. For an automation, What it touches: data extensions written and read, files, emails sent and journey entry events it fires.' },
       { title: 'Journeys and content', detail: 'For an entry event, its data extension and the journeys that use it. For an email, the journeys and Send Email activities that send it. For a content block, the emails, templates, blocks and CloudPages that include it (ContentBlockByKey, ById, ByName, or placed in a slot). For a file location, its imports and file transfers.' },
+      { title: 'Named anywhere in content', since: '2.0.8', detail: 'Emails, blocks and CloudPages that name a data extension outside Lookup and similar calls (WSProxy, a name kept in a variable, page text) show with Mentions the name.' },
       { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
       { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and what it loads is saved for each business unit: checks in the next 5 minutes, in any tab, use it as is, and later checks read only what changed since (Rescan reads everything again). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
     ],
@@ -275,6 +276,16 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Every entry event', detail: 'Loads up to 1,000 when you open the section; Refresh loads them again.' },
       { title: 'Filters', detail: 'Name, event definition key, data extension name or ID, type, category, journey status, and scheduled today or later.' },
+      { title: 'Open the journey', since: '2.0.8', how: 'Open journey on an entry event', detail: 'Opens the journey that uses the entry event; when several do, they are listed in the Where used panel.' },
+    ],
+  },
+  {
+    id: 'contacts',
+    title: 'Contacts',
+    intro: 'Data > Contacts. Reads Contact Builder; changes nothing.',
+    items: [
+      { title: 'Contact count', since: '2.0.8', detail: 'How many contacts the account has in Contact Builder.' },
+      { title: 'Find a contact', since: '2.0.8', how: 'Enter a Contact Key, then Search', detail: 'The contact\'s ID, dates and the attribute values Contact Builder returns.' },
     ],
   },
   {

@@ -133,6 +133,19 @@ export function deRefsInCode(text) {
 }
 
 /** The calls in `text` that name this DE (by name or customer key). */
+/**
+ * True when `text` names the DE (name or key, at least 4 characters) as a whole
+ * word anywhere, not only in a Lookup or similar call: WSProxy calls, strings kept in
+ * variables, plain text (feedback #55). Lower confidence than codeRefsToDE.
+ */
+export function mentionsName(text, de) {
+  const s = String(text || '')
+  return [de.name, de.customerKey].filter((n) => n && String(n).length >= 4).some((n) => {
+    const esc = String(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`(^|[^A-Za-z0-9_])${esc}($|[^A-Za-z0-9_])`, 'i').test(s)
+  })
+}
+
 export function codeRefsToDE(text, de) {
   const names = new Set([norm(de.name), norm(de.customerKey)].filter(Boolean))
   return deRefsInCode(text).filter((r) => names.has(norm(r.ref)))

@@ -2,7 +2,9 @@
 // Journey entry events (SFMC Automation Viewer's Journey Activity Details): every
 // event definition (up to 1,000), filtered here in the page.
 import { computed, reactive, ref, watch } from 'vue'
-import { Loader2, RefreshCw, X, Network } from 'lucide-vue-next'
+import { Loader2, RefreshCw, X, Network, ExternalLink } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { findUsage } from '@/utils/usage/index.js'
 import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
@@ -53,6 +55,29 @@ function clearFilters() { Object.assign(filters, { name: '', key: '', deName: ''
 
 useRouteSearch('/journey-entry', (q) => { filters.name = q })
 
+// Feedback #54: open the journey that uses an entry event. The journeys come from
+// the same list Where used keeps (read once, then only changes), so one journey
+// opens directly and several show in the Where used panel.
+const router = useRouter()
+const finding = ref('')
+const findNote = reactive({})
+async function openJourney(ev) {
+  if (finding.value) return
+  finding.value = ev.id
+  delete findNote[ev.id]
+  try {
+    const r = await findUsage(stack.value, { kind: 'event', event: ev })
+    const journeys = r.sections.find((s) => s.id === 'journeys')?.items || []
+    if (journeys.length === 1) router.push(journeys[0].route)
+    else if (journeys.length) usage.start(stack.value, { kind: 'event', event: ev })
+    else findNote[ev.id] = 'No journey uses this entry event.'
+  } catch (e) {
+    findNote[ev.id] = `Could not look up the journeys: ${e.message}`
+  } finally {
+    finding.value = ''
+  }
+}
+
 function getDoc() {
   return { title: 'Journey entry events', blocks: descs.value.flatMap((d) => activityBlocks(d, '', 2)) }
 }
@@ -99,6 +124,10 @@ function getDoc() {
         <div class="space-y-3">
           <ActivityCard v-for="(d, i) in descs.slice(0, visibleCount)" :key="shown[i].id || i" :description="d" :show-all-fields="showAllFields">
             <template #actions>
+              <span v-if="findNote[shown[i].id]" class="text-xs text-muted-foreground">{{ findNote[shown[i].id] }}</span>
+              <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0 disabled:opacity-50" title="Open the journey that uses this entry event (several show in Where used)" :disabled="!!finding" @click="openJourney(shown[i])">
+                <Loader2 v-if="finding === shown[i].id" class="h-3 w-3 animate-spin" /><ExternalLink v-else class="h-3 w-3" /> Open journey
+              </button>
               <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0" title="Journeys that use this entry event" @click="usage.start(stack, { kind: 'event', event: shown[i] })"><Network class="h-3 w-3" /> Where used</button>
             </template>
           </ActivityCard>

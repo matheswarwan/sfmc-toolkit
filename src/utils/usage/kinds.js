@@ -11,7 +11,7 @@ import { formatDateTime } from '../format.js'
 import { runInBatches } from '../batchRunner.js'
 import { SOURCES, assetGroup } from './sources.js'
 import {
-  norm, matchQuery, matchField, tablesInSql, codeRefsToDE, contentBlockRefs, assetText, assetPlacesBlock,
+  norm, matchQuery, matchField, tablesInSql, codeRefsToDE, mentionsName, contentBlockRefs, assetText, assetPlacesBlock,
   findValues, findPathMentions, collectProfileRefs, lineageEdges, lineageTree, deRefsInCode,
 } from './match.js'
 
@@ -195,13 +195,18 @@ async function analyseDE(target, ctx) {
   const assets = await ctx.get('assets')
   const byGroup = {}
   for (const a of assets?.items || []) {
-    const refs = codeRefsToDE(assetText(a), de)
-    if (!refs.length) continue
+    const text = assetText(a)
+    const refs = codeRefsToDE(text, de)
     const g = assetGroup(a)
-    ;(byGroup[g] = byGroup[g] || []).push(assetItem(a, [[...new Set(refs.map((r) => r.fn))].join(', ')], [{ text: 'Named in AMPscript or SSJS', tone: 'maybe' }]))
+    if (refs.length) {
+      ;(byGroup[g] = byGroup[g] || []).push(assetItem(a, [[...new Set(refs.map((r) => r.fn))].join(', ')], [{ text: 'Named in AMPscript or SSJS', tone: 'maybe' }]))
+    } else if (mentionsName(text, de)) {
+      // The name appears some other way (WSProxy, a variable, page text): worth a look.
+      ;(byGroup[g] = byGroup[g] || []).push(assetItem(a, ['The name appears in the content'], [{ text: 'Mentions the name', tone: 'maybe' }]))
+    }
   }
   sections.push(section('content', 'Emails, templates, content blocks and CloudPages', Object.entries(byGroup).flatMap(([g, list]) => list.map((i) => ({ ...i, kind: GROUP_TITLES[g].replace(/s$/, '') }))), {
-    source: assets, note: `Found by the data extension's name or key in Lookup, LookupRows, UpsertData and similar calls.${assets?.capped ? ' Only the newest 5,000 items were checked.' : ''}`,
+    source: assets, note: `Found by the data extension's name or key in Lookup, LookupRows, UpsertData and similar calls, or anywhere in the content (Mentions the name).${assets?.capped ? ' Only the newest 5,000 items were checked.' : ''}`,
   }))
 
   // Lineage from queries, filters, imports and extracts.

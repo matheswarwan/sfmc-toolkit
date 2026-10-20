@@ -1,0 +1,34 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const sfmcFetch = vi.fn()
+vi.mock('../sfmcApi.js', () => ({ sfmcFetch: (...a) => sfmcFetch(...a) }))
+const { fetchContactCount, searchContactKey, parseContacts } = await import('../contactsApi.js')
+
+beforeEach(() => sfmcFetch.mockReset())
+
+describe('contacts (feedback #57)', () => {
+  it('reads totalCount from the count call', async () => {
+    sfmcFetch.mockResolvedValue({ totalCount: 558998 })
+    await expect(fetchContactCount('s10')).resolves.toBe(558998)
+    expect(sfmcFetch.mock.calls[0][0]).toBe('https://mc.s10.marketingcloudapps.com/contactsmeta/fuelapi/contacts/v1/addresses/count/?$pageSize=25&$page=1&$orderBy=contactKey%20ASC')
+  })
+
+  it('searches Contact Key (definition 101) with Equal', async () => {
+    sfmcFetch.mockResolvedValue({ addresses: [], totalCount: 0 })
+    await searchContactKey('s10', ' 000001 ')
+    const [url, method, body] = sfmcFetch.mock.calls[0]
+    expect(url).toContain('/contactsmeta/fuelapi/contacts-internal/v1/addresses/search/')
+    expect(method).toBe('POST')
+    expect(body.queryFilter.rootExpressionSet.expressions).toEqual([{ customerDataDefinitionID: 101, operator: 'Equal', values: ['000001'] }])
+  })
+
+  it('reads contacts and their attribute values', () => {
+    const r = parseContacts({
+      totalCount: 1,
+      addresses: [{ contactID: 42, modifiedDate: '2026-10-01T00:00:00', valueSets: [{ name: 'Email Addresses', values: [{ name: 'Email Address', innerValue: 'a@example.com' }, { name: 'Contact Key', innerValue: '000001' }] }] }],
+    })
+    expect(r.total).toBe(1)
+    expect(r.contacts[0]).toMatchObject({ contactKey: '000001', contactId: 42 })
+    expect(r.contacts[0].values[0]).toEqual({ set: 'Email Addresses', name: 'Email Address', value: 'a@example.com' })
+  })
+})

@@ -7,6 +7,7 @@
 import { sfmcFetch } from '../sfmcApi.js'
 import { searchActivities, searchAutomations, loadMoreAutomations } from '../automationApi.js'
 import { fetchEventDefinitions } from '../journeyApi.js'
+import { fetchJourney } from '../journeys.js'
 import { CLOUD_PAGE_ASSET_TYPE_IDS } from '../cloudPagesApi.js'
 import { activityEndpoint } from '../activityTypes.js'
 import { runInBatches } from '../batchRunner.js'
@@ -170,7 +171,7 @@ async function readJourneys(stack, list, reuse, { progress, stop }) {
   const todo = list.items.filter((j) => !reuse(j))
   const done = new Map()
   await runInBatches(todo, 10, async (j) => {
-    const d = await sfmcFetch(`${JB(stack)}/interactions/${encodeURIComponent(j.id)}?extras=all${j.version ? `&versionNumber=${j.version}` : ''}`, 'GET').catch(() => null)
+    const d = await fetchJourney(stack, j.id, j.version).catch(() => null)
     done.set(j.id, d ? { ...j, ...d } : { ...j, _error: true })
   }, { shouldStop: stop, onProgress: (d, t) => progress(d, t, todo.length < list.items.length ? `reading ${t} changed` : 'reading activities') })
   if (stop()) throw new StoppedError()

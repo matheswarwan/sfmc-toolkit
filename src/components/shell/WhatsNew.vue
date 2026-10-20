@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.7'
+const VERSION = '2.0.8'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,8 +35,10 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">Automation Summary in Automation Studio</strong><span class="text-muted-foreground">On an automation's page in Automation Studio, the tab on the right edge shows its status, last run, schedule and steps, with Open in SFMC Toolkit. Turn it off in Settings > Connection.</span></li>
-        <li><strong class="block">Data view joins in Query Builder</strong><span class="text-muted-foreground">Two data views, such as _Click and _Job, get their join filled in straight away.</span></li>
+        <li><strong class="block">Contacts</strong><span class="text-muted-foreground">Data > Contacts shows the contact count and finds a contact by Contact Key.</span></li>
+        <li><strong class="block">Open journey from Journey Entry</strong><span class="text-muted-foreground">Each entry event has Open journey.</span></li>
+        <li><strong class="block">Data view archive fixed</strong><span class="text-muted-foreground">Archive_Click no longer fails on duplicate rows and Archive_Job no longer fails with a system error. If you created the archive before, delete its data extensions, queries and automation and run the template again.</span></li>
+        <li><strong class="block">Where used finds more</strong><span class="text-muted-foreground">Content that names a data extension anywhere, not only in Lookup calls, shows with Mentions the name.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
