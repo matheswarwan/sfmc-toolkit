@@ -27,7 +27,12 @@ function makeArea(initial = {}) {
 
 const event = () => {
   const fns = []
-  return { fns, addListener: (fn) => fns.push(fn), removeListener: (fn) => { const i = fns.indexOf(fn); if (i >= 0) fns.splice(i, 1) } }
+  const filters = new Map() // webRequest listeners: fn -> { urls }
+  return {
+    fns, filters,
+    addListener: (fn, filter) => { fns.push(fn); if (filter) filters.set(fn, filter) },
+    removeListener: (fn) => { const i = fns.indexOf(fn); if (i >= 0) fns.splice(i, 1) },
+  }
 }
 
 function appIdFor(u) {
@@ -178,10 +183,14 @@ export async function loadSW(o = {}) {
     })
   }
 
-  async function captureQuery(sql, timeStamp = 1700000000000) {
-    const bytes = new TextEncoder().encode(JSON.stringify({ querytext: sql }))
+  // Sends a Query Studio run to the webRequest listeners whose URL filter matches.
+  async function captureQuery(sql, timeStamp = 1700000000000, { url = 'https://querystudio.herokuapp.com/query/create', extra = {} } = {}) {
+    const bytes = new TextEncoder().encode(JSON.stringify({ querytext: sql, ...extra }))
+    const glob = (p) => new RegExp('^' + p.split('*').map((s) => s.replace(/[.?+^$()[\]{}|\\]/g, '\\$&')).join('.*') + '$')
     for (const fn of onBeforeRequest.fns) {
-      await fn({ method: 'POST', url: 'https://querystudio.herokuapp.com/query/create', timeStamp, requestBody: { raw: [{ bytes }] } })
+      const urls = onBeforeRequest.filters.get(fn)?.urls
+      if (urls && !urls.some((p) => glob(p).test(url))) continue
+      await fn({ method: 'POST', url, timeStamp, requestBody: { raw: [{ bytes }] } })
     }
   }
 

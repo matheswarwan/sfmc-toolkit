@@ -27,6 +27,7 @@ import {
 } from './capture.js'
 import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
+import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
@@ -57,8 +58,10 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
 
 chrome.webRequest?.onBeforeSendHeaders.addListener(
   sniffCsrf, { urls: ['https://*.exacttarget.com/*'] }, ['requestHeaders', 'extraHeaders'])
+// Query Studio 2's host is an optional permission; Chrome only delivers its
+// requests once the user has granted it (Settings > Running queries).
 chrome.webRequest?.onBeforeRequest.addListener(
-  captureQueryStudio, { urls: ['https://querystudio.herokuapp.com/query/create'] }, ['requestBody'])
+  captureQueryStudio, { urls: QUERY_STUDIO_CREATE_URLS }, ['requestBody'])
 chrome.webRequest?.onBeforeRequest.addListener(
   captureEmail, { urls: ['https://*.marketingcloudapps.com/fuelapi/asset/v1/content/assets/*'] }, ['requestBody'])
 

@@ -44,7 +44,8 @@ export async function tagBusinessUnit(id) {
   }
 }
 
-// webRequest.onBeforeRequest for https://querystudio.herokuapp.com/query/create
+// webRequest.onBeforeRequest for POST /query/create in Query Studio 1 and 2
+// (QUERY_STUDIO_CREATE_URLS in utils/queryStudio.js)
 export async function captureQueryStudio(details) {
   if (details.method !== 'POST' || !details.requestBody?.raw?.[0]?.bytes) return
   let queryText

@@ -137,6 +137,23 @@ describe('Query Studio capture', () => {
     expect(sw.local.sql_1700000000000.businessUnit).toBeUndefined()
   })
 
+  it('saves Query Studio 2 runs (feedback #32), body as in its HAR', async () => {
+    const sw = await loadSW({ tabs: [s10Tab] })
+    await sw.captureQuery('SELECT 3 AS z', 1700000000001, {
+      url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/create',
+      extra: { fieldOverrides: [{ name: 'z', type: 'Text', maxLength: 255 }], tab: 0 },
+    })
+    await flush()
+    expect(sw.local.sql_1700000000001.queryText).toBe('SELECT 3 AS z')
+  })
+
+  it('ignores other Query Studio 2 requests', async () => {
+    const sw = await loadSW({ tabs: [s10Tab] })
+    await sw.captureQuery('SELECT 4', 1700000000002, { url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/validate' })
+    await flush()
+    expect(sw.local.sql_1700000000002).toBeUndefined()
+  })
+
   it('saves and renames records sent by the app', async () => {
     const sw = await loadSW()
     await sw.send({ type: 'SAVE_RECORDS', records: { sql_1: { id: 'sql_1', name: 'a', queryText: 'SELECT 1' } } })

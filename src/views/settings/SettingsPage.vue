@@ -12,6 +12,7 @@ import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
+import { QUERY_STUDIO_2_ORIGINS } from '@/utils/queryStudio.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
@@ -22,6 +23,20 @@ const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
 const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
 const { value: retentionDays } = useStoredSetting('_queryDERetentionDays', DEFAULT_RETENTION_DAYS, parseRetentionDays)
+
+// Query Studio 2 capture is the optional host permission itself (feedback #32).
+const qs2 = ref(false)
+chrome.permissions?.contains({ origins: QUERY_STUDIO_2_ORIGINS }, (has) => { qs2.value = !!has })
+function setQs2(on) {
+  // request() must run straight from the click, before any await.
+  const done = (ok) => {
+    void chrome.runtime.lastError
+    chrome.permissions.contains({ origins: QUERY_STUDIO_2_ORIGINS }, (has) => { qs2.value = !!has })
+    if (on && !ok) showToast('Query Studio 2 runs are not saved: Chrome did not get the permission.')
+  }
+  if (on) chrome.permissions.request({ origins: QUERY_STUDIO_2_ORIGINS }, done)
+  else chrome.permissions.remove({ origins: QUERY_STUDIO_2_ORIGINS }, done)
+}
 const retentionInput = computed({
   get: () => retentionDays.value,
   set: (v) => { const n = Math.round(Number(v)); if (Number.isFinite(n)) retentionDays.value = parseRetentionDays(n) },
@@ -129,6 +144,13 @@ function setDebounce(e) {
           <p class="text-xs text-muted-foreground">Running the same query again reuses its last target DE and Query Activity instead of creating new ones.</p>
         </div>
         <Switch v-model="reuseQueryDE" aria-label="Reuse the data extension and Query Activity" />
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Save Query Studio 2 runs</div>
+          <p class="text-xs text-muted-foreground">Queries you run in Query Studio 2 are saved in Saved queries, as Query Studio runs are. Turning this on asks Chrome for access to Query Studio 2's site (querystudio2-dev-89f7e4653c61.herokuapp.com); turning it off removes that access.</p>
+        </div>
+        <Switch :model-value="qs2" aria-label="Save Query Studio 2 runs" @update:model-value="setQs2" />
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">
