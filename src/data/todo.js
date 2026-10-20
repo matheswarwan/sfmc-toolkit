@@ -27,8 +27,8 @@ export const TODO_GROUPS = [
     title: 'Under consideration',
     items: [
       {
-        title: 'Monitor automations',
-        detail: 'Watch chosen automations and get a notice when one is paused, activated or fails. SFMC Automation Viewer had an unfinished version of this; it was left out of SFMC Toolkit until it can notify properly.',
+        title: 'Watch journeys',
+        detail: 'Like watched automations: a notice when a chosen journey is published, paused or stopped.',
       },
       {
         title: 'Business unit for older queries',
