@@ -28,6 +28,7 @@ export const FEATURE_GROUPS = [
     title: 'Saved queries',
     intro: 'Queries > Saved queries.',
     items: [
+      { title: 'Your business unit first', since: '2.0.6', detail: 'Shows the queries of the business unit you are logged in to; Show all business units (remembered) lists every one.' },
       { title: 'Query Studio 2 runs', since: '2.0.3', how: 'Settings > Running queries > Save Query Studio 2 runs', detail: 'Queries run in the new Query Studio 2 are saved like Query Studio runs. Turning it on asks Chrome for access to Query Studio 2\'s site; turning it off removes it.' },
       { title: 'Automatic capture from Query Studio', how: 'Automatic', detail: 'Every query you run in Query Studio is saved, named with the date and time, with the business unit you were in. New captures appear without a reload.' },
       { title: 'Search and filters', detail: 'Search names, SQL and business unit names; bu:<name or MID> filters by business unit. Browse by Today, Yesterday, This Week and so on in the sidebar, filter by business unit, or show only favourites.' },
@@ -187,6 +188,8 @@ export const FEATURE_GROUPS = [
     title: 'Automations',
     intro: 'Automation > Automations. Viewing an automation never pauses or changes it.',
     items: [
+      { title: 'Automation overview', since: '2.0.6', how: 'Automation > Automation overview', detail: 'Every automation counted by status and last run, the ones that need a look (failed last run, in error, running for hours), the automations you watch, and run trends per day from the run logs.' },
+      { title: 'Watch an automation', since: '2.0.6', how: 'Watch on an automation\'s page', detail: 'Be told when it is paused, activated, runs or fails. Checked when SFMC Toolkit opens and at most every 15 minutes while you use SFMC; changes show on the bell and the toolbar icon, and as desktop notifications if you switch them on in Settings.' },
       { title: 'Find an automation', detail: 'Search by name, or list all, most recently run first, with status, last run and modified date. Hide columns you do not need.' },
       { title: 'Overview, schedule and notifications', detail: 'Key, status and last run; the schedule in plain words (for example Every 2 weeks on Monday) with the next run; and who gets error notifications.' },
       { title: 'Overview and Full view', detail: 'Overview shows the steps side by side, like Automation Studio; click an activity for its details. Full view lists every activity with its details, SQL and scripts highlighted, and Show additional details for the rest.' },
@@ -257,6 +260,7 @@ export const FEATURE_GROUPS = [
     title: 'Journeys',
     intro: 'Journey > Journeys. Viewing a journey never changes it.',
     items: [
+      { title: 'Journey overview', since: '2.0.6', how: 'Journey > Journey overview', detail: 'Journeys counted by status, and which live journeys send email, SMS, push or WhatsApp, read from their definitions.' },
       { title: 'Find a journey', detail: 'Search by name or description, or list all, most recently changed first; filter by status. Shows status, version and dates.' },
       { title: 'The journey canvas', how: 'View on a journey', detail: 'The journey drawn like Journey Builder: entry, every step and every path, with the path names on the arrows. Switch between Horizontal and Vertical; the choice is remembered.' },
       { title: 'What each step does', how: 'Click a step', detail: 'Emails show their subject, preheader and a preview from Content Builder; waits their duration or date; decision and random splits each path with its criteria or share; every step all of its settings.' },

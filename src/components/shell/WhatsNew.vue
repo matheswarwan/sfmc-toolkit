@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.5'
+const VERSION = '2.0.6'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,13 +35,11 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">Run history</strong><span class="text-muted-foreground">An automation's runs from the last 7 to 180 days, with status, duration and messages, on its page.</span></li>
-        <li><strong class="block">Four more templates</strong><span class="text-muted-foreground">Unengaged subscribers, Held and bouncing subscribers, Automation run log and Unsubscribes for CRM, under Automation > Templates.</span></li>
-        <li><strong class="block">Storage by section</strong><span class="text-muted-foreground">Settings > Storage shows what takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.</span></li>
-        <li><strong class="block">Download automations</strong><span class="text-muted-foreground">Tick automations (or none for all shown) and download them with every activity's details.</span></li>
-        <li><strong class="block">Row counts</strong><span class="text-muted-foreground">Get count, or Get all counts, on Data Extensions.</span></li>
-        <li><strong class="block">Templates check first</strong><span class="text-muted-foreground">Queries are checked with SFMC before anything is created, and a stopped run can delete what it made.</span></li>
-        <li><strong class="block">Also</strong><span class="text-muted-foreground">File names with business unit and date, readable journey step settings with a resizable panel, and a prompt to restart when an update is ready.</span></li>
+        <li><strong class="block">Automation overview</strong><span class="text-muted-foreground">Every automation by status, what needs a look, and run trends per day.</span></li>
+        <li><strong class="block">Watch automations</strong><span class="text-muted-foreground">Watch on an automation's page tells you when it is paused, activated, runs or fails: on the bell, the toolbar icon, and optionally as desktop notifications.</span></li>
+        <li><strong class="block">Journey overview</strong><span class="text-muted-foreground">Journeys by status, and which live journeys send email, SMS or push.</span></li>
+        <li><strong class="block">Your business unit first</strong><span class="text-muted-foreground">Saved queries shows the business unit you are logged in to; Show all lists every one.</span></li>
+        <li><strong class="block">Also</strong><span class="text-muted-foreground">Automation run history, four more templates, and CloudPages Get URL for landing pages.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>

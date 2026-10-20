@@ -79,6 +79,8 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
+2.0.6: Automation overview (by status, needs a look, run trends), watch automations (paused, activated, runs, fails) with a bell, a toolbar badge and optional desktop notifications, Journey overview (by status, what live journeys send), saved queries for the current business unit first, CloudPages Get URL for landing pages.
+
 2.0.5: automation run history; four more Automation Templates (Unengaged subscribers, Held and bouncing subscribers, Automation run log, Unsubscribes for CRM).
 
 2.0.4: Settings > Storage by section and business unit (delete one part, keep only the newest email versions), download several or all automations, data extension row counts, templates check their queries with SFMC before creating anything and can delete what a stopped run made, file names with business unit and date, readable journey step settings, and a prompt to restart when an update is ready.
@@ -106,6 +108,7 @@ SFMC Toolkit helps Salesforce Marketing Cloud users work with their own account:
 - **Host permissions:**
   - `*.exacttarget.com`, `*.marketingcloudapps.com`, `*.marketingcloud.com`, `*.salesforce-marketingcloud.com`: Marketing Cloud's own domains, which the extension calls on the user's behalf.
   - `querystudio.herokuapp.com`: Query Studio, to save the queries the user runs there.
+  - Optional permission `notifications` (from 2.0.6): requested only when the user turns on Settings > Connection > Desktop notifications for watched automations, to show a desktop notification when a watched automation is paused, activated, runs or fails. Turning the setting off removes the permission.
   - Optional, `*.herokuapp.com` (from 2.0.3): requested only when the user turns on Settings > Running queries > Save Query Studio 2 runs, and then only for Query Studio 2's site (`querystudio2-dev-89f7e4653c61.herokuapp.com`), to save the queries the user runs there. Turning the setting off removes the access. A wildcard is needed in the manifest because Query Studio 2's address may change.
   - `sfmc-share-worker.mathes-btech.workers.dev`: creates and opens share links for queries, when the user chooses to share one.
   - `query-saver-feedback.mathes-btech.workers.dev`: receives feedback the user chooses to send.
