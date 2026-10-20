@@ -95,3 +95,20 @@ describe('journey node content', () => {
     expect(md).toContain('## Goals')
   })
 })
+
+describe('readable journey step settings (feedback #42)', () => {
+  it('puts readable SMS settings first and IDs under additional details', async () => {
+    const { describeJourneyNode, settingsRows } = await import('../journeys.js')
+    const node = { key: 'sms1', type: 'SMSSYNC', name: 'Welcome SMS', raw: { key: 'sms1', type: 'SMSSYNC', configurationArguments: {
+      applicationExtensionKey: 'jb-mobile', messageId: 'MzY6', keywordId: 'R1Zp', isOptIn: true, honorBlackoutWindowEnum: 0,
+      isUsingDEAttributesForPersonalization: true, assetId: 114022, description: null, isConcatenate: true,
+    } } }
+    const d = describeJourneyNode(node)
+    const main = Object.fromEntries(d.main)
+    expect(main).toMatchObject({ Message: 'Welcome SMS', 'Opt-in message': 'Yes', 'Personalize with journey data': 'Yes', 'Join long messages': 'Yes', 'Blackout window': '0' })
+    const extraLabels = d.extra.map(([k]) => k)
+    expect(extraLabels).toEqual(expect.arrayContaining(['Application extension key', 'Message id', 'Keyword id', 'Asset id', 'Description']))
+    expect(d.tables.find((t) => t.title === 'Settings')).toBeUndefined()
+    expect(settingsRows({ fooBarCount: 3 }).main).toEqual([['Foo bar count', '3']])
+  })
+})

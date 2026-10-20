@@ -164,6 +164,31 @@ const kvTable = (title, obj, extra = false) => (obj && typeof obj === 'object' &
   ? { title, columns: ['Property', 'Value'], rows: Object.entries(obj).map(([k, v]) => [k, formatValue(v)]), extra }
   : null)
 
+// Readable settings (feedback #42): labels in words, and IDs, keys and enum codes
+// moved to the extra rows so the main list reads like Journey Builder.
+const SETTING_LABELS = {
+  isOptIn: 'Opt-in message', honorBlackoutWindowEnum: 'Blackout window', mobileBlackoutWindowStartTime: 'Blackout from',
+  mobileBlackoutWindowEndTime: 'Blackout until', isUsingDEAttributesForPersonalization: 'Personalize with journey data',
+  isConcatenate: 'Join long messages', shortLinks: 'Short links', fromName: 'From name', isFromNameCertificationAccepted: 'From name certified',
+  googleCampaignName: 'Google Analytics campaign', description: 'Description',
+}
+const TECHNICAL_SETTING = /(Id|Ids|ID|Key|Guid|Enum)$|^(application|definition|reporting|campaign)/
+export const settingLabel = (k) => SETTING_LABELS[k] || String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ')
+  .replace(/^is /i, '').toLowerCase().replace(/^./, (c) => c.toUpperCase())
+
+/** { main, extra } rows for a settings object: readable ones first, the rest (and empty ones) extra. */
+export function settingsRows(obj) {
+  const main = []
+  const extra = []
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (v !== null && typeof v === 'object') { extra.push([settingLabel(k), formatValue(v)]); continue }
+    const value = formatValue(v)
+    const technical = TECHNICAL_SETTING.test(k) && !SETTING_LABELS[k]
+    ;(technical || value === '—' ? extra : main).push([settingLabel(k), value])
+  }
+  return { main, extra }
+}
+
 // ── Decision criteria ──────────────────────────────────────
 const OPERATORS = {
   Equal: 'equals', NotEqual: 'is not', GreaterThan: 'is greater than', LessThan: 'is less than',
@@ -229,7 +254,11 @@ export function describeJourneyNode(node, nameOf = (k) => k) {
     if (c.waitEndDateAttributeExpression || c.attributeName) main.push(['Attribute', formatValue(c.waitEndDateAttributeExpression || c.attributeName)])
     tables.push(kvTable('Wait settings', c, true))
   } else {
-    tables.push(kvTable('Settings', c))
+    // SMS and every other type: readable settings, technical ones under additional details.
+    if (t === 'SMSSYNC' || t === 'SMS') main.push(['Message', formatValue(a.metaData?.messageName || c.messageName || a.name || node.name)])
+    const rows = settingsRows(c)
+    main.push(...rows.main)
+    extra.push(...rows.extra)
   }
 
   // Paths of a split or decision, with their criteria.

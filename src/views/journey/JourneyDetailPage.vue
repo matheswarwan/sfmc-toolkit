@@ -21,6 +21,23 @@ const journey = ref(null)
 const loading = ref(true)
 const error = ref('')
 const selected = ref(null)
+
+// Step details panel: drag its left edge to resize (feedback #42); width remembered.
+const PANEL_KEY = 'toolkit_journey_panel_w'
+const panelWidth = ref((() => { try { return Math.min(Math.max(Number(localStorage.getItem(PANEL_KEY)) || 416, 280), 1400) } catch { return 416 } })())
+function startResize(e) {
+  const startX = e.clientX
+  const startW = panelWidth.value
+  const move = (ev) => { panelWidth.value = Math.min(Math.max(startW + (startX - ev.clientX), 280), window.innerWidth * 0.7) }
+  const up = () => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+    try { localStorage.setItem(PANEL_KEY, String(Math.round(panelWidth.value))) } catch { /* storage blocked */ }
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+  e.preventDefault()
+}
 const orientation = ref('horizontal')
 try { if (localStorage.getItem(ORIENTATION_KEY) === 'vertical') orientation.value = 'vertical' } catch { /* storage blocked */ }
 const canvasBox = ref(null)
@@ -110,7 +127,8 @@ const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
         </section>
       </div>
 
-      <aside v-if="selectedDesc" class="w-104 max-w-[45%] shrink-0 border-l border-border bg-background overflow-y-auto" aria-label="Step details">
+      <aside v-if="selectedDesc" class="relative shrink-0 border-l border-border bg-background overflow-y-auto" :style="{ width: `${panelWidth}px`, maxWidth: '70%' }" aria-label="Step details">
+        <div class="absolute inset-y-0 left-0 w-1.5 cursor-col-resize hover:bg-primary/30 z-20" role="separator" aria-orientation="vertical" aria-label="Resize step details" title="Drag to resize" @pointerdown="startResize" />
         <div class="sticky top-0 z-10 flex justify-end bg-background p-1"><button class="p-1 rounded hover:bg-accent" title="Close" @click="selected = null"><X class="h-4 w-4" /></button></div>
         <div class="px-3 pb-4 space-y-3">
           <ActivityCard :description="selectedDesc" />
