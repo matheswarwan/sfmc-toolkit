@@ -18,14 +18,17 @@ export const ARCHIVE_VIEWS = {
 }
 
 const TEXT_LENGTHS = { SubscriberKey: 254, Domain: 128, URL: 4000, LinkContent: 4000, SMTPBounceReason: 4000, SMTPMessage: 4000, EmailSubject: 1000, EmailName: 255, LinkName: 500 }
-const TYPE_NAMES = { 0: 'text', 1: 'number', 2: 'date', 3: 'boolean', 4: 'email', 5: 'phone' }
+// Email and Phone become Text: SFMC refused _Job's BccEmail as an Email field
+// ("Length is invalid for field BccEmail", feedback #43), and an archive does not
+// need those types.
+const TYPE_NAMES = { 0: 'text', 1: 'number', 2: 'date', 3: 'boolean', 4: 'text', 5: 'text' }
 
 export function archiveFields(view) {
   const spec = ARCHIVE_VIEWS[view]
   return (DATA_VIEW_FIELDS[view.toUpperCase()] || []).map((f) => {
     const isKey = spec.keys.includes(f.name)
     const field = { name: f.name, type: TYPE_NAMES[f.type] || 'text', isPrimaryKey: isKey, isNullable: !isKey }
-    if (field.type === 'text') field.length = TEXT_LENGTHS[f.name] || 255
+    if (field.type === 'text') field.length = TEXT_LENGTHS[f.name] || (f.type === 4 ? 254 : 255)
     return field
   })
 }

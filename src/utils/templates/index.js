@@ -3,9 +3,51 @@
 // after. createFromPlan makes them in SFMC; nothing is scheduled or run.
 import { orphanContacts } from './orphanContacts.js'
 import { dataViewArchive } from './dataViewArchive.js'
-import { buildDEFields, createTemplateDE, createQueryActivity, createAutomation, getDERootFolderId, getQueryRootFolderId } from '../sfmcApi.js'
+import {
+  buildDEFields, createTemplateDE, createQueryActivity, createAutomation, getDERootFolderId, getQueryRootFolderId,
+  getAnyQueryActivityId, validateQueryText, deleteDE, deleteQueryActivity, deleteAutomation,
+} from '../sfmcApi.js'
 
 export const TEMPLATES = [orphanContacts, dataViewArchive]
+
+const mentions = (sql, name) => sql.toLowerCase().includes(`[${name.toLowerCase()}]`)
+
+/**
+ * Asks SFMC to validate each query that reads only existing tables (not the plan's
+ * own data extensions), so a missing list or synchronized DE is found before
+ * anything is created (feedback #44). Returns [{ name, error }] for the invalid
+ * ones; skipped (empty, with `skipped`) when the business unit has no Query
+ * activity to validate through.
+ */
+export async function checkPlan(stack, plan) {
+  let qaId
+  try { qaId = await getAnyQueryActivityId(stack) } catch { return Object.assign([], { skipped: true }) }
+  const problems = []
+  for (const q of plan.queries) {
+    if (plan.des.some((d) => mentions(q.sql, d.name))) continue
+    try {
+      const r = await validateQueryText(stack, qaId, q.sql)
+      if (r && r.queryValid === false) {
+        problems.push({ name: q.name, error: (r.errors || []).map((e) => e.message).join(' ').replace(/<br\s*\/?>/gi, ' ') || 'SFMC says the query is not valid.' })
+      }
+    } catch (e) {
+      problems.push({ name: q.name, error: e.message })
+    }
+  }
+  return problems
+}
+
+/** Deletes what a stopped run created: automation first, then queries, then data extensions. */
+export async function deleteCreated(stack, created) {
+  const order = { automation: 0, query: 1, de: 2 }
+  const del = { automation: deleteAutomation, query: deleteQueryActivity, de: deleteDE }
+  const failed = []
+  for (const c of [...created].sort((a, b) => order[a.kind] - order[b.kind])) {
+    if (!c.id) { failed.push({ ...c, error: 'No ID was returned when it was created; delete it in SFMC.' }); continue }
+    try { await del[c.kind](stack, c.id) } catch (e) { failed.push({ ...c, error: e.message }) }
+  }
+  return failed
+}
 
 /**
  * Creates a plan's data extensions, then its Query activities, then the
@@ -30,6 +72,14 @@ export async function createFromPlan(stack, plan, progress = () => {}) {
     }
   }
   try {
+    progress({ kind: 'check', name: 'Checking the queries with SFMC', status: 'creating' })
+    const problems = await checkPlan(stack, plan)
+    if (problems.length) {
+      const entry = { kind: 'check', name: 'Checking the queries with SFMC', status: 'failed', error: problems.map((p) => `${p.name}: ${p.error}`).join('\n') }
+      progress(entry)
+      return { created, failed: entry }
+    }
+    progress({ kind: 'check', name: 'Checking the queries with SFMC', status: 'done', note: problems.skipped ? 'Skipped: this business unit has no Query activity to check through.' : '' })
     const deFolder = await getDERootFolderId(stack)
     const queryFolder = await getQueryRootFolderId(stack).catch(() => null)
     const deByRef = {}

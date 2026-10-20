@@ -107,4 +107,44 @@ describe('createFromPlan', () => {
     const r = await createFromPlan('s13', orphanContacts.plan({ ...orphanContacts.defaults, archive: false, checkContacts: false }))
     expect(r.created[0].note).toMatch(/not sendable/)
   })
+
+  it('checks the queries first and creates nothing when one is invalid (feedback #44)', async () => {
+    const calls = stub((msg) => {
+      if (msg.url.includes('/automation/v1/queries/?')) return { items: [{ queryDefinitionId: 'any-q', name: 'Daily' }] }
+      if (msg.url.includes('/actions/validate/')) {
+        return msg.body.text.includes('[AllContactsList]')
+          ? { queryValid: false, errors: [{ message: '[AllContactsList] is not a known data extension or system data view.<br /> [Lead_Salesforce] is not known.' }] }
+          : { queryValid: true }
+      }
+      return answer(msg)
+    })
+    const { createFromPlan } = await import('../templates/index.js')
+    const r = await createFromPlan('s13', orphanContacts.plan(orphanContacts.defaults))
+    expect(r.created).toEqual([])
+    expect(r.failed.kind).toBe('check')
+    expect(r.failed.error).toContain('[AllContactsList] is not a known data extension')
+    expect(r.failed.error).not.toContain('<br')
+    expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/customobjects/'))).toBe(false)
+    // The archive query reads the plan's own Pending DE, so it is not sent for checking.
+    expect(calls.filter((c) => c.url.includes('/actions/validate/')).length).toBe(2)
+  })
+
+  it('deletes what a stopped run created, automation first', async () => {
+    const calls = stub(() => ({}))
+    const { deleteCreated } = await import('../templates/index.js')
+    const failed = await deleteCreated('s13', [
+      { kind: 'de', id: 'd1', name: 'A' }, { kind: 'query', id: 'q1', name: 'B' }, { kind: 'automation', id: 'a1', name: 'C' }, { kind: 'de', id: null, name: 'D' },
+    ])
+    expect(calls.map((c) => c.method + ' ' + c.url.split('/fuelapi')[1])).toEqual([
+      'DELETE /automation/v1/automations/a1', 'DELETE /automation/v1/queries/q1', 'DELETE /internal/v1/customobjects/d1'])
+    expect(failed.map((f) => f.name)).toEqual(['D'])
+  })
+})
+
+describe('Data view archive fields (feedback #43)', () => {
+  it('stores Email fields as Text(254) so SFMC accepts the DE', () => {
+    const f = Object.fromEntries(archiveFields('_Job').map((x) => [x.name, x]))
+    expect(f.BccEmail).toMatchObject({ type: 'text', length: 254 })
+    expect(f.FromEmail).toMatchObject({ type: 'text', length: 254 })
+  })
 })

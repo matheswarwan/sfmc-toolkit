@@ -6,7 +6,7 @@ import { ExternalLink, Loader2, Check, X, ChevronRight } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
 import CodeView from '@/components/results/CodeView.vue'
 import { useStack } from '@/composables/useStack.js'
-import { TEMPLATES, createFromPlan } from '@/utils/templates/index.js'
+import { TEMPLATES, createFromPlan, deleteCreated } from '@/utils/templates/index.js'
 import { contactBuilderDEUrl, automationStudioUrl } from '@/utils/activityTypes.js'
 import { QUERY_UPDATE_TYPES } from '@/utils/sfmcApi.js'
 
@@ -41,6 +41,7 @@ async function create() {
   creating.value = true
   progress.value = []
   result.value = null
+  undoFailed.value = null
   const r = await createFromPlan(stack.value, p, (entry) => {
     const i = progress.value.findIndex((x) => x.kind === entry.kind && x.name === entry.name)
     i >= 0 ? progress.value.splice(i, 1, entry) : progress.value.push(entry)
@@ -49,7 +50,23 @@ async function create() {
   creating.value = false
 }
 
-const KIND = { de: 'Data extension', query: 'Query activity', automation: 'Automation', setup: 'Setup' }
+const KIND = { check: 'Check', de: 'Data extension', query: 'Query activity', automation: 'Automation', setup: 'Setup' }
+
+// A stopped run leaves what it created; this removes it so the template can run again.
+const undoing = ref(false)
+const undoFailed = ref(null)
+async function undo() {
+  const created = result.value?.created || []
+  if (!created.length) return
+  if (!window.confirm(`Delete the ${created.length} item(s) this run created in SFMC?\n\n${created.map((c) => `${KIND[c.kind]}: ${c.name}`).join('\n')}`)) return
+  undoing.value = true
+  const failed = await deleteCreated(stack.value, created)
+  undoing.value = false
+  undoFailed.value = failed
+  const left = new Set(failed.map((f) => f.kind + f.name))
+  progress.value = progress.value.filter((e) => e.status !== 'done' || left.has(e.kind + e.name))
+  result.value = { ...result.value, created: created.filter((c) => left.has(c.kind + c.name)) }
+}
 </script>
 
 <template>
@@ -152,14 +169,21 @@ const KIND = { de: 'Data extension', query: 'Query activity', automation: 'Autom
               {{ KIND[e.kind] }} <span class="font-mono">{{ e.name }}</span>
               <a v-if="e.kind === 'de' && contactBuilderDEUrl(stack, e.id)" :href="contactBuilderDEUrl(stack, e.id)" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline">SFMC</a>
               <a v-if="e.kind === 'automation' && e.status === 'done'" :href="automationStudioUrl(stack)" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline">Automation Studio</a>
-              <span v-if="e.error" class="block text-red-600">{{ e.error }}</span>
+              <span v-if="e.error" class="block text-red-600 whitespace-pre-line">{{ e.error }}</span>
               <span v-if="e.note" class="block text-amber-700 dark:text-amber-400">{{ e.note }}</span>
             </span>
           </li>
         </ul>
-        <p v-if="result?.failed && result.created.length" class="text-xs text-muted-foreground">
-          The items above with a tick were created before it stopped. Fix the cause (for example the list or data extension name) and delete them in SFMC before creating again, or the names will clash.
-        </p>
+        <div v-if="result?.failed && result.created.length" class="flex flex-wrap items-center gap-3 pt-1">
+          <p class="text-xs text-muted-foreground flex-1 min-w-60">
+            The items with a tick were created before it stopped. Delete them, fix the cause (for example the list or data extension name), then create again.
+          </p>
+          <Button size="sm" variant="outline" class="h-8 text-xs" :disabled="undoing" @click="undo">
+            <Loader2 v-if="undoing" class="h-3.5 w-3.5 mr-1 animate-spin" /> Delete what was created
+          </Button>
+        </div>
+        <p v-if="result?.failed && !result.created.length && result.failed.kind === 'check'" class="text-xs text-muted-foreground">Nothing was created. Fix the names above, or create the missing list or data extension, then try again.</p>
+        <p v-if="undoFailed?.length" class="text-xs text-red-600 whitespace-pre-line">Not deleted (delete them in SFMC):\n{{ undoFailed.map((f) => `${KIND[f.kind]} ${f.name}: ${f.error}`).join('\n') }}</p>
       </section>
 
       <section v-if="result && !result.failed" class="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-900 p-3">

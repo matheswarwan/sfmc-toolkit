@@ -517,6 +517,11 @@ export async function createTemplateDE(stack, { name, key, fields, categoryID, s
   }
 }
 
+export async function deleteAutomation(stack, id) {
+  _logInfo(`Deleting automation (id: ${id})`)
+  await proxyFetch(`${AS_BASE(stack)}/automation/v1/automations/${encodeURIComponent(id)}`, 'DELETE', null)
+}
+
 /** ID of the root "Data Extensions" folder. */
 export async function getDERootFolderId(stack) {
   const rootDE = ((await listDERootFolders(stack)).entry || []).find((f) => f.name === 'Data Extensions' && f.type === 'dataextension')
