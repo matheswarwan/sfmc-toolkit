@@ -73,6 +73,13 @@ describe('sqlBuilder — SELECT/FROM', () => {
     expect(sql).not.toContain('t1.*')
   })
 
+  it('reads Shared DEs as ENT.[name] (feedback #73)', () => {
+    const sql = buildSqlFromSelections([
+      { id: '1', name: 'Master', sourceType: 'shared', selectedFields: ['Email'], fields: [] },
+    ])
+    expect(sql).toContain('FROM ENT.[Master] AS')
+  })
+
   it('brackets DE names with spaces', () => {
     const sql = buildSqlFromSelections([
       { id: '1', name: 'My DE', sourceType: 'folder', selectedFields: null, fields: [] },

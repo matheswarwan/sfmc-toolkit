@@ -5,15 +5,17 @@
 import { sqlName } from './format.js'
 
 /**
- * @param {Array<{ de: string, fields: string[] }>} selections  in the order ticked
+ * @param {Array<{ de: string, fields: string[], sourceType?: string }>} selections  in the order ticked
+ *   (sourceType 'shared': a Shared DE, read from a child business unit as ENT.[name], feedback #73)
  * @returns {string} '' when nothing is ticked
  */
 export function buildDESelect(selections) {
   const tables = selections.filter((s) => s.fields.length)
   if (!tables.length) return ''
   const alias = new Map(tables.map((t, i) => [t.de, tables.length > 1 ? `t${i + 1}` : null]))
+  const shared = new Set(tables.filter((t) => t.sourceType === 'shared').map((t) => t.de))
   const ref = (de, field) => (alias.get(de) ? `${alias.get(de)}.${sqlName(field)}` : sqlName(field))
-  const from = (de) => `${sqlName(de)}${alias.get(de) ? ` ${alias.get(de)}` : ''}`
+  const from = (de) => `${shared.has(de) ? 'ENT.' : ''}${sqlName(de)}${alias.get(de) ? ` ${alias.get(de)}` : ''}`
 
   const columns = tables.flatMap((t) => t.fields.map((f) => ref(t.de, f)))
   const lines = [`SELECT\n    ${columns.join(',\n    ')}`, `FROM ${from(tables[0].de)}`]

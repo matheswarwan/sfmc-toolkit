@@ -76,7 +76,7 @@ function makeCompletionSource(catalog) {
         from: c.from,
         filter: false,
         options: items.map(t => ({
-          label: t.kind === 'dataview' ? t.name : formatDEForSql(t.name, 'search'),
+          label: t.kind === 'dataview' ? t.name : formatDEForSql(t.name, t.sourceType || 'search'),
           displayLabel: t.name,
           type: t.kind === 'dataview' ? 'class' : 'type',
           detail: t.kind === 'dataview' ? 'data view' : 'data extension',

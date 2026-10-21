@@ -108,5 +108,7 @@ export function formatDEForSql(name, sourceType) {
   // Preserve ENT. prefix for shared DEs, bracket the remainder.
   const ent = name.match(/^ent\.(.+)$/i)
   if (ent) return `ENT.[${ent[1]}]`
+  // Shared DEs are read as ENT.[name] (feedback #73).
+  if (sourceType === 'shared') return `ENT.[${name}]`
   return `[${name}]`
 }

@@ -231,6 +231,7 @@ function tickAll(de) {
 }
 const selectedSql = computed(() => buildDESelect([...selected.value.values()].map((s) => ({
   de: s.de.name,
+  sourceType: s.de.sourceType,
   // Keep the DE's field order, not the order of ticking.
   fields: (fields[s.de.id]?.list || []).map((f) => f.name).filter((n) => s.fields.has(n)),
 }))))

@@ -14,9 +14,11 @@ export function fieldRef(name, qualifier) {
   return qualifier ? `${qualifier}.${n}` : n
 }
 
-function tableRef(name) {
+/** `Name`, `[Odd Name]`, or `ENT.[Name]` when given an ENT. name (a Shared DE, feedback #73). */
+export function tableRef(name) {
   const bare = bareTableName(name)
-  return PLAIN.test(bare) ? bare : bracket(bare)
+  const ent = /^\s*ent\s*\./i.test(String(name || '')) ? 'ENT.' : ''
+  return ent + (PLAIN.test(bare) ? bare : bracket(bare))
 }
 
 /** One field per line, indented like the formatter's output. */

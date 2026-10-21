@@ -5,6 +5,11 @@ const F = [{ name: 'SubscriberKey' }, { name: 'Email Address' }, { name: 'Status
 const apply = (sql, p) => sql.slice(0, p.from) + p.insert + sql.slice(p.to)
 
 describe('planInsertAllFields', () => {
+  it('keeps ENT. for a Shared DE in an empty editor (feedback #73)', () => {
+    const p = planInsertAllFields('', 0, 'ENT.My DE', F)
+    expect(p.insert).toContain('FROM ENT.[My DE]')
+  })
+
   it('writes a full query into an empty editor', () => {
     const p = planInsertAllFields('', 0, '_Subscribers', F)
     expect(p.mode).toBe('new')

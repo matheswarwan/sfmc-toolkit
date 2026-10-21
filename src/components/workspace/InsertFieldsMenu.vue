@@ -91,10 +91,10 @@ async function pick(name) {
         <div v-if="searching" class="text-muted-foreground mt-1">Searching…</div>
         <ul v-else-if="results.length" class="mt-1 max-h-56 overflow-auto">
           <li v-for="t in results" :key="t.kind + t.name">
-            <button class="w-full text-left px-1.5 py-1 rounded hover:bg-muted flex items-center gap-1" @click="pick(t.name)">
-              <Loader2 v-if="busy === t.name" class="h-3 w-3 animate-spin" />
+            <button class="w-full text-left px-1.5 py-1 rounded hover:bg-muted flex items-center gap-1" @click="pick(t.sourceType === 'shared' ? 'ENT.' + t.name : t.name)">
+              <Loader2 v-if="busy === t.name || busy === 'ENT.' + t.name" class="h-3 w-3 animate-spin" />
               <span class="truncate flex-1">{{ t.name }}</span>
-              <span class="text-muted-foreground">{{ t.kind === 'dataview' ? 'data view' : 'DE' }}</span>
+              <span class="text-muted-foreground">{{ t.kind === 'dataview' ? 'data view' : t.sourceType === 'shared' ? 'Shared DE' : t.sourceType === 'sync' ? 'Synchronized DE' : 'DE' }}</span>
             </button>
           </li>
         </ul>

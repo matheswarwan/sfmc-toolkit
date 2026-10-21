@@ -3,6 +3,14 @@ import { buildDESelect } from '../deSql.js'
 import { sqlName } from '../format.js'
 
 describe('buildDESelect', () => {
+  it('reads Shared DEs as ENT. (feedback #73)', () => {
+    expect(buildDESelect([{ de: 'Master DE', sourceType: 'shared', fields: ['Email'] }])).toBe('SELECT\n    Email\nFROM ENT.[Master DE]')
+    const two = buildDESelect([{ de: 'A', fields: ['Id'] }, { de: 'B', sourceType: 'shared', fields: ['Id'] }])
+    expect(two).toContain('FROM A t1')
+    expect(two).toContain('INNER JOIN ENT.B t2')
+    expect(buildDESelect([{ de: 'S', sourceType: 'sync', fields: ['Id'] }])).toContain('FROM S')
+  })
+
   it('returns nothing when no field is ticked', () => {
     expect(buildDESelect([])).toBe('')
     expect(buildDESelect([{ de: 'A', fields: [] }])).toBe('')

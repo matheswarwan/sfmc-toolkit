@@ -44,7 +44,7 @@ export function createSchemaCatalog(getStack) {
     if (!hit || Date.now() - hit.ts > SEARCH_TTL) {
       try {
         const data = await searchDEsAllSources(s, p, 50)
-        hit = { ts: Date.now(), items: (data?.items || []).map(de => ({ name: de.name, kind: 'de', key: de.key, id: de.id })) }
+        hit = { ts: Date.now(), items: (data?.items || []).map(de => ({ name: de.name, kind: 'de', key: de.key, id: de.id, sourceType: de.sourceType || null })) }
         searches.set(key, hit)
         // A search result gives the DE id, so a later field lookup can skip the name search.
         for (const de of hit.items) {
