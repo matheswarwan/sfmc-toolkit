@@ -4,6 +4,7 @@ import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } f
 import {
   Pencil, Check, X, Play, ShieldCheck, ChevronDown, LogIn, History,
   FolderOpen, RefreshCw, Search, Share2, Copy, ExternalLink, Maximize2, Minimize2, AlignLeft,
+  Table2,
 } from 'lucide-vue-next'
 import QueryEditor from '../detail/QueryEditor.vue'
 import ValidationPanel from '../detail/ValidationPanel.vue'
@@ -14,6 +15,7 @@ import Button from '../ui/button/Button.vue'
 import Input from '../ui/input/Input.vue'
 import QueryActivityTreeNode from './QueryActivityTreeNode.vue'
 import InsertFieldsMenu from './InsertFieldsMenu.vue'
+import SchemaPanel from './SchemaPanel.vue'
 import { useQueryPanel } from '../../composables/useQueryPanel.js'
 
 const props = defineProps({
@@ -66,6 +68,28 @@ function onFormatResult(r) {
 function formatQuery() {
   editorRef.value?.format()
 }
+
+// Cmd/Ctrl+Enter in the editor runs the selection, or the whole query (feedback #75).
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '')
+const runKey = isMac ? 'Cmd+Enter' : 'Ctrl+Enter'
+function runFromKey(selection) {
+  if (!props.canInteract || isRunning.value) return
+  runQuery(0, selection ? { sql: selection } : {})
+}
+
+// Schema search beside the editor (feedback #72), open or closed for every panel.
+const SCHEMA_KEY = 'toolkit_schemaPanel'
+const schemaPanel = ref(null)
+const showSchema = ref((() => { try { return localStorage.getItem(SCHEMA_KEY) === '1' } catch { return false } })())
+function setSchema(on) {
+  showSchema.value = on
+  try { localStorage.setItem(SCHEMA_KEY, on ? '1' : '0') } catch { /* private window */ }
+  if (on) schemaPanel.value?.focus?.()
+}
+function openSchema() {
+  if (!showSchema.value) setSchema(true)
+  else schemaPanel.value?.focus?.()
+}
 </script>
 
 <template>
@@ -84,12 +108,13 @@ function formatQuery() {
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Share query" @click="shareQuery"><Share2 class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Format SQL (Shift+Alt+F)" @click="formatQuery"><AlignLeft class="h-3 w-3" /></Button>
       <InsertFieldsMenu :editor="editorRef" :disabled="activeTab !== 'editor' || isRunning" />
+      <Button :variant="showSchema ? 'default' : 'outline'" size="sm" class="h-6 text-[10px] px-1" :disabled="activeTab !== 'editor'" :title="`Schema search: data extensions and their fields (${isMac ? 'Cmd' : 'Ctrl'}+Shift+S)`" :aria-pressed="showSchema" @click="setSchema(!showSchema)"><Table2 class="h-3 w-3" /></Button>
       <Button variant="ghost" size="icon" class="h-6 w-6" :title="isExpanded ? 'Minimize panel' : 'Expand panel'" @click="$emit('expand')">
         <Minimize2 v-if="isExpanded" class="h-3 w-3" />
         <Maximize2 v-else class="h-3 w-3" />
       </Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || isRunning" title="Validate query" @click="runValidation"><ShieldCheck class="h-3 w-3" /></Button>
-      <Button size="sm" class="h-6 text-[10px] px-1 bg-[#0176D3] text-white" :disabled="!canInteract || isRunning" title="Run query" @click="runQuery(0)"><Play class="h-3 w-3 fill-white" /></Button>
+      <Button size="sm" class="h-6 text-[10px] px-1 bg-[#0176D3] text-white" :disabled="!canInteract || isRunning" :title="`Run query (${runKey}; with text selected, runs only the selection)`" @click="runQuery(0)"><Play class="h-3 w-3 fill-white" /></Button>
       <Button variant="ghost" size="icon" class="h-6 w-6" :title="activeTab === 'history' ? 'Back to editor' : 'View run history'" @click="activeTab = activeTab === 'history' ? 'editor' : 'history'"><History class="h-3 w-3" /></Button>
       <Button v-if="showClose" variant="ghost" size="icon" class="h-6 w-6" title="Close panel" @click="$emit('close')"><X class="h-3 w-3" /></Button>
     </div>
@@ -252,8 +277,13 @@ function formatQuery() {
 
     <div v-if="formatNote" class="px-2 py-1 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-b border-border shrink-0">{{ formatNote }}</div>
     <div v-show="activeTab === 'editor'" class="flex-1 flex flex-col min-h-0">
-      <div class="overflow-hidden shrink-0" :style="{ height: editorHeightPct + '%' }">
-        <QueryEditor ref="editorRef" :modelValue="queryText" :stack="stack" @update:modelValue="onEditorChange" @format="onFormatResult" />
+      <div class="overflow-hidden shrink-0 flex min-w-0" :style="{ height: editorHeightPct + '%' }">
+        <div class="flex-1 min-w-0 h-full">
+          <QueryEditor ref="editorRef" :modelValue="queryText" :stack="stack" @update:modelValue="onEditorChange" @format="onFormatResult" @run="runFromKey" @schema-search="openSchema" />
+        </div>
+        <div v-if="showSchema" class="w-64 shrink-0 h-full">
+          <SchemaPanel ref="schemaPanel" :editor="editorRef" :stack="stack" @close="setSchema(false)" />
+        </div>
       </div>
       <div class="h-1 bg-border cursor-ns-resize shrink-0" @mousedown="onResizeStart($event)" />
       <div class="flex flex-col flex-1 min-h-0 overflow-hidden">

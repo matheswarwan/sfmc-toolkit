@@ -515,8 +515,13 @@ export function useQueryPanel(options) {
   }
 
   // ── Run ───────────────────────────────────────────────────
-  async function runQuery(fromStep = 0) {
+  // The SQL of the current run: the editor's text, or only the selected part when
+  // run with Cmd/Ctrl+Enter on a selection (feedback #75). Retry keeps it.
+  let runText = ''
+
+  async function runQuery(fromStep = 0, opts = {}) {
     if (isRunning.value) return
+    if (fromStep <= 0 || !runText) runText = typeof opts?.sql === 'string' && opts.sql.trim() ? opts.sql : queryText.value
     isRunning.value        = true
     trackEvent('run_start', { from_step: fromStep })
     resultsMode.value      = 'running'
@@ -546,14 +551,14 @@ export function useQueryPanel(options) {
       // Step 0 - Validate
       if (fromStep <= 0) {
         setStep(0, 'running')
-        if (!queryText.value.trim()) {
+        if (!runText.trim()) {
           setStep(0, 'error', 'Query is empty')
           clearInterval(elapsedTimer)
           return
         }
         try {
           const qaId   = await getAnyQueryActivityId(stack.value)
-          const result = await validateQueryText(stack.value, qaId, cleanQueryText(queryText.value))
+          const result = await validateQueryText(stack.value, qaId, cleanQueryText(runText))
           if (!result.queryValid) {
             const msg = (result.errors ?? []).map(e => e.message).join('; ') || 'Query is invalid'
             throw new Error(msg)
@@ -579,7 +584,7 @@ export function useQueryPanel(options) {
       // Reuse an existing query activity + DE if this exact query was run before
       // and the setting is on (off by default — see isReuseEnabled above).
       if (fromStep === 0 && await isReuseEnabled()) {
-        const normalizedText = queryText.value.trim()
+        const normalizedText = runText.trim()
         const reuseRun = runs.value.find(r =>
           r.queryText?.trim() === normalizedText &&
           r.activityId && r.deId && r.deKey &&
@@ -603,8 +608,8 @@ export function useQueryPanel(options) {
       if (fromStep <= 1) {
         setStep(1, 'running')
         const deName      = sfmcSafeName('sql')
-        const selectCols  = extractSelectColumns(queryText.value)
-        const colDetails  = inferSelectColumnDetails(queryText.value)
+        const selectCols  = extractSelectColumns(runText)
+        const colDetails  = inferSelectColumnDetails(runText)
 
         // ── Resolve DE folder (contactsmeta API) ──
         // The folder ID is cached on the query record together with its stack; a
@@ -621,7 +626,7 @@ export function useQueryPanel(options) {
 
         // ENT.X is a DE shared from the parent BU: look it up by its bare name,
         // which fetchDEMetadata also finds under Shared Items.
-        const sourceDeNames = [...new Set(extractDataExtensions(queryText.value).map(bareTableName))]
+        const sourceDeNames = [...new Set(extractDataExtensions(runText).map(bareTableName))]
           .filter(n => n && !isSkippableDE(n))
         const fieldMap = {}
         for (const sourceName of sourceDeNames) {
@@ -638,7 +643,7 @@ export function useQueryPanel(options) {
           // Data view fields are a fallback source of types for columns the
           // fetched source DEs don't cover (`s.EventDate AS SendDate` from _Sent).
           const dvFieldMap = {}
-          for (const srcName of extractDataExtensions(queryText.value)) {
+          for (const srcName of extractDataExtensions(runText)) {
             for (const f of (DATA_VIEW_FIELDS[srcName.toUpperCase()] || [])) dvFieldMap[f.name.toLowerCase()] = f
           }
           const lookupField = (n) => fieldMap[n] ?? dvFieldMap[n]
@@ -659,7 +664,7 @@ export function useQueryPanel(options) {
           }))
           if (typedColumns.length === 0) {
             // Fall back to built-in data view field definitions
-            for (const srcName of extractDataExtensions(queryText.value)) {
+            for (const srcName of extractDataExtensions(runText)) {
               const dvFields = DATA_VIEW_FIELDS[srcName.toUpperCase()]
               if (dvFields) {
                 for (const f of dvFields) {
@@ -681,7 +686,7 @@ export function useQueryPanel(options) {
         // run a wrapped query that outputs the new names.
         const renames = planUnderscoreRenames(typedColumns.map(c => c.name))
         activitySql = renames.size > 0
-          ? wrapWithRenamedColumns(cleanQueryText(queryText.value), typedColumns.map(c => c.name), renames)
+          ? wrapWithRenamedColumns(cleanQueryText(runText), typedColumns.map(c => c.name), renames)
           : null
         if (renames.size > 0) {
           typedColumns = typedColumns.map(c => renames.has(c.name) ? { ...c, name: renames.get(c.name) } : c)
@@ -734,7 +739,7 @@ export function useQueryPanel(options) {
           cacheFolder('qaFolderId', qaCategoryId)
         }
         const createActivity = (categoryId) => retryWhileTableMissing(2, () => createQueryActivity(stack.value, {
-          name: actName, queryText: activitySql ?? cleanQueryText(queryText.value),
+          name: actName, queryText: activitySql ?? cleanQueryText(runText),
           targetName: createdDeKey.value, targetKey: createdDeKey.value,
           targetId: createdDeId.value, categoryId,
         }))
@@ -799,7 +804,7 @@ export function useQueryPanel(options) {
         runId:        String(Date.now()),
         runAt:        Date.now(),
         stack:        stack.value,
-        queryText:    queryText.value,
+        queryText:    runText,
         deId:         createdDeId.value,
         deKey:        createdDeKey.value,
         deName:       createdDeName.value,
