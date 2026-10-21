@@ -13,29 +13,35 @@ const SUMMARY = {
   errors: { automations: null, journeys: null },
 }
 
-function page(url, { setting, collapsed } = {}) {
-  const dom = new JSDOM('<!doctype html><body></body>', { url, runScripts: 'outside-only' })
+const FRAME = '<div class="mc-app"><iframe id="dash" src="about:blank" style="display:block"></iframe></div>'
+
+function page(url, { setting = true, html = FRAME } = {}) {
+  const dom = new JSDOM(`<!doctype html><body>${html}</body>`, { url, runScripts: 'outside-only' })
   const sent = []
   const stored = {}
   dom.window.chrome = {
     runtime: { lastError: undefined, sendMessage: (m, cb) => { sent.push(m); setTimeout(() => cb(m.type === 'DASHBOARD_SUMMARY' ? { summary: SUMMARY } : { ok: true }), 0) } },
     storage: { local: {
-      get: (k, cb) => cb({ ...(setting === undefined ? {} : { _dashboardPanel: setting }), ...(collapsed ? { _dashboardPanelCollapsed: true } : {}) }),
+      get: (k, cb) => cb(setting === null ? {} : { _dashboardPanel: setting }),
       set: (o) => Object.assign(stored, o),
     }, onChanged: { addListener() {} } },
   }
   dom.window.setInterval = () => 0
   dom.window.eval(SCRIPT)
-  const host = () => dom.window.document.getElementById('sfmc-toolkit-dashboard-card')
-  return { dom, sent, host, stored }
+  const doc = dom.window.document
+  const host = () => doc.getElementById('sfmc-toolkit-dashboard-card')
+  const iframe = () => doc.getElementById('dash')
+  return { dom, sent, host, iframe, stored }
 }
 const tick = () => new Promise((r) => setTimeout(r, 10))
 const DASH = 'https://mc.s13.exacttarget.com/cloud/#app/Marketing%20Cloud%20Dashboard/?ks=ks'
+const button = (host, text) => [...host.shadowRoot.querySelectorAll('button')].find((b) => b.textContent === text)
 
-describe('SFMC Toolkit card on the Marketing Cloud Dashboard (feedback #65)', () => {
-  it('shows on the dashboard page and renders the summary as text', async () => {
-    const { sent, host } = page(DASH)
-    expect(host()).toBeTruthy()
+describe('SFMC Toolkit on the Marketing Cloud Dashboard (feedback #65)', () => {
+  it('replaces the content of div.mc-app and renders the summary as text', async () => {
+    const { sent, host, iframe } = page(DASH)
+    expect(host().parentElement.className).toBe('mc-app')
+    expect(iframe().style.display).toBe('none')
     await tick()
     expect(sent[0]).toEqual({ type: 'DASHBOARD_SUMMARY', stack: 's13', force: false })
     const root = host().shadowRoot
@@ -51,20 +57,34 @@ describe('SFMC Toolkit card on the Marketing Cloud Dashboard (feedback #65)', ()
     expect(sent.at(-1)).toEqual({ type: 'OPEN_APP', path: '/automations/a1' })
   })
 
-  it('stays away from other pages and when turned off', () => {
+  it('is off unless turned on, and stays away from other pages', () => {
+    expect(page(DASH, { setting: null }).host()).toBeNull()
+    expect(page(DASH, { setting: false }).host()).toBeNull()
     expect(page('https://mc.s13.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/').host()).toBeNull()
     expect(page('https://evil.example.com/#app/Marketing%20Cloud%20Dashboard/').host()).toBeNull()
-    expect(page(DASH, { setting: false }).host()).toBeNull()
+    expect(page(DASH, { html: '<div class="other"></div>' }).host()).toBeNull()
   })
 
-  it('starts collapsed without reading SFMC, and Turn off saves the setting', async () => {
-    const { sent, host, stored } = page(DASH, { collapsed: true })
-    await tick()
-    expect(sent).toHaveLength(0)
-    const off = [...host().shadowRoot.querySelectorAll('.lk')].find((b) => b.textContent === 'Turn off')
-    off.click()
-    expect(stored._dashboardPanel).toBe(false)
+  it('gives the dashboard back on Show SFMC dashboard and Turn off', () => {
+    const a = page(DASH)
+    button(a.host(), 'Show SFMC dashboard').click()
+    expect(a.host()).toBeNull()
+    expect(a.iframe().style.display).toBe('block')
+    expect(a.iframe().hasAttribute('data-sfmc-toolkit-hidden')).toBe(false)
+    const b = page(DASH)
+    button(b.host(), 'Turn off').click()
+    expect(b.stored._dashboardPanel).toBe(false)
+    expect(b.host()).toBeNull()
+    expect(b.iframe().style.display).toBe('block')
+  })
+
+  it('gives the frame back when SFMC moves to another app', () => {
+    const { dom, host, iframe } = page(DASH)
+    expect(host()).toBeTruthy()
+    dom.reconfigure({ url: 'https://mc.s13.exacttarget.com/cloud/#app/Automation%20Studio/' })
+    dom.window.dispatchEvent(new dom.window.HashChangeEvent('hashchange'))
     expect(host()).toBeNull()
+    expect(iframe().style.display).toBe('block')
   })
 })
 

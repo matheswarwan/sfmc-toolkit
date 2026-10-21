@@ -2,20 +2,21 @@
 // automations and journeys of the business unit (counts by status, what needs a
 // look, watched items) with links into SFMC Toolkit. The service worker reads SFMC
 // (DASHBOARD_SUMMARY, src/background/dashboard.js); this script only shows it.
-// Runs in a shadow root. Close hides it until the page is opened again; "Turn off"
-// sets _dashboardPanel to false (Settings > Connection turns it back on).
+// Off unless _dashboardPanel is true (Settings > Connection). When on, it replaces
+// the content of SFMC's app frame (div.mc-app, which holds the dashboard's iframe):
+// the iframes there are hidden, not removed, and shown again when the card goes
+// (another SFMC app, Show SFMC dashboard, or Turn off). Runs in a shadow root.
 (function () {
   'use strict';
   if (window.top !== window) return;
 
   var SETTING = '_dashboardPanel';
-  var COLLAPSED = '_dashboardPanelCollapsed';
   var HOST_ID = 'sfmc-toolkit-dashboard-card';
 
   var host = null;
   var root = null;
-  var enabled = true;
-  var collapsed = false;
+  var enabled = false;
+  var frame = null;
   var closedFor = '';
   var lastHref = '';
   var token = 0;
@@ -59,13 +60,11 @@
   }
 
   var CSS = [
-    ':host{all:initial}',
-    '.card{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:340px;max-height:70vh;display:flex;flex-direction:column;background:#fff;color:#1e293b;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
-    '.head{display:flex;align-items:center;gap:6px;padding:8px 10px 8px 12px;border-bottom:1px solid #e2e8f0}',
-    '.title{font-weight:700;font-size:13px;flex:1;margin:0}.trial{font:600 10px/1 inherit;color:#4f46e5;border:1px solid #c7d2fe;background:#eef2ff;border-radius:999px;padding:3px 6px}',
-    '.ib{border:0;background:none;cursor:pointer;color:#64748b;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px}.ib:hover{background:#f1f5f9}',
-    '.collapsed .body,.collapsed .foot{display:none}.collapsed .head{border-bottom:0}',
-    '.body{overflow:auto;padding:8px 12px}',
+    ':host{all:initial;display:block;height:100%;overflow:auto}',
+    '.card{box-sizing:border-box;min-height:100%;display:flex;flex-direction:column;background:#fff;color:#1e293b;border:1px solid #e2e8f0;font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
+    '.head{display:flex;align-items:center;gap:8px;padding:12px 20px;border-bottom:1px solid #e2e8f0}',
+    '.title{font-weight:700;font-size:15px;flex:1;margin:0}.trial{font:600 10px/1 inherit;color:#4f46e5;border:1px solid #c7d2fe;background:#eef2ff;border-radius:999px;padding:3px 6px}',
+    '.body{flex:1;padding:12px 20px;max-width:960px}',
     '.h{display:flex;align-items:baseline;gap:6px;font-weight:600;font-size:12px;margin:8px 0 4px}.h:first-child{margin-top:2px}.h .n{font-weight:400;color:#64748b}',
     '.stats{display:flex;gap:8px;margin:2px 0 4px}.stat{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:5px 7px}.stat b{display:block;font-size:17px}.stat span{font-size:11px;color:#64748b}.bad b{color:#b91c1c}',
     '.chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px}.chip{font-size:11px;background:#f1f5f9;border-radius:999px;padding:1px 7px}',
@@ -73,36 +72,57 @@
     '.nm{font-weight:600;color:#4338ca}.why{display:block;color:#64748b;font-size:11px}',
     '.more{border:0;background:none;color:#4f46e5;cursor:pointer;font:600 12px/1 inherit;padding:4px 0}',
     '.msg{color:#64748b;font-size:12px;padding:6px 0}.err{color:#b91c1c;font-size:12px;padding:4px 0}',
-    '.foot{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b}',
+    '.foot{display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b}',
     '.foot .sp{flex:1}.lk{border:0;background:none;color:#4f46e5;cursor:pointer;font:600 11px/1 inherit;padding:0}',
-    '@media (prefers-color-scheme: dark){.card{background:#0f172a;color:#e2e8f0;border-color:#1e293b}.head,.foot{border-color:#1e293b}.stat{border-color:#1e293b}.chip{background:#1e293b}.item{border-color:#1e293b}.ib:hover{background:#1e293b}.nm{color:#a5b4fc}}',
+    '@media (prefers-color-scheme: dark){.card{background:#0f172a;color:#e2e8f0;border-color:#1e293b}.head,.foot{border-color:#1e293b}.stat{border-color:#1e293b}.chip{background:#1e293b}.item{border-color:#1e293b}.nm{color:#a5b4fc}}',
   ].join('');
 
-  function mount() {
-    if (host && document.contains(host)) return;
+  var HIDDEN = 'data-sfmc-toolkit-hidden';
+
+  // SFMC's app frame: the div that holds the current app's iframe.
+  function findFrame() {
+    return document.querySelector('div.mc-app');
+  }
+
+  // Hides SFMC's iframes in the frame (again if SFMC adds or shows one).
+  function hideFrames() {
+    if (!frame) return;
+    Array.prototype.forEach.call(frame.querySelectorAll('iframe'), function (f) {
+      if (f.hasAttribute(HIDDEN)) { if (f.style.display !== 'none') f.style.display = 'none'; return; }
+      f.setAttribute(HIDDEN, f.style.display || '');
+      f.style.display = 'none';
+    });
+  }
+
+  function showFrames() {
+    Array.prototype.forEach.call(document.querySelectorAll('iframe[' + HIDDEN + ']'), function (f) {
+      f.style.display = f.getAttribute(HIDDEN);
+      f.removeAttribute(HIDDEN);
+    });
+  }
+
+  function mount(target) {
+    if (host && frame === target && target.contains(host)) { hideFrames(); return; }
+    unmount();
+    frame = target;
     host = document.createElement('div');
     host.id = HOST_ID;
+    host.style.cssText = 'display:block;width:100%;height:100%';
     root = host.attachShadow({ mode: 'open' });
     var style = document.createElement('style');
     style.textContent = CSS;
-    var card = el('section', 'card' + (collapsed ? ' collapsed' : ''));
+    var card = el('section', 'card');
     card.setAttribute('aria-label', 'SFMC Toolkit summary');
     var head = el('div', 'head');
     head.appendChild(el('p', 'title', 'SFMC Toolkit'));
     var trial = el('span', 'trial', 'Trial');
     trial.title = 'A trial: tell us what you think with Feedback in SFMC Toolkit';
     head.appendChild(trial);
-    var fold = el('button', 'ib fold', collapsed ? '+' : '−');
-    fold.type = 'button';
-    fold.setAttribute('aria-label', collapsed ? 'Expand' : 'Collapse');
-    fold.addEventListener('click', function () { setCollapsed(!collapsed); });
-    var x = el('button', 'ib', '×');
-    x.type = 'button';
-    x.setAttribute('aria-label', 'Close');
-    x.title = 'Close until this page is opened again';
-    x.addEventListener('click', function () { closedFor = location.href; unmount(); });
-    head.appendChild(fold);
-    head.appendChild(x);
+    var back = el('button', 'lk', 'Show SFMC dashboard');
+    back.type = 'button';
+    back.title = "Show SFMC's own dashboard until this page is opened again";
+    back.addEventListener('click', function () { closedFor = location.href; unmount(); });
+    head.appendChild(back);
     var body = el('div', 'body');
     var foot = el('div', 'foot');
     var when = el('span', 'when', '');
@@ -112,7 +132,7 @@
     refresh.addEventListener('click', function () { load(true); });
     var off = el('button', 'lk', 'Turn off');
     off.type = 'button';
-    off.title = 'Stop showing this card. Turn it back on in SFMC Toolkit: Settings > Connection.';
+    off.title = 'Stop replacing the dashboard. Turn it back on in SFMC Toolkit: Settings > Connection.';
     off.addEventListener('click', function () { try { chrome.storage.local.set({ _dashboardPanel: false }); } catch (e) { /* gone */ } unmount(); });
     foot.appendChild(when);
     foot.appendChild(sp);
@@ -123,26 +143,18 @@
     card.appendChild(foot);
     root.appendChild(style);
     root.appendChild(card);
-    (document.body || document.documentElement).appendChild(host);
-    if (!collapsed) load(false);
+    hideFrames();
+    frame.appendChild(host);
+    load(false);
   }
 
   function unmount() {
     token++;
     if (host) host.remove();
+    showFrames();
     host = null;
     root = null;
-  }
-
-  function setCollapsed(v) {
-    collapsed = v;
-    try { var o = {}; o[COLLAPSED] = v; chrome.storage.local.set(o); } catch (e) { /* gone */ }
-    if (!root) return;
-    root.querySelector('.card').classList.toggle('collapsed', v);
-    var f = root.querySelector('.fold');
-    f.textContent = v ? '+' : '−';
-    f.setAttribute('aria-label', v ? 'Expand' : 'Collapse');
-    if (!v && !root.querySelector('.body').childNodes.length) load(false);
+    frame = null;
   }
 
   function body() { return root && root.querySelector('.body'); }
@@ -245,22 +257,22 @@
   }
 
   function check() {
-    var want = enabled && parse(location.href) && closedFor !== location.href;
-    if (location.href === lastHref && !!host === !!want) return;
-    if (location.href !== lastHref && closedFor && closedFor !== location.href) closedFor = '';
-    lastHref = location.href;
-    if (enabled && parse(location.href) && closedFor !== location.href) mount();
-    else unmount();
+    if (location.href !== lastHref) {
+      if (closedFor && closedFor !== location.href) closedFor = '';
+      lastHref = location.href;
+    }
+    var target = enabled && parse(location.href) && closedFor !== location.href ? findFrame() : null;
+    if (target) mount(target);
+    else if (host || frame) unmount();
   }
 
   try {
-    chrome.storage.local.get([SETTING, COLLAPSED], function (r) {
-      enabled = !r || r[SETTING] !== false;
-      collapsed = !!(r && r[COLLAPSED]);
+    chrome.storage.local.get([SETTING], function (r) {
+      enabled = !!(r && r[SETTING] === true);
       check();
     });
     chrome.storage.onChanged.addListener(function (changes, area) {
-      if (area === 'local' && SETTING in changes) { enabled = changes[SETTING].newValue !== false; check(); }
+      if (area === 'local' && SETTING in changes) { enabled = changes[SETTING].newValue === true; check(); }
     });
   } catch (e) { /* extension context gone */ }
   window.addEventListener('hashchange', check);

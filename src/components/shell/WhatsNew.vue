@@ -36,7 +36,7 @@ function close() {
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">DE storage</strong><span class="text-muted-foreground">Data > DE storage shows the GB and rows your data extensions use, how that changed day by day, and the largest data extensions, with CSV and Excel.</span></li>
-        <li><strong class="block">On the Marketing Cloud Dashboard (trial)</strong><span class="text-muted-foreground">A small card on SFMC's dashboard page shows your automations, journeys and watched items. Collapse it, close it, or turn it off in Settings.</span></li>
+        <li><strong class="block">On the Marketing Cloud Dashboard (trial)</strong><span class="text-muted-foreground">Turn it on in Settings > Connection and SFMC's dashboard page shows your automations, journeys and watched items instead. Off by default.</span></li>
         <li><strong class="block">Overviews stay put</strong><span class="text-muted-foreground">Automation overview, its run trends and Journey overview are kept while you visit other sections.</span></li>
         <li><strong class="block">Smaller things</strong><span class="text-muted-foreground">Feedback remembers your name and email. Filter activities no longer cause an error first.</span></li>
       </ul>
