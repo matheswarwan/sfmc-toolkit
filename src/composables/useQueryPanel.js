@@ -4,6 +4,7 @@ import { extractDataExtensions, extractSelectColumns, inferSelectColumnDetails }
 import { planUnderscoreRenames, wrapWithRenamedColumns } from '../utils/columnNames.js'
 import { DATA_VIEW_FIELDS, isSkippableDE } from '../utils/dataViews.js'
 import { bareTableName } from '../utils/schemaCatalog.js'
+import { openTab } from '../utils/openTab.js'
 import {
   fetchDEMetadata, fetchDEFields, buildDEFields,
   createTargetDE, createQueryActivity,
@@ -470,7 +471,7 @@ export function useQueryPanel(options) {
       setStepDetail(idx, 'Opening Contact Builder in a background tab and retrying…')
       let cbTabId = null
       try {
-        const tab = await chrome.tabs.create({ url: `https://mc.${stack.value}.exacttarget.com/cloud/#app/Contact%20Builder`, active: false })
+        const tab = await openTab({ url: `https://mc.${stack.value}.exacttarget.com/cloud/#app/Contact%20Builder`, active: false })
         cbTabId = tab?.id ?? null
       } catch {}
       try {
@@ -1011,12 +1012,12 @@ export function useQueryPanel(options) {
   function openSfmcLogin() {
     const s = stack.value
     const url = s ? `https://mc.${s}.exacttarget.com/cloud/` : 'https://mc.exacttarget.com'
-    chrome.tabs.create({ url })
+    openTab({ url })
   }
 
   function openAutomationStudio() {
     const s = stack.value ?? 's10'
-    chrome.tabs.create({
+    openTab({
       url: `https://mc.${s}.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/`,
     })
   }

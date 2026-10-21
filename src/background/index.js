@@ -31,6 +31,7 @@ import {
 } from './capture.js'
 import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
+import { nextTo } from '../utils/openTab.js'
 import { openSfmcLink } from './deepLinks.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 import { watchForUpdates } from './updates.js'
@@ -48,8 +49,8 @@ const APP_PAGE = 'app.html'
 
 // The toolbar icon opens the app in a new tab each time; several tabs can be open
 // (each keeps its own workspace and Query Builder query, see utils/tabClaims.js).
-chrome.action?.onClicked?.addListener(() => {
-  createTab({ url: chrome.runtime.getURL(APP_PAGE) })
+chrome.action?.onClicked?.addListener((tab) => {
+  createTab(nextTo(tab, { url: chrome.runtime.getURL(APP_PAGE) }))
 })
 
 chrome.tabs?.onActivated?.addListener(({ tabId }) => {
@@ -135,18 +136,18 @@ const handlers = {
   WATCH_CHECK: async (m) => ({ result: await checkWatches(m.stack || (await resolveAndPublish()).stack, { force: !!m.force }) }),
   WATCH_BADGE: async () => { await updateBadge(); return { ok: true } },
   // From the Automation Summary tab on Automation Studio pages (public/automationPanel.js).
-  OPEN_APP: (m) => {
+  OPEN_APP: (m, sender) => {
     const path = typeof m.path === 'string' && m.path.startsWith('/') ? m.path : '/'
-    createTab({ url: chrome.runtime.getURL(`${APP_PAGE}#${path}`) })
+    createTab(nextTo(sender?.tab, { url: chrome.runtime.getURL(`${APP_PAGE}#${path}`) }))
     return { ok: true }
   },
   // From the Marketing Cloud Toolkit card on SFMC's dashboard page (public/dashboardPanel.js, feedback #65).
   DASHBOARD_SUMMARY: async (m) => ({ summary: await getDashboardSummary(m.stack, { force: !!m.force }) }),
-  OPEN_SFMC_LINK: async (m) => {
+  OPEN_SFMC_LINK: async (m, sender) => {
     let ok = false
     try { const u = new URL(m.url); ok = u.protocol === 'https:' && /^mc\.s\d+\.exacttarget\.com$/i.test(u.hostname) } catch { /* not a URL */ }
     if (!ok) return { error: 'Not an SFMC link.' }
-    return openSfmcLink(m.url)
+    return openSfmcLink(m.url, sender?.tab)
   },
   MCA_TOKEN_CAPTURED: (m, sender) => { handleCapturedToken(sender, m.accessToken); return null },
 }

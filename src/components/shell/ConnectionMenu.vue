@@ -7,6 +7,7 @@ import { useConnectionStatus } from '@/composables/useConnectionStatus.js'
 import { getStackChoices, setStackOverride, onStackChange } from '@/utils/stackDetection.js'
 import { sendToBackground } from '@/utils/messaging.js'
 import { fetchCurrentBU } from '@/utils/sfmcApi.js'
+import { openTab } from '@/utils/openTab.js'
 
 const { status, loading, refresh } = useConnectionStatus()
 
@@ -94,7 +95,7 @@ function toggleOpen() {
 
 function openLogin() {
   const url = stack.value ? `https://mc.${stack.value}.exacttarget.com/cloud/` : 'https://mc.exacttarget.com'
-  chrome.tabs.create({ url })
+  openTab({ url })
 }
 
 watch(stack, () => { loadBU(); if (open.value) loadApps() })

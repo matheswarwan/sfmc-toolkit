@@ -11,6 +11,7 @@ import { useWorkspace, LAYOUT_PRESETS } from '@/composables/useWorkspace.js'
 import { useStack } from '@/composables/useStack.js'
 import { showToast } from '@/composables/useToast.js'
 import { trackEvent } from '@/utils/analytics.js'
+import { openTab } from '@/utils/openTab.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -44,7 +45,7 @@ applyRoute()
 watch(() => route.query, (q) => { if (ready.value && route.path === '/queries/workspace' && (q.id || q.sql || q.ws)) applyRoute() })
 
 function openLogin() {
-  chrome.tabs.create({ url: stack.value ? `https://mc.${stack.value}.exacttarget.com/cloud/` : 'https://mc.exacttarget.com' })
+  openTab({ url: stack.value ? `https://mc.${stack.value}.exacttarget.com/cloud/` : 'https://mc.exacttarget.com' })
 }
 </script>
 

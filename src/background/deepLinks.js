@@ -3,6 +3,8 @@
 // SFMC goes through login or its home page and drops everything after `#`, so the tab
 // lands on the app's home page instead of the item. If the tab comes back to the same
 // stack's /cloud/ page without the link's `#app/...` part, the link is put back once.
+import { nextTo } from '../utils/openTab.js'
+
 const WATCH_FOR = 3 * 60 * 1000
 
 /** True when `now` is the stack's SFMC shell without the deep part of `wanted`. */
@@ -20,7 +22,7 @@ export function lostDeepLink(wanted, now) {
   }
 }
 
-export function openSfmcLink(url) {
+export function openSfmcLink(url, fromTab = null) {
   return new Promise((resolve) => {
     let tabId = null
     let restored = false
@@ -40,7 +42,7 @@ export function openSfmcLink(url) {
     }
     try {
       chrome.tabs.onUpdated.addListener(onUpdated)
-      chrome.tabs.create({ url }, (tab) => {
+      chrome.tabs.create(nextTo(fromTab, { url }), (tab) => {
         if (chrome.runtime.lastError || !tab) { stop(); resolve({ ok: false }); return }
         tabId = tab.id
         setTimeout(stop, WATCH_FOR)
