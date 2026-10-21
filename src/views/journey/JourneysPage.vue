@@ -1,12 +1,13 @@
 <script setup>
 // Journeys: search Journey Builder journeys by name or list all, newest change
 // first; View draws the journey. Read-only.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Loader2 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
+import WatchButton from '@/components/automation/WatchButton.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
@@ -61,7 +62,20 @@ useRouteSearch('/journeys', (q) => { query.value = q; whenStack(search) })
 
 const view = (j) => router.push({ path: `/journeys/${encodeURIComponent(j.id)}`, query: j.version ? { version: String(j.version) } : {} })
 
+// Tick journeys to watch several at once (feedback #59).
+const picked = ref(new Set())
+const allPicked = computed(() => items.value.length > 0 && items.value.every((j) => picked.value.has(j.id)))
+function togglePick(id) {
+  const next = new Set(picked.value)
+  next.has(id) ? next.delete(id) : next.add(id)
+  picked.value = next
+}
+function togglePickAll() {
+  picked.value = allPicked.value ? new Set() : new Set(items.value.map((j) => j.id))
+}
+
 const columns = [
+  { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
   { key: 'status', label: 'Status' },
   { key: 'version', label: 'Version' },
@@ -95,8 +109,17 @@ const columns = [
         Search for a journey by name, or search with an empty box to list all, most recently changed first.
       </div>
       <template v-else-if="searched !== null">
-        <p class="mb-2 text-xs text-muted-foreground">{{ total.toLocaleString() }} found{{ searched.query ? ` for "${searched.query}"` : '' }}{{ searched.status ? `, status ${searched.status}` : '' }}.</p>
+        <div class="mb-2 flex flex-wrap items-center gap-2">
+          <p class="text-xs text-muted-foreground flex-1">{{ total.toLocaleString() }} found{{ searched.query ? ` for "${searched.query}"` : '' }}{{ searched.status ? `, status ${searched.status}` : '' }}.</p>
+          <WatchButton v-if="items.length" bulk type="journey" :stack="stack" :items="items.filter((j) => picked.has(j.id))" />
+        </div>
         <DataTable :columns="columns" :rows="items" row-key="id" storage-key="journeys" empty-text="No journeys found.">
+          <template #head-pick>
+            <input type="checkbox" :checked="allPicked" aria-label="Select every journey shown" @change="togglePickAll" />
+          </template>
+          <template #cell-pick="{ row }">
+            <input type="checkbox" :checked="picked.has(row.id)" :aria-label="`Select ${row.name}`" @change="togglePick(row.id)" />
+          </template>
           <template #cell-name="{ row }">
             <button class="font-medium text-left hover:underline" @click="view(row)">{{ row.name || 'Untitled journey' }}</button>
           </template>

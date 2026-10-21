@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { Search, Loader2 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
+import WatchButton from '@/components/automation/WatchButton.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
@@ -114,6 +115,7 @@ const columns = [
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <p class="text-xs text-muted-foreground flex-1">{{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}.{{ entries.length < total ? ` Download covers the ${entries.length} shown; load more to include more.` : '' }}</p>
           <span v-if="docProgress" class="text-xs text-muted-foreground tabular-nums">Loading {{ docProgress.done }} of {{ docProgress.total }}...</span>
+          <WatchButton v-if="entries.length" bulk :stack="stack" :items="entries.filter((a) => picked.has(a.id))" />
           <DownloadMenu v-if="entries.length" :get-doc="buildDoc" :file-name="picked.size === 1 ? entries.find((a) => picked.has(a.id))?.name || 'automation' : `automations-${searched || 'all'}`"
             :label="picked.size ? `Download ${picked.size}` : `Download all ${entries.length}`" />
         </div>

@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const fetched = []
 let status = 6
+let journeyStatus = 'Published'
 vi.mock('../fetchProxy.js', () => ({
-  sfmcFetch: async ({ url }) => { fetched.push(url); return { name: 'Daily load', status, lastRunTime: '2026-10-19T10:00:00', lastRunStatus: 'Complete' } },
+  sfmcFetch: async ({ url }) => {
+    fetched.push(url)
+    if (url.includes('jbinteractions')) return { id: 'j2', key: 'k1', name: 'Welcome', status: journeyStatus, version: 2, modifiedDate: '2026-10-19T10:00:00' }
+    return { name: 'Daily load', status, lastRunTime: '2026-10-19T10:00:00', lastRunStatus: 'Complete' }
+  },
 }))
 
 function fakeChrome() {
@@ -44,5 +49,16 @@ describe('checkWatches (feedback #50)', () => {
     expect(await checkWatches('s4')).toEqual({ checked: 0, notices: 0 })
     expect(await checkWatches('s7', { force: true })).toEqual({ checked: 0, notices: 0 })
     expect(fetched).toHaveLength(1)
+  })
+
+  it('checks a watched journey by its key and links the notice to the latest version (feedback #59)', async () => {
+    const { data } = fakeChrome()
+    journeyStatus = 'Paused'
+    data.toolkit_watches = { 's4:journey:j1': { type: 'journey', stack: 's4', id: 'j1', key: 'k1', name: 'Welcome', on: { paused: true }, last: { status: 'Published', version: 1, modifiedDate: '2026-10-01T00:00:00Z' } } }
+    const { checkWatches } = await import('../watches.js')
+    expect(await checkWatches('s4', { force: true })).toEqual({ checked: 1, notices: 1 })
+    expect(fetched[0]).toBe('https://jbinteractions.s4.marketingcloudapps.com/fuelapi/interaction/v1/interactions/key:k1')
+    expect(data.toolkit_watch_notices[0]).toMatchObject({ type: 'journey', journeyId: 'j2', kind: 'paused' })
+    expect(data.toolkit_watches['s4:journey:j1']).toMatchObject({ id: 'j1', latestId: 'j2', last: { status: 'Paused', version: 2 } })
   })
 })

@@ -29,3 +29,32 @@ describe('watched automations (feedback #50)', () => {
     expect(unreadCount([{ ...list[0], read: true }, list[1]])).toBe(1)
   })
 })
+
+describe('watched journeys and bulk watch (feedback #59)', async () => {
+  const { diffJourney, addWatches, removeWatches, watchKey, noticeRoute, JOURNEY_DEFAULT_ON } = await import('../watches.js')
+
+  it('tells when a journey is paused, published again or gets a new version', () => {
+    const prev = { status: 'Published', version: 3, modifiedDate: '2026-10-01T00:00:00Z' }
+    expect(diffJourney(prev, { ...prev, status: 'Paused' })).toEqual([{ kind: 'paused', text: 'is now Paused (was Published)' }])
+    expect(diffJourney({ ...prev, status: 'Paused' }, prev)).toEqual([{ kind: 'activated', text: 'is now Published (was Paused)' }])
+    expect(diffJourney(prev, { ...prev, version: 4 })).toEqual([])
+    expect(diffJourney(prev, { ...prev, version: 4 }, { ...JOURNEY_DEFAULT_ON, edited: true })[0]).toMatchObject({ kind: 'edited' })
+    expect(diffJourney(null, prev)).toEqual([])
+  })
+
+  it('watches several at once, keeps snapshots of ones already watched, and removes them', () => {
+    const start = addWatches({}, 's4', 'automation', [{ id: 'A1', name: 'One', status: 6 }], { paused: true })
+    const next = addWatches(start, 's4', 'automation', [{ id: 'A1', name: 'One', status: 4 }, { id: 'A2', name: 'Two', status: 2 }], { fails: true })
+    expect(next['s4:A1'].last.status).toBe(6)
+    expect(next['s4:A1'].on).toEqual({ fails: true })
+    expect(next['s4:A2']).toMatchObject({ id: 'A2', name: 'Two', last: { status: 2 } })
+    const j = addWatches(next, 's4', 'journey', [{ id: 'j1', key: 'k1', name: 'Welcome', status: 'Published', version: 2 }], JOURNEY_DEFAULT_ON)
+    expect(j[watchKey('s4', 'j1', 'journey')]).toMatchObject({ type: 'journey', key: 'k1', last: { status: 'Published', version: 2 } })
+    expect(Object.keys(removeWatches(j, 's4', 'automation', ['A1', 'A2']))).toEqual(['s4:journey:j1'])
+  })
+
+  it('journey notices link to the journey, older notices to the automation', () => {
+    expect(noticeRoute({ type: 'journey', journeyId: 'j1' })).toBe('/journeys/j1')
+    expect(noticeRoute({ automationId: 'A1' })).toBe('/automations/A1')
+  })
+})

@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.8'
+const VERSION = '2.0.9'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,10 +35,11 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">Contacts</strong><span class="text-muted-foreground">Data > Contacts shows the contact count and finds a contact by Contact Key.</span></li>
-        <li><strong class="block">Open journey from Journey Entry</strong><span class="text-muted-foreground">Each entry event has Open journey.</span></li>
-        <li><strong class="block">Data view archive fixed</strong><span class="text-muted-foreground">Archive_Click no longer fails on duplicate rows and Archive_Job no longer fails with a system error. If you created the archive before, delete its data extensions, queries and automation and run the template again.</span></li>
-        <li><strong class="block">Where used finds more</strong><span class="text-muted-foreground">Content that names a data extension anywhere, not only in Lookup calls, shows with Mentions the name.</span></li>
+        <li><strong class="block">Watch journeys, and several at once</strong><span class="text-muted-foreground">Watch a journey to hear when it is paused, published or changed. Tick automations or journeys in their lists, then Watch.</span></li>
+        <li><strong class="block">Query Builder: Generate SQL</strong><span class="text-muted-foreground">The SQL panel stays hidden while you work; Generate SQL (or the SQL tab on the right) opens it.</span></li>
+        <li><strong class="block">Open in SFMC keeps its place</strong><span class="text-muted-foreground">If SFMC asks you to log in or loads its home page first, the automation, activity or journey you opened is put back.</span></li>
+        <li><strong class="block">Clearer run trends</strong><span class="text-muted-foreground">Automation overview: a smaller chart of every automation's runs (not only watched ones); click a day to see which automations ran or failed.</span></li>
+        <li><strong class="block">Contacts</strong><span class="text-muted-foreground">The contact count works now.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>

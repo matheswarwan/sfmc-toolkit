@@ -6,6 +6,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ExternalLink, Play, Loader2 } from 'lucide-vue-next'
+import { openInSfmc } from '@/utils/sfmcLinks.js'
 import CodeView from './CodeView.vue'
 import { useStack } from '@/composables/useStack.js'
 import { showToast } from '@/composables/useToast.js'
@@ -111,7 +112,7 @@ async function runInSFMC() {
           </button>
         </div>
       </div>
-      <a v-if="d.link" :href="d.link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0">
+      <a v-if="d.link" :href="d.link" @click="openInSfmc($event, d.link)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0">
         Open in SFMC <ExternalLink class="h-3 w-3" />
       </a>
     </header>

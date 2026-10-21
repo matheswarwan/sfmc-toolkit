@@ -64,7 +64,8 @@ export async function runTrends(stack, list, { days = 30, max = 40, now = Date.n
   const since = now - days * 86400000
   const recent = list.filter((a) => time(a.lastRunTime) >= since).sort((a, b) => time(b.lastRunTime) - time(a.lastRunTime)).slice(0, max)
   const perDay = new Map()
-  for (let t = since; t <= now; t += 86400000) perDay.set(dayKey(t), { key: dayKey(t), ok: 0, failed: 0 })
+  // Each day also lists its runs, so a click on the chart can show which automations ran (feedback #62).
+  for (let t = since; t <= now; t += 86400000) perDay.set(dayKey(t), { key: dayKey(t), ok: 0, failed: 0, runs: [] })
   const perAutomation = []
   let errors = 0
   await runInBatches(recent, 4, async (a) => {
@@ -77,15 +78,20 @@ export async function runTrends(stack, list, { days = 30, max = 40, now = Date.n
         if (!t) continue
         const d = perDay.get(dayKey(t))
         const bad = isFailure(r.status)
-        if (d) bad ? d.failed++ : d.ok++
+        if (d) {
+          bad ? d.failed++ : d.ok++
+          d.runs.push({ automation: a, start: r.start, status: r.status, failed: bad, message: r.message || '' })
+        }
         if (bad) { failed++; if (!lastFailure || t > time(lastFailure.start)) lastFailure = r }
       }
-      perAutomation.push({ automation: a, runs: runs.length, failed, lastFailure })
+      const last = runs.reduce((m, r) => (time(r.start) > time(m?.start) ? r : m), null)
+      perAutomation.push({ automation: a, runs: runs.length, failed, lastFailure, lastRun: last })
     } catch {
       errors++
     }
   }, { onProgress })
   perAutomation.sort((x, y) => y.failed - x.failed || y.runs - x.runs)
+  for (const d of perDay.values()) d.runs.sort((x, y) => time(y.start) - time(x.start))
   return { days: [...perDay.values()], perAutomation, read: recent.length, errors }
 }
 

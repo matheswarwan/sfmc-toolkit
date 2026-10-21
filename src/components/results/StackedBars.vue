@@ -9,7 +9,10 @@ const props = defineProps({
   series: { type: Array, required: true }, // [{ key, label, color }] bottom to top
   title: { type: String, default: '' },
   labelOf: { type: Function, default: (r) => r.key },
+  selected: { type: Number, default: -1 }, // the clicked column, highlighted
 })
+// A click on a column (or its row in the table) emits its index.
+const emit = defineEmits(['select'])
 
 const W = 720
 const H = 200
@@ -74,13 +77,15 @@ const showTable = ref(false)
       <button class="ml-auto text-primary hover:underline" @click="showTable = !showTable">{{ showTable ? 'Show chart' : 'Show table' }}</button>
     </figcaption>
     <div v-if="!showTable" class="relative">
-      <svg :viewBox="`0 0 ${W} ${H}`" class="w-full h-auto" role="img" :aria-label="title" @mousemove="onMove" @mouseleave="hover = null">
+      <!-- Capped so wide windows do not make it tall (feedback #62). -->
+      <svg :viewBox="`0 0 ${W} ${H}`" class="w-full h-auto max-w-3xl max-h-56 cursor-pointer" role="img" :aria-label="title" @mousemove="onMove" @mouseleave="hover = null" @click="hover && emit('select', hover.i)">
         <g>
           <template v-for="t in ticks.values" :key="t">
             <line :x1="PAD.l" :x2="W - PAD.r" :y1="y(t)" :y2="y(t)" stroke="hsl(var(--border))" stroke-width="1" />
             <text :x="PAD.l - 6" :y="y(t) + 3" text-anchor="end" class="fill-muted-foreground" font-size="10">{{ t >= 1000 ? `${t / 1000}K` : t }}</text>
           </template>
         </g>
+        <rect v-if="selected >= 0 && selected < rows.length" :x="PAD.l + selected * band" :y="PAD.t" :width="band" :height="plotH" fill="hsl(var(--primary))" opacity="0.12" />
         <rect v-if="hover" :x="PAD.l + hover.i * band" :y="PAD.t" :width="band" :height="plotH" fill="hsl(var(--muted))" opacity="0.6" />
         <g v-for="(r, i) in rows" :key="r.key">
           <path v-for="sg in segments(r, i)" :key="sg.key" :d="sg.d" :fill="sg.color" />
@@ -96,7 +101,7 @@ const showTable = ref(false)
     </div>
     <table v-else class="w-full">
       <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1">Day</th><th v-for="s in series" :key="s.key" class="py-1 text-right">{{ s.label }}</th></tr></thead>
-      <tbody><tr v-for="r in rows" :key="r.key" class="border-b border-border/50"><td class="py-1">{{ labelOf(r) }}</td><td v-for="s in series" :key="s.key" class="py-1 text-right tabular-nums">{{ r[s.key] || 0 }}</td></tr></tbody>
+      <tbody><tr v-for="(r, i) in rows" :key="r.key" class="border-b border-border/50 cursor-pointer hover:bg-muted/40" :class="i === selected ? 'bg-primary/10' : ''" @click="emit('select', i)"><td class="py-1">{{ labelOf(r) }}</td><td v-for="s in series" :key="s.key" class="py-1 text-right tabular-nums">{{ r[s.key] || 0 }}</td></tr></tbody>
     </table>
   </figure>
 </template>

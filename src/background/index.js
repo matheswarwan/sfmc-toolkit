@@ -11,6 +11,7 @@
 //   TRACK_EVENT { clientId, name, params }
 //   WATCH_CHECK { stack, force }, WATCH_BADGE          watched automations (watches.js)
 //   OPEN_APP { path }                                 open app.html#<path> (Automation Summary tab)
+//   OPEN_SFMC_LINK { url }                            open an SFMC deep link and keep it (deepLinks.js)
 //   SFMC_CONTEXT_CAPTURED, MCA_TOKEN_CAPTURED         from content.js
 //   PING
 
@@ -29,6 +30,7 @@ import {
 } from './capture.js'
 import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
+import { openSfmcLink } from './deepLinks.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
@@ -135,6 +137,12 @@ const handlers = {
     const path = typeof m.path === 'string' && m.path.startsWith('/') ? m.path : '/'
     createTab({ url: chrome.runtime.getURL(`${APP_PAGE}#${path}`) })
     return { ok: true }
+  },
+  OPEN_SFMC_LINK: async (m) => {
+    let ok = false
+    try { const u = new URL(m.url); ok = u.protocol === 'https:' && /^mc\.s\d+\.exacttarget\.com$/i.test(u.hostname) } catch { /* not a URL */ }
+    if (!ok) return { error: 'Not an SFMC link.' }
+    return openSfmcLink(m.url)
   },
   MCA_TOKEN_CAPTURED: (m, sender) => { handleCapturedToken(sender, m.accessToken); return null },
 }

@@ -1,4 +1,4 @@
-// Checks watched automations (feedback #50) and turns changes into notices: when
+// Checks watched automations (feedback #50) and journeys (#59) and turns changes into notices: when
 // the app asks (WATCH_CHECK, on opening) and when an SFMC page loads (at most every
 // 15 minutes per stack). Unread notices show as a count on the toolbar icon; with
 // the optional notifications permission granted and switched on, also as desktop
@@ -6,13 +6,21 @@
 import { sfmcFetch } from './fetchProxy.js'
 import { storageGet } from './chromeAsync.js'
 import {
-  WATCHES_KEY, NOTICES_KEY, NOTIFY_KEY, diffAutomation, addNotices, unreadCount, automationStatusName,
+  WATCHES_KEY, NOTICES_KEY, NOTIFY_KEY, diffAutomation, diffJourney, journeySnapshot, watchType, addNotices, unreadCount, automationStatusName,
 } from '../utils/watches.js'
 
 const AS = (stack) => `https://mc.${stack}.marketingcloudapps.com/AutomationStudioFuel3/fuelapi`
+const JB = (stack) => `https://jbinteractions.${stack}.marketingcloudapps.com/fuelapi/interaction/v1`
 const CHECKED_KEY = 'toolkit_watch_checked' // { stack: time }
 const PAGE_INTERVAL = 15 * 60 * 1000
 const running = new Set()
+
+// By key when known: each journey version has its own ID, and the key call returns
+// the latest version, so a watch follows the journey through new versions.
+async function journeySnap(stack, w) {
+  const d = await sfmcFetch({ url: `${JB(stack)}/interactions/${w.key ? `key:${encodeURIComponent(w.key)}` : encodeURIComponent(w.id)}` })
+  return { ...journeySnapshot(d), name: d?.name || w.name, id: d?.id || w.id }
+}
 
 async function snapshot(stack, w) {
   const d = await sfmcFetch({ url: `${AS(stack)}/automation/v1/automations/${encodeURIComponent(w.id)}` })
@@ -53,6 +61,19 @@ export async function checkWatches(stack, { force = false } = {}) {
     const fresh = []
     for (const [k, w] of mine) {
       try {
+        if (watchType(w) === 'journey') {
+          const cur = await journeySnap(stack, w)
+          const changes = diffJourney(w.last, cur, w.on)
+          // The notice opens the version that changed.
+          const watch = { ...w, name: cur.name, id: cur.id }
+          if (changes.length) {
+            notices = addNotices(notices, watch, changes)
+            fresh.push(...changes.map((c) => `${cur.name} ${c.text}`))
+          }
+          // The stored ID stays the one watched, so the watch keeps its key in storage.
+          watches[k] = { ...w, name: cur.name, latestId: cur.id, last: journeySnapshot(cur), checkedAt: Date.now(), error: undefined }
+          continue
+        }
         const cur = await snapshot(stack, w)
         const changes = diffAutomation(w.last, cur, w.on)
         if (changes.length) {
@@ -67,7 +88,7 @@ export async function checkWatches(stack, { force = false } = {}) {
     await chrome.storage.local.set({ [WATCHES_KEY]: watches, [NOTICES_KEY]: notices, [CHECKED_KEY]: { ...checkedAt, [stack]: Date.now() } })
     await updateBadge(notices)
     if (fresh.length && store[NOTIFY_KEY] && chrome.notifications?.create) {
-      chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('images/icon128x128.png'), title: 'SFMC Toolkit: watched automations', message: fresh.slice(0, 3).join('\n') + (fresh.length > 3 ? `\n+${fresh.length - 3} more` : '') })
+      chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('images/icon128x128.png'), title: 'SFMC Toolkit: watched automations and journeys', message: fresh.slice(0, 3).join('\n') + (fresh.length > 3 ? `\n+${fresh.length - 3} more` : '') })
     }
     return { checked: mine.length, notices: fresh.length }
   } finally {

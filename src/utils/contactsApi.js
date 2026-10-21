@@ -9,8 +9,11 @@ export const CONTACT_PAGE_SIZE = 25
 // Contact Builder's attribute ID for Contact Key.
 export const CONTACT_KEY_DEFINITION_ID = 101
 
+// The count is a POST with an empty filter (feedback #60; a GET answers 404).
 export async function fetchContactCount(stack) {
-  const data = await sfmcFetch(`${CM(stack)}/contacts/v1/addresses/count/?$pageSize=${CONTACT_PAGE_SIZE}&$page=1&$orderBy=contactKey%20ASC`, 'GET')
+  const data = await sfmcFetch(`${CM(stack)}/contacts/v1/addresses/count/?$pageSize=${CONTACT_PAGE_SIZE}&$page=1&$orderBy=contactKey%20ASC`, 'POST', {
+    queryFilter: { hasCriteria: true, rootExpressionSet: { expressions: [] } },
+  })
   const n = Number(data?.totalCount)
   if (!Number.isFinite(n)) throw new Error('Contact Builder did not return a count.')
   return n

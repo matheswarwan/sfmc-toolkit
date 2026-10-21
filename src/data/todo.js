@@ -27,10 +27,6 @@ export const TODO_GROUPS = [
     title: 'Under consideration',
     items: [
       {
-        title: 'Watch journeys',
-        detail: 'Like watched automations: a notice when a chosen journey is published, paused or stopped.',
-      },
-      {
         title: 'Business unit for older queries',
         detail: 'Queries saved before SFMC Query Saver 1.4.0 have no business unit, so they get no badge. They get one the next time they run in Run Query.',
       },

@@ -11,6 +11,7 @@ describe('contacts (feedback #57)', () => {
     sfmcFetch.mockResolvedValue({ totalCount: 558998 })
     await expect(fetchContactCount('s10')).resolves.toBe(558998)
     expect(sfmcFetch.mock.calls[0][0]).toBe('https://mc.s10.marketingcloudapps.com/contactsmeta/fuelapi/contacts/v1/addresses/count/?$pageSize=25&$page=1&$orderBy=contactKey%20ASC')
+    expect(sfmcFetch.mock.calls[0].slice(1)).toEqual(['POST', { queryFilter: { hasCriteria: true, rootExpressionSet: { expressions: [] } } }])
   })
 
   it('searches Contact Key (definition 101) with Equal', async () => {

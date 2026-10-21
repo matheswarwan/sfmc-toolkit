@@ -165,6 +165,7 @@ export const FEATURE_GROUPS = [
     title: 'Query Builder (experimental)',
     intro: 'Queries > Query Builder in the sidebar. It builds SQL from Data Extensions without typing it.',
     items: [
+      { title: 'Generate SQL when you are ready', since: '2.0.9', how: 'Generate SQL in the toolbar, or the SQL tab on the right edge', detail: 'The SQL panel starts hidden while you pick tables and map fields; Hide SQL puts it away again.' },
       {
         title: 'Pick tables',
         detail: 'Browse your DE folders, search all DEs, or pick a data view. Click to add one, or drag it onto the canvas in Visual mode. Data views are joined the way SFMC documents them (for example _Journey to _JourneyActivity on VersionID, _JourneyActivity to _Sent on JourneyActivityObjectID = TriggererSendDefinitionObjectID, tracking views on JobID, ListID, BatchID and SubscriberID).',
@@ -190,6 +191,7 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Automation Summary in Automation Studio', since: '2.0.7', how: 'The tab on the right edge of an automation\'s page in Automation Studio', detail: 'Status, last run, schedule, next run and each step\'s activities, with Open in SFMC Toolkit. Turn it off in Settings > Connection.' },
       { title: 'Automation overview', since: '2.0.6', how: 'Automation > Automation overview', detail: 'Every automation counted by status and last run, the ones that need a look (failed last run, in error, running for hours), the automations you watch, and run trends per day from the run logs.' },
+      { title: 'Watch several at once', since: '2.0.9', how: 'Tick automations in the list, then Watch', detail: 'The same choices as Watch on one automation, for every ticked one.' },
       { title: 'Watch an automation', since: '2.0.6', how: 'Watch on an automation\'s page', detail: 'Be told when it is paused, activated, runs or fails. Checked when SFMC Toolkit opens and at most every 15 minutes while you use SFMC; changes show on the bell and the toolbar icon, and as desktop notifications if you switch them on in Settings.' },
       { title: 'Find an automation', detail: 'Search by name, or list all, most recently run first, with status, last run and modified date. Hide columns you do not need.' },
       { title: 'Overview, schedule and notifications', detail: 'Key, status and last run; the schedule in plain words (for example Every 2 weeks on Monday) with the next run; and who gets error notifications.' },
@@ -262,6 +264,7 @@ export const FEATURE_GROUPS = [
     title: 'Journeys',
     intro: 'Journey > Journeys. Viewing a journey never changes it.',
     items: [
+      { title: 'Watch journeys', since: '2.0.9', how: 'Watch on a journey, or tick journeys in the list, then Watch', detail: 'Be told when a journey is paused or stopped, published or resumed, or (if you choose) gets a new version. A watch follows the journey through new versions.' },
       { title: 'Journey overview', since: '2.0.6', how: 'Journey > Journey overview', detail: 'Journeys counted by status, and which live journeys send email, SMS, push or WhatsApp, read from their definitions.' },
       { title: 'Find a journey', detail: 'Search by name or description, or list all, most recently changed first; filter by status. Shows status, version and dates.' },
       { title: 'The journey canvas', how: 'View on a journey', detail: 'The journey drawn like Journey Builder: entry, every step and every path, with the path names on the arrows. Switch between Horizontal and Vertical; the choice is remembered.' },

@@ -9,7 +9,7 @@ import StackedBars from '@/components/results/StackedBars.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { listAllAutomations, summarizeAutomations, runTrends } from '@/utils/overview.js'
-import { automationStatusName, WATCHES_KEY } from '@/utils/watches.js'
+import { automationStatusName, WATCHES_KEY, watchType } from '@/utils/watches.js'
 import { formatDateTime } from '@/utils/format.js'
 
 const { stack } = useStack()
@@ -42,6 +42,7 @@ async function loadTrends() {
   trendBusy.value = true
   error.value = ''
   try {
+    pickedDay.value = -1
     trends.value = await runTrends(stack.value, list.value, { days: trendDays.value, onProgress: (done, total) => { trendProgress.value = { done, total } } })
   } catch (e) {
     error.value = `Could not read the run logs: ${e.message}`
@@ -49,13 +50,15 @@ async function loadTrends() {
     trendBusy.value = false
   }
 }
+const pickedDay = ref(-1)
+const dayRuns = computed(() => (trends.value && pickedDay.value >= 0 ? trends.value.days[pickedDay.value] : null))
 const trendTotals = computed(() => trends.value?.days.reduce((t, d) => ({ ok: t.ok + d.ok, failed: t.failed + d.failed }), { ok: 0, failed: 0 }))
 const dayLabel = (r) => new Date(`${r.key}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 const SERIES = [{ key: 'ok', label: 'Succeeded', color: '#0ca30c' }, { key: 'failed', label: 'Failed', color: '#d03b3b' }]
 
 // ── Watched automations ─────────────────────────────────
 const watches = ref({})
-const watchedHere = computed(() => Object.values(watches.value).filter((w) => w.stack === stack.value))
+const watchedHere = computed(() => Object.values(watches.value).filter((w) => w.stack === stack.value && watchType(w) === 'automation'))
 const loadWatches = () => chrome.storage.local.get(WATCHES_KEY, (r) => { watches.value = r?.[WATCHES_KEY] || {} })
 const onChange = (c, area) => { if (area === 'local' && WATCHES_KEY in c) watches.value = c[WATCHES_KEY].newValue || {} }
 onMounted(() => { try { loadWatches(); chrome.storage.onChanged.addListener(onChange) } catch { /* not in an extension */ } })
@@ -113,16 +116,32 @@ whenStack(load)
             {{ trendBusy ? `Reading run logs ${trendProgress.done} of ${trendProgress.total}` : trends ? 'Load again' : 'Load run trends' }}
           </Button>
         </div>
-        <p v-if="!trends" class="text-xs text-muted-foreground">Reads the run log of the 40 automations that ran most recently (one request each), then shows runs and failures per day.</p>
+        <p v-if="!trends" class="text-xs text-muted-foreground">Runs of every automation in this business unit, not only watched ones: reads the run log of the 40 that ran most recently in the period (one request each), then shows runs and failures per day.</p>
         <template v-else>
-          <p class="text-xs text-muted-foreground mb-2">{{ trendTotals.ok + trendTotals.failed }} runs, {{ trendTotals.failed }} failed, across {{ trends.read }} automations{{ trends.errors ? ` (${trends.errors} run logs could not be read)` : '' }}.</p>
-          <StackedBars :rows="trends.days" :series="SERIES" :label-of="dayLabel" :title="`Runs per day, last ${trendDays} days`" />
-          <table v-if="trends.perAutomation.some((p) => p.failed)" class="w-full text-xs mt-3">
-            <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Most failures</th><th class="py-1 pr-3 text-right">Runs</th><th class="py-1 pr-3 text-right">Failed</th><th class="py-1 pr-3">Last failure</th></tr></thead>
-            <tbody><tr v-for="p in trends.perAutomation.filter((x) => x.failed).slice(0, 10)" :key="p.automation.id" class="border-b border-border/50">
+          <p class="text-xs text-muted-foreground mb-2">{{ trendTotals.ok + trendTotals.failed }} runs, {{ trendTotals.failed }} failed, across {{ trends.read }} automations (all automations that ran, not only watched ones){{ trends.errors ? `; ${trends.errors} run logs could not be read` : '' }}. Click a day to see its runs.</p>
+          <StackedBars :rows="trends.days" :series="SERIES" :label-of="dayLabel" :title="`Runs per day, last ${trendDays} days`" :selected="pickedDay" @select="pickedDay = pickedDay === $event ? -1 : $event" />
+          <div v-if="dayRuns" class="mt-3">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-xs font-semibold flex-1">Runs on {{ dayLabel(dayRuns) }} ({{ dayRuns.runs.length }})</h3>
+              <button class="text-xs text-muted-foreground hover:underline" @click="pickedDay = -1">Close</button>
+            </div>
+            <p v-if="!dayRuns.runs.length" class="text-xs text-muted-foreground">No runs that day.</p>
+            <table v-else class="w-full text-xs">
+              <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Automation</th><th class="py-1 pr-3">Started</th><th class="py-1 pr-3">Result</th></tr></thead>
+              <tbody><tr v-for="(r, i) in dayRuns.runs" :key="i" class="border-b border-border/50">
+                <td class="py-1 pr-3"><RouterLink :to="link(r.automation.id)" class="font-medium hover:underline">{{ r.automation.name }}</RouterLink></td>
+                <td class="py-1 pr-3 whitespace-nowrap">{{ formatDateTime(r.start) }}</td>
+                <td class="py-1 pr-3"><StatusBadge :status="r.status || (r.failed ? 'Error' : 'Complete')" /> <span v-if="r.message" class="text-muted-foreground">{{ r.message }}</span></td>
+              </tr></tbody>
+            </table>
+          </div>
+          <table class="w-full text-xs mt-3">
+            <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-3">Automation (most failures first)</th><th class="py-1 pr-3 text-right">Runs</th><th class="py-1 pr-3 text-right">Failed</th><th class="py-1 pr-3">Last run</th><th class="py-1 pr-3">Last failure</th></tr></thead>
+            <tbody><tr v-for="p in trends.perAutomation.filter((x) => x.runs)" :key="p.automation.id" class="border-b border-border/50">
               <td class="py-1 pr-3"><RouterLink :to="link(p.automation.id)" class="font-medium hover:underline">{{ p.automation.name }}</RouterLink></td>
-              <td class="py-1 pr-3 text-right tabular-nums">{{ p.runs }}</td><td class="py-1 pr-3 text-right tabular-nums text-red-600">{{ p.failed }}</td>
-              <td class="py-1 pr-3">{{ formatDateTime(p.lastFailure?.start) }} {{ p.lastFailure?.message || '' }}</td>
+              <td class="py-1 pr-3 text-right tabular-nums">{{ p.runs }}</td><td class="py-1 pr-3 text-right tabular-nums" :class="p.failed ? 'text-red-600' : 'text-muted-foreground'">{{ p.failed }}</td>
+              <td class="py-1 pr-3 whitespace-nowrap">{{ formatDateTime(p.lastRun?.start) }}</td>
+              <td class="py-1 pr-3">{{ p.lastFailure ? `${formatDateTime(p.lastFailure.start)} ${p.lastFailure.message || ''}` : '—' }}</td>
             </tr></tbody>
           </table>
         </template>

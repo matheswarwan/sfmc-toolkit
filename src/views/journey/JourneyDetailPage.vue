@@ -9,6 +9,8 @@ import JourneyCanvas from '@/components/journey/JourneyCanvas.vue'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
+import WatchButton from '@/components/automation/WatchButton.vue'
+import { openInSfmc } from '@/utils/sfmcLinks.js'
 import { useStack } from '@/composables/useStack.js'
 import { fetchJourney, journeyGraph, layoutJourney, describeJourneyNode, journeyOverviewRows, journeyBuilderUrl, journeyDoc, nodeEmailId, fetchJourneyEmailAsset } from '@/utils/journeys.js'
 import { compile } from '@/utils/emailCompiler.js'
@@ -102,7 +104,8 @@ const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
           <button class="flex items-center gap-1 text-xs px-2 py-0.5 rounded" :class="orientation === 'vertical' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'"
             :aria-pressed="orientation === 'vertical'" @click="orientation = 'vertical'"><Rows3 class="h-3.5 w-3.5" /> Vertical</button>
         </div>
-        <a :href="journeyBuilderUrl(stack, journey)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Journey Builder <ExternalLink class="h-3 w-3" /></a>
+        <a :href="journeyBuilderUrl(stack, journey)" @click="openInSfmc($event, journeyBuilderUrl(stack, journey))" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Journey Builder <ExternalLink class="h-3 w-3" /></a>
+        <WatchButton type="journey" :stack="stack" :items="[journey]" />
         <DownloadMenu :get-doc="getDoc" :file-name="journey.name || 'journey'" />
       </template>
     </div>

@@ -14,6 +14,7 @@ import WatchButton from '@/components/automation/WatchButton.vue'
 import { useStack } from '@/composables/useStack.js'
 import { fetchAutomation, fetchActivityDetails } from '@/utils/automationApi.js'
 import { describeActivity, activityTypeLabel, automationUrl } from '@/utils/activityTypes.js'
+import { openInSfmc } from '@/utils/sfmcLinks.js'
 import { automationOverviewRows, scheduleRows, automationDoc } from '@/utils/automationDoc.js'
 import { runInBatches } from '@/utils/batchRunner.js'
 
@@ -91,8 +92,8 @@ function getDoc() {
         </div>
         <label v-if="view === 'full'" class="flex items-center gap-1.5 text-xs text-muted-foreground"><input v-model="showAllFields" type="checkbox" /> All fields</label>
         <button class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent" title="Data extensions, files and emails this automation touches" @click="usage.start(stack, { kind: 'automation', id: details.id || id, name: details.name })"><Network class="h-3.5 w-3.5" /> What it touches</button>
-        <WatchButton :stack="stack" :automation="details" :automation-id="id" />
-        <a :href="automationUrl(stack, details.id)" title="Open this automation in Automation Studio" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Automation Studio <ExternalLink class="h-3 w-3" /></a>
+        <WatchButton :stack="stack" :items="[{ ...(details || {}), id }]" />
+        <a :href="automationUrl(stack, details.id)" @click="openInSfmc($event, automationUrl(stack, details.id))" title="Open this automation in Automation Studio" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Automation Studio <ExternalLink class="h-3 w-3" /></a>
         <DownloadMenu :get-doc="getDoc" :file-name="details.name || 'automation'" :disabled="pending > 0" />
       </template>
     </div>

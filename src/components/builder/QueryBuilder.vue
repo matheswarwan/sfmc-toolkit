@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { LayoutGrid, List, Check, Loader2, PanelRight, PanelBottom, EyeOff, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { LayoutGrid, List, Check, Loader2, PanelRight, PanelBottom, EyeOff, Code2, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import DEBrowser from './DEBrowser.vue'
 import SelectedDEsPanel from './SelectedDEsPanel.vue'
 import SqlOutput from './SqlOutput.vue'
@@ -46,16 +46,20 @@ const selectedPanelRef = ref(null)
 const joinCanvasRef = ref(null)
 
 // SQL panel docking, remembered per mode: list defaults right, visual defaults bottom.
+// The panel starts hidden (feedback #61): Generate SQL opens it, Hide SQL closes it.
 const DOCK_KEY = 'qb_sql_dock_v2'
-const VALID_DOCKS = ['right', 'bottom', 'hidden']
+const VALID_DOCKS = ['right', 'bottom']
 const dockPrefs = ref({ list: 'right', visual: 'bottom' })
 try {
   const saved = JSON.parse(localStorage.getItem(DOCK_KEY) || '{}')
   if (VALID_DOCKS.includes(saved.list)) dockPrefs.value.list = saved.list
   if (VALID_DOCKS.includes(saved.visual)) dockPrefs.value.visual = saved.visual
 } catch { /* ignore */ }
-const sqlDock = computed(() => (visualMode.value ? dockPrefs.value.visual : dockPrefs.value.list))
+const sqlOpen = ref(false)
+const sqlDock = computed(() => (!sqlOpen.value ? 'hidden' : visualMode.value ? dockPrefs.value.visual : dockPrefs.value.list))
 function setDock(v) {
+  if (v === 'hidden') { sqlOpen.value = false; return }
+  sqlOpen.value = true
   dockPrefs.value = { ...dockPrefs.value, [visualMode.value ? 'visual' : 'list']: v }
   try { localStorage.setItem(DOCK_KEY, JSON.stringify(dockPrefs.value)) } catch { /* ignore */ }
 }
@@ -242,7 +246,13 @@ function onCanvasDropDe(node) {
       </span>
       <div class="flex-1" />
       <slot name="actions" />
-      <!-- SQL panel dock controls -->
+      <!-- SQL panel: open or hide, then where it docks -->
+        <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium"
+          :class="sqlOpen ? 'border border-border hover:bg-accent' : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50'"
+          :disabled="!sqlOpen && !selectedDEs.length" :title="selectedDEs.length ? '' : 'Add a data extension first'"
+          @click="sqlOpen = !sqlOpen">
+          <EyeOff v-if="sqlOpen" class="h-3.5 w-3.5" /><Code2 v-else class="h-3.5 w-3.5" /> {{ sqlOpen ? 'Hide SQL' : 'Generate SQL' }}
+        </button>
         <div class="flex items-center gap-0.5 border border-border rounded-md p-0.5">
           <button class="p-1 rounded" title="Dock SQL right"
             :class="sqlDock === 'right' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
@@ -331,6 +341,10 @@ function onCanvasDropDe(node) {
             />
           </template>
         </div>
+
+        <!-- Hidden: a small tab on the right edge opens the SQL -->
+        <button v-if="!sqlOpen && selectedDEs.length" class="shrink-0 self-center [writing-mode:vertical-rl] rotate-180 rounded-r-md bg-primary text-primary-foreground px-1.5 py-3 text-[11px] font-semibold shadow"
+          title="Show the generated SQL" @click="sqlOpen = true">SQL</button>
 
         <!-- Right dock: SQL output (drag left edge to resize) -->
         <div v-if="sqlDock === 'right'" class="relative shrink-0 min-h-0 border-l border-border" :style="{ width: sqlSize.right + '%' }">

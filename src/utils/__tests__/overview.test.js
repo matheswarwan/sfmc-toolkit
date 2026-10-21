@@ -39,8 +39,10 @@ describe('run trends and journey channels', () => {
     ], { days: 7, now })
     expect(r.read).toBe(2)
     expect(r.errors).toBe(1)
-    expect(r.days.find((d) => d.key === '2026-10-19')).toEqual({ key: '2026-10-19', ok: 0, failed: 1 })
-    expect(r.days.find((d) => d.key === '2026-10-20')).toEqual({ key: '2026-10-20', ok: 1, failed: 0 })
+    expect(r.days.find((d) => d.key === '2026-10-19')).toMatchObject({ key: '2026-10-19', ok: 0, failed: 1 })
+    expect(r.days.find((d) => d.key === '2026-10-20')).toMatchObject({ key: '2026-10-20', ok: 1, failed: 0 })
+    // Each day lists its runs, for the day view (feedback #62).
+    expect(r.days.find((d) => d.key === '2026-10-19').runs).toEqual([expect.objectContaining({ automation: expect.objectContaining({ id: 'A' }), status: 'Error', failed: true })])
     expect(r.perAutomation[0]).toMatchObject({ runs: 2, failed: 1 })
   })
 
