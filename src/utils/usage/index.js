@@ -7,12 +7,16 @@
 // Progress goes to onStage(id, { state, done, total, note }) with state 'running' |
 // 'done' | 'cached' | 'skipped' | 'error'. A source that fails does not end the scan:
 // its stage shows the error and its sections say they may be incomplete.
+// isSkipped(sourceId) (feedback #70) leaves a source out, checked before it loads and
+// while it loads (Skip): its saved data is used if there is any, else it returns null
+// like a failed source. A skipped load is never saved, so saved data stays whole.
 import { KINDS } from './kinds.js'
 import { SOURCES, StoppedError } from './sources.js'
 import { loadSaved, save, forget, peekSaved } from './store.js'
 import { fetchCurrentBU } from '../sfmcApi.js'
 
 export { KINDS, PROFILE_LABELS } from './kinds.js'
+export const SOURCE_IDS = Object.keys(SOURCES)
 export { StoppedError }
 
 export const REUSE_FOR = 5 * 60 * 1000
@@ -45,7 +49,7 @@ const ago = (ms) => {
 }
 
 /** @returns {Promise<{ sections, note?, title?, businessUnit }>} */
-export async function findUsage(stack, target, { onStage = () => {}, shouldStop = () => false, now = () => Date.now() } = {}) {
+export async function findUsage(stack, target, { onStage = () => {}, shouldStop = () => false, isSkipped = () => false, now = () => Date.now() } = {}) {
   const kind = KINDS[target.kind]
   if (!kind) throw new Error(`Unknown kind: ${target.kind}`)
   const touched = new Set()
@@ -70,6 +74,16 @@ export async function findUsage(stack, target, { onStage = () => {}, shouldStop 
       loading[id] = (async () => {
         checkStop()
         const saved = await loadSaved(keyOf(id))
+        const skip = () => {
+          if (saved) {
+            report(id, { state: 'cached', ...count(saved.value), note: `skipped, using data saved ${ago(now() - saved.savedAt)}` })
+            values[id] = saved.value
+            return saved.value
+          }
+          report(id, { state: 'skipped', done: 0, total: 0, note: 'results may be incomplete' })
+          return null
+        }
+        if (isSkipped(id)) return skip()
         if (saved && now() - saved.savedAt < REUSE_FOR) {
           report(id, { state: 'cached', ...count(saved.value), note: `saved ${ago(now() - saved.savedAt)}` })
           values[id] = saved.value
@@ -78,7 +92,7 @@ export async function findUsage(stack, target, { onStage = () => {}, shouldStop 
         report(id, { state: 'running', done: 0, total: 0, note: saved ? 'checking for changes' : '' })
         const loaderCtx = {
           stack,
-          stop: shouldStop,
+          stop: () => shouldStop() || isSkipped(id),
           get: ctx.get,
           progress: (done, total, note = '') => { if (!shouldStop()) report(id, { state: 'running', done, total, note }) },
         }
@@ -101,7 +115,9 @@ export async function findUsage(stack, target, { onStage = () => {}, shouldStop 
           values[id] = value
           return value
         } catch (e) {
-          if (e?.stopped || shouldStop()) throw new StoppedError()
+          if (shouldStop()) throw new StoppedError()
+          if (isSkipped(id)) return skip()
+          if (e?.stopped) throw new StoppedError()
           report(id, { state: 'error', done: 0, total: 0, note: e.message })
           return null
         }

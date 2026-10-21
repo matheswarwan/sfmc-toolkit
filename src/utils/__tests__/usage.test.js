@@ -310,6 +310,50 @@ describe('findUsage', () => {
     expect(r.sections.find((s) => s.id === 'journeys').unavailable).toBe(true)
     await expect(findUsage('s8', { kind: 'de', de }, { shouldStop: () => true })).rejects.toMatchObject({ stopped: true })
   })
+
+  it('leaves out a skipped source and never saves a skipped load (feedback #70)', async () => {
+    let skipAssets = false
+    const calls = stub((url, body) => {
+      if (url.includes('/assets/query')) {
+        const page = sfmc(url, body)
+        skipAssets = true // Skip clicked while the first page loads
+        return { ...page, count: 5000 }
+      }
+      return sfmc(url, body)
+    })
+    const { findUsage } = await load()
+    const seen = {}
+    const r = await findUsage('s9', { kind: 'de', de }, { onStage: (id, s) => { seen[id] = s }, isSkipped: (id) => id === 'assets' && skipAssets })
+    expect(seen.assets).toMatchObject({ state: 'skipped' })
+    expect(seen.journeys.state).toBe('done')
+    expect(r.sections.find((s) => s.id === 'content').unavailable).toBe(true)
+    expect(titles(r, 'queries')).toEqual(['Build orders', 'No text in list', 'Use orders'])
+    const assetCalls = calls.filter((c) => c.includes('/assets/query')).length
+
+    // Ticked before the check: not loaded at all.
+    const again = {}
+    await findUsage('s9', { kind: 'de', de }, { onStage: (id, s) => { again[id] = s }, isSkipped: (id) => id === 'assets' })
+    expect(again.assets.state).toBe('skipped')
+    expect(calls.filter((c) => c.includes('/assets/query')).length).toBe(assetCalls)
+
+    // Nothing partial was saved: included again, it loads in full.
+    skipAssets = false
+    const third = {}
+    stub(sfmc)
+    await findUsage('s9', { kind: 'de', de }, { onStage: (id, s) => { third[id] = s } })
+    expect(third.assets.state).toBe('done')
+  })
+
+  it('uses saved data for a skipped source', async () => {
+    stub(sfmc)
+    const { findUsage } = await load()
+    await findUsage('s10', { kind: 'de', de })
+    const seen = {}
+    const r = await findUsage('s10', { kind: 'de', de }, { onStage: (id, s) => { seen[id] = s }, isSkipped: (id) => id === 'assets' })
+    expect(seen.assets).toMatchObject({ state: 'cached' })
+    expect(seen.assets.note).toMatch(/^skipped, using data saved/)
+    expect(titles(r, 'content')).toEqual(['Receipt'])
+  })
 })
 
 describe('deltaList', () => {

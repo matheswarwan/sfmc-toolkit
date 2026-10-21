@@ -14,7 +14,10 @@ import { useUsage, targetTitle, targetKindLabel } from '@/composables/useUsage.j
 import { formatDateTime } from '@/utils/format.js'
 
 const router = useRouter()
-const { state, start, stop, follow, back, progress } = useUsage()
+const { state, start, stop, follow, back, progress, toggleSkip, canSkip, again } = useUsage()
+const skipped = (id) => state.skip.includes(id)
+// A finished check that left out a source the user has ticked again since.
+const canInclude = computed(() => !state.running && state.order.some((s) => canSkip(s.id) && !skipped(s.id) && (state.stages[s.id]?.state === 'skipped' || /^skipped,/.test(state.stages[s.id]?.note || ''))))
 
 const percent = computed(() => Math.round(100 * progress()))
 const sections = computed(() => state.result?.sections || [])
@@ -112,6 +115,7 @@ function buildDoc() {
           <span class="font-semibold">Process</span>
           <span class="text-muted-foreground">{{ state.running ? `${percent}%` : state.error ? state.error : 'Finished' }}</span>
           <div class="flex-1" />
+          <button v-if="canInclude" class="inline-flex items-center gap-1 text-primary hover:underline" title="Check again with the ticked steps; saved data is reused" @click="again"><RefreshCw class="h-3 w-3" /> Check again</button>
           <button v-if="state.running" class="inline-flex items-center gap-1 text-primary hover:underline" @click="stop"><Square class="h-3 w-3" /> Stop</button>
         </div>
         <div class="h-1.5 rounded bg-muted overflow-hidden mb-3" role="progressbar" aria-label="Overall progress" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
@@ -125,7 +129,10 @@ function buildDoc() {
               <AlertCircle v-else-if="state.stages[s.id]?.state === 'error'" class="h-3.5 w-3.5 mt-px text-red-600 shrink-0" />
               <MinusCircle v-else-if="['skipped', 'stopped'].includes(state.stages[s.id]?.state)" class="h-3.5 w-3.5 mt-px text-muted-foreground shrink-0" />
               <Circle v-else class="h-3.5 w-3.5 mt-px text-muted-foreground/50 shrink-0" />
-              <span :class="state.stages[s.id]?.state === 'waiting' ? 'text-muted-foreground' : ''">{{ i + 1 }}. {{ s.label }}</span>
+              <input v-if="canSkip(s.id)" type="checkbox" class="mt-px h-3.5 w-3.5 shrink-0 cursor-pointer" :checked="!skipped(s.id)"
+                :aria-label="`Load ${s.label}`" title="Untick to skip this step in this and later checks (saved data is still used)" @change="toggleSkip(s.id)" />
+              <span :class="state.stages[s.id]?.state === 'waiting' || skipped(s.id) ? 'text-muted-foreground' : ''">{{ i + 1 }}. {{ s.label }}</span>
+              <button v-if="state.stages[s.id]?.state === 'running' && canSkip(s.id) && !skipped(s.id)" class="text-primary hover:underline shrink-0" title="Stop loading this step and go on with the next; remembered for later checks" @click="toggleSkip(s.id)">Skip</button>
               <span class="ml-auto text-muted-foreground text-right" :class="{ 'text-red-600': state.stages[s.id]?.state === 'error' }">{{ stageText(state.stages[s.id]) }}</span>
             </div>
             <div v-if="state.stages[s.id]?.state === 'running' && state.stages[s.id].total" class="mt-1 h-1 rounded bg-muted overflow-hidden" style="margin-left: 1.375rem">
@@ -133,6 +140,7 @@ function buildDoc() {
             </div>
           </li>
         </ol>
+        <p class="mt-2 text-[11px] text-muted-foreground">Untick a step, or click Skip while it loads, to leave it out; data saved by an earlier check is still used. Your choice is remembered.</p>
         <p v-if="state.running" class="mt-3 text-[11px] text-muted-foreground">
           You can close this panel or open another section; the scan carries on. Automations and journeys are read 10 at a time, so a large business unit takes a while the first time.
           What it loads is saved for this business unit, so later checks (in any tab) only read what changed; Rescan reads everything again.
@@ -153,7 +161,7 @@ function buildDoc() {
             {{ s.title }} <span v-if="!s.tree" class="font-normal text-muted-foreground">({{ s.items.length }})</span>
           </button>
           <template v-if="!collapsed.has(s.id)">
-            <p v-if="s.unavailable" class="mb-1.5 text-xs text-red-600">This could not be loaded (see the Process steps above), so the list may be incomplete.</p>
+            <p v-if="s.unavailable" class="mb-1.5 text-xs text-red-600">This was skipped or could not be loaded (see the Process steps above), so the list may be incomplete.</p>
             <p v-if="s.note" class="mb-1.5 text-[11px] text-muted-foreground">{{ s.note }}</p>
 
             <!-- Lineage -->
