@@ -9,6 +9,7 @@ import { useStack } from '@/composables/useStack.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { fetchCurrentBU, recentApiErrors, recentApiCalls } from '@/utils/sfmcApi.js'
 import { collectFeedbackMetadata, metadataLines } from '@/utils/feedbackMeta.js'
+import { loadFeedbackContact, saveFeedbackContact } from '@/utils/feedbackContact.js'
 import { capturePage, captureDisplay, loadImage, fileToDataUrl, toUploadableDataUrl } from '@/utils/screenshot.js'
 
 const FEEDBACK_ENDPOINT = 'https://query-saver-feedback.mathes-btech.workers.dev/feedback'
@@ -40,6 +41,7 @@ const fileInput = ref(null)
 
 onMounted(async () => {
   window.addEventListener('paste', onPaste)
+  loadFeedbackContact().then((c) => { if (!name.value) name.value = c.name; if (!email.value) email.value = c.email })
   if (stack.value) { try { bu.value = (await fetchCurrentBU(stack.value))?.name || null } catch { /* leave it out */ } }
 })
 onUnmounted(() => window.removeEventListener('paste', onPaste))
@@ -119,6 +121,7 @@ async function submit() {
       }),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    saveFeedbackContact({ name: name.value, email: email.value })
     state.value = 'sent'
   } catch (e) {
     sendError.value = e.message

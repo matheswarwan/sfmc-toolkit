@@ -46,11 +46,20 @@ describe('searchActivities without sorting (feedback #29)', () => {
       return { count: 2, items: [{ id: 'f1', modifiedDate: '2026-01-01' }, { id: 'f2', modifiedDate: '2026-05-01' }] }
     })
     const { searchActivities } = await import('../automationApi.js')
+    const r = await searchActivities('s4', 'imports', '')
+    expect(r.unsorted).toBe(true)
+    expect(r.items.map((i) => i.id)).toEqual(['f2', 'f1'])
+    await searchActivities('s4', 'imports', '', 2)
+    expect(calls.filter((u) => u.includes('$orderBy'))).toHaveLength(1)
+  })
+
+  it('never asks filters to sort (#67 report)', async () => {
+    const calls = stub(() => ({ count: 2, items: [{ id: 'f1', modifiedDate: '2026-01-01' }, { id: 'f2', modifiedDate: '2026-05-01' }] }))
+    const { searchActivities } = await import('../automationApi.js')
     const r = await searchActivities('s4', 'filters', '')
     expect(r.unsorted).toBe(true)
     expect(r.items.map((i) => i.id)).toEqual(['f2', 'f1'])
-    await searchActivities('s4', 'filters', '', 2)
-    expect(calls.filter((u) => u.includes('$orderBy'))).toHaveLength(1)
+    expect(calls.some((u) => u.includes('$orderBy'))).toBe(false)
   })
 
   it('still throws other errors', async () => {

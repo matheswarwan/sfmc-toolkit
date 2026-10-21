@@ -20,7 +20,7 @@ import { useTheme } from '@/composables/useTheme.js'
 import { trackEvent } from '@/utils/analytics.js'
 
 const route = useRoute()
-const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage', 'WhereUsedPage', 'AutomationsPage', 'ActivitiesPage', 'JourneysPage', 'JourneyEntryPage', 'CloudPagesPage']
+const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage', 'WhereUsedPage', 'DEStoragePage', 'AutomationsPage', 'ActivitiesPage', 'JourneysPage', 'JourneyEntryPage', 'CloudPagesPage']
 const paletteOpen = ref(false)
 const showFeedback = ref(false)
 const isMac = /Mac/i.test(navigator.platform || '')

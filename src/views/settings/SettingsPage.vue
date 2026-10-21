@@ -24,6 +24,7 @@ const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
 const { value: autoStartSessions } = useStoredSetting('_autoStartSessions', true, (v) => v !== false)
 const { value: automationPanel } = useStoredSetting('_automationPanel', true, (v) => v !== false)
+const { value: dashboardPanel } = useStoredSetting('_dashboardPanel', true, (v) => v !== false)
 const { value: retentionDays } = useStoredSetting('_queryDERetentionDays', DEFAULT_RETENTION_DAYS, parseRetentionDays)
 
 // Desktop notifications for watched automations: the optional notifications
@@ -234,6 +235,13 @@ function setDebounce(e) {
           <p class="text-xs text-muted-foreground">On an automation's page in Automation Studio, a tab on the right edge opens a summary of it (status, last run, schedule, steps) with a link into SFMC Toolkit.</p>
         </div>
         <Switch v-model="automationPanel" aria-label="Automation Summary tab in Automation Studio" />
+      </div>
+      <div class="flex items-start gap-3 mt-4">
+        <div class="flex-1">
+          <div class="text-sm font-medium">SFMC Toolkit card on the Marketing Cloud Dashboard (trial)</div>
+          <p class="text-xs text-muted-foreground">On SFMC's Marketing Cloud Dashboard page, a card in the bottom right corner shows this business unit's automations and journeys by status, what needs a look and what you watch, with links into SFMC Toolkit.</p>
+        </div>
+        <Switch v-model="dashboardPanel" aria-label="SFMC Toolkit card on the Marketing Cloud Dashboard" />
       </div>
 </section>
 

@@ -60,6 +60,9 @@ Data Extensions
 - Tick fields in one or more data extensions to build a query that joins them.
 - Export names or every field to Excel.
 
+DE storage
+- See the GB and rows your data extensions use, day by day, by business unit, and the largest data extensions first.
+
 CONTENT
 
 CloudPages
@@ -78,6 +81,8 @@ ALSO
 Your queries and emails are stored in your browser only. SFMC calls go straight from the extension to your Marketing Cloud account.
 
 ## What's new (for the version notes, if asked)
+
+2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an SFMC Toolkit card on the Marketing Cloud Dashboard page (trial, can be turned off), overviews kept while you move between sections, feedback remembers your name and email, and Filter activities no longer fail first. No new permissions.
 
 2.0.7: Automation Summary tab on Automation Studio automation pages (from SFMC Automation Viewer), data view joins in Query Builder filled in straight away.
 

@@ -13,14 +13,15 @@ export const FEATURE_GROUPS = [
       { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
       { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
-      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Where used, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Where used, DE storage, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
       { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
       { title: 'Results 50 at a time', detail: 'Every SFMC search (data extensions, automations, activities, journeys, journey entry events, CloudPages) shows the first 50 results; Load 50 more shows the next.' },
       { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys, Journey Entry and CloudPages, and a running query in Run Query, are kept while you visit other sections.' },
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
+      { title: 'Overviews stay put', since: '2.0.10', detail: 'Automation overview (with its run trends), Journey overview and DE storage keep what they read for each business unit while the tab is open; Refresh reads it again.' },
       { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
-      { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Say what happened (or your idea), add details, and attach a screenshot: of this page, of another tab or window such as SFMC, or an image you upload or paste. Draw boxes or freehand on it to point at the problem or cover anything private. Technical details (version, browser, section, stack, business unit, the last failed SFMC calls; never SQL or data) are included unless you untick them, and you can see exactly what is sent.' },
+      { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Say what happened (or your idea), add details, and attach a screenshot: of this page, of another tab or window such as SFMC, or an image you upload or paste. Draw boxes or freehand on it to point at the problem or cover anything private. Technical details (version, browser, section, stack, business unit, the last failed SFMC calls; never SQL or data) are included unless you untick them, and you can see exactly what is sent. Your name and email are filled in from the last time you sent feedback.' },
     ],
   },
   {
@@ -189,6 +190,7 @@ export const FEATURE_GROUPS = [
     title: 'Automations',
     intro: 'Automation > Automations. Viewing an automation never pauses or changes it.',
     items: [
+      { title: 'SFMC Toolkit card on the Marketing Cloud Dashboard (trial)', since: '2.0.10', how: 'Open the Marketing Cloud Dashboard in SFMC', detail: 'A card in the bottom right corner: automations by status, failed last runs and what needs a look, journeys by status and how many are live, and what you watch, with links into SFMC Toolkit. Collapse it, close it for this visit, or turn it off (Settings > Connection turns it back on).' },
       { title: 'Automation Summary in Automation Studio', since: '2.0.7', how: 'The tab on the right edge of an automation\'s page in Automation Studio', detail: 'Status, last run, schedule, next run and each step\'s activities, with Open in SFMC Toolkit. Turn it off in Settings > Connection.' },
       { title: 'Automation overview', since: '2.0.6', how: 'Automation > Automation overview', detail: 'Every automation counted by status and last run, the ones that need a look (failed last run, in error, running for hours), the automations you watch, and run trends per day from the run logs.' },
       { title: 'Watch several at once', since: '2.0.9', how: 'Tick automations in the list, then Watch', detail: 'The same choices as Watch on one automation, for every ticked one.' },
@@ -257,6 +259,16 @@ export const FEATURE_GROUPS = [
       { title: 'Named anywhere in content', since: '2.0.8', detail: 'Emails, blocks and CloudPages that name a data extension outside Lookup and similar calls (WSProxy, a name kept in a variable, page text) show with Mentions the name.' },
       { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
       { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and what it loads is saved for each business unit: checks in the next 5 minutes, in any tab, use it as is, and later checks read only what changed since (Rescan reads everything again). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
+    ],
+  },
+  {
+    id: 'de-storage',
+    title: 'DE storage',
+    intro: 'Data > DE storage. Reads SFMC; changes nothing.',
+    items: [
+      { title: 'Storage used', since: '2.0.10', detail: 'GB and rows used by data extensions, from the storage figures Contact Builder shows (SFMC samples them once a day), with the total per day over the last 30 or 90 days or year.' },
+      { title: 'Largest data extensions', since: '2.0.10', detail: 'Every data extension with its folder, business unit, rows, GB, share of the total and retention, largest first (or most rows, or by name), 50 at a time. Totals by business unit. Filter by name, folder or business unit; download CSV or Excel.' },
+      { title: 'Row counts instead', since: '2.0.10', how: 'Shown when SFMC\'s storage figures cannot be read', detail: 'Lists every data extension in the business unit (up to 5,000, plus Shared and Synchronized ones) and reads each one\'s row count, 10 at a time with Stop, largest first, with totals per folder and CSV.' },
     ],
   },
   {

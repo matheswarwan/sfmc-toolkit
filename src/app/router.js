@@ -9,6 +9,7 @@ const PAGES = {
   '/emails': () => import('../views/emails/EmailsPage.vue'),
   '/data-extensions': () => import('../views/data/DataExtensionsPage.vue'),
   '/where-used': () => import('../views/data/WhereUsedPage.vue'),
+  '/de-storage': () => import('../views/data/DEStoragePage.vue'),
   '/contacts': () => import('../views/contacts/ContactsPage.vue'),
   '/automations': () => import('../views/automation/AutomationsPage.vue'),
   '/activities': () => import('../views/automation/ActivitiesPage.vue'),

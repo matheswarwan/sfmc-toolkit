@@ -3,17 +3,15 @@
 // published journeys send email, SMS or push.
 import { searchAutomations, loadMoreAutomations, fetchRunHistory } from './automationApi.js'
 import { searchJourneys, fetchJourney, JOURNEY_PAGE_SIZE } from './journeys.js'
-import { automationStatusName, isFailure } from './watches.js'
+import { isFailure } from './watches.js'
 import { runInBatches } from './batchRunner.js'
+import { LIVE_JOURNEY } from './summaries.js'
+
+// The counts are in summaries.js (the service worker uses them too).
+export { summarizeAutomations, summarizeJourneys, LIVE_JOURNEY } from './summaries.js'
 
 const MAX_ITEMS = 2000
 const time = (v) => { const t = Date.parse(v || ''); return Number.isNaN(t) ? 0 : t }
-
-function countBy(list, keyOf) {
-  const m = new Map()
-  for (const x of list) { const k = keyOf(x) || 'Unknown'; m.set(k, (m.get(k) || 0) + 1) }
-  return [...m].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count)
-}
 
 /** Every automation (up to 2,000), loading 50 at a time. onProgress(loaded, total). */
 export async function listAllAutomations(stack, onProgress = () => {}) {
@@ -29,28 +27,6 @@ export async function listAllAutomations(stack, onProgress = () => {}) {
     onProgress(items.length, total)
   }
   return items
-}
-
-const RUNNING_TOO_LONG = 6 * 3600 * 1000
-
-/** Counts by status and last run, and the automations that need a look. */
-export function summarizeAutomations(list, now = Date.now()) {
-  const status = (a) => automationStatusName(a.status)
-  const attention = []
-  for (const a of list) {
-    const s = status(a)
-    if (isFailure(a.lastRunStatus)) attention.push({ automation: a, reason: `Last run: ${a.lastRunStatus}` })
-    else if (/error/i.test(s)) attention.push({ automation: a, reason: `Status: ${s}` })
-    else if (/^running$/i.test(s) && a.lastRunTime && now - time(a.lastRunTime) > RUNNING_TOO_LONG) attention.push({ automation: a, reason: 'Running for more than 6 hours' })
-  }
-  attention.sort((x, y) => time(y.automation.lastRunTime) - time(x.automation.lastRunTime))
-  return {
-    total: list.length,
-    byStatus: countBy(list, status),
-    byLastRun: countBy(list.filter((a) => a.lastRunStatus), (a) => String(a.lastRunStatus)),
-    failedLastRun: list.filter((a) => isFailure(a.lastRunStatus)).length,
-    attention,
-  }
 }
 
 const dayKey = (t) => new Date(t).toISOString().slice(0, 10)
@@ -109,12 +85,6 @@ export async function listAllJourneys(stack, onProgress = () => {}) {
     page++
   }
   return items
-}
-
-export const LIVE_JOURNEY = /^(published|running|scheduledtopublish)$/i
-
-export function summarizeJourneys(list) {
-  return { total: list.length, byStatus: countBy(list, (j) => j.status), live: list.filter((j) => LIVE_JOURNEY.test(j.status || '')).length }
 }
 
 const CHANNELS = [['email', /EMAIL/], ['sms', /SMS/], ['push', /PUSH|INAPP|INBOX/], ['whatsapp', /WHATSAPP/]]

@@ -15,9 +15,20 @@ import { getMcaToken, dropMcaToken } from './mcaToken.js'
 import { ensureSession, SfmcAuthError, LOGIN_REQUIRED } from './sessions.js'
 import { forgetStack } from './stack.js'
 
+/**
+ * SFMC's own HTML error pages (IIS "403 Not Authorized") turned into their title,
+ * so a message reads "Not Authorized" instead of a page of markup (feedback #67).
+ */
+export function errorText(text) {
+  const t = String(text ?? '')
+  if (!/^\s*(<!DOCTYPE html|<html)/i.test(t)) return t
+  const pick = (tag) => (t.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'))?.[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return pick('title') || pick('h1') || 'SFMC returned an error page'
+}
+
 export class SfmcApiError extends Error {
   constructor(status, text) {
-    super(`SFMC API error ${status}: ${String(text).substring(0, 300)}`)
+    super(`SFMC API error ${status}: ${errorText(text).substring(0, 300)}`)
     this.status = status
   }
 }

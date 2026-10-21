@@ -8,8 +8,18 @@ import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { listAllJourneys, summarizeJourneys, journeyChannels } from '@/utils/overview.js'
 import { formatDateTime } from '@/utils/format.js'
+import { fetchCurrentBU } from '@/utils/sfmcApi.js'
+import { pageCacheKey, readPageCache, writePageCache } from '@/utils/pageCache.js'
 
 const { stack } = useStack()
+// Kept per stack and business unit like the Automation overview (feedback #66).
+let cacheKey = ''
+const savedAt = ref(0)
+async function currentKey() {
+  const bu = await fetchCurrentBU(stack.value).catch(() => null)
+  return pageCacheKey('journey-overview', stack.value, bu?.accountId)
+}
+const save = (patch) => { if (cacheKey) savedAt.value = writePageCache(cacheKey, patch).savedAt }
 const list = ref(null)
 const loading = ref(false)
 const progress = ref({ done: 0, total: 0 })
@@ -22,7 +32,9 @@ async function load() {
   error.value = ''
   sends.value = null
   try {
+    cacheKey = await currentKey()
     list.value = await listAllJourneys(stack.value, (done, total) => { progress.value = { done, total } })
+    save({ list: list.value, sends: null })
   } catch (e) {
     error.value = `Could not read the journeys: ${e.message}`
   } finally {
@@ -38,6 +50,7 @@ async function loadSends() {
   error.value = ''
   try {
     sends.value = await journeyChannels(stack.value, list.value, { onProgress: (done, total) => { sendProgress.value = { done, total } } })
+    save({ sends: sends.value })
   } catch (e) {
     error.value = `Could not read the journeys' definitions: ${e.message}`
   } finally {
@@ -46,8 +59,17 @@ async function loadSends() {
 }
 const totals = computed(() => (sends.value ? ['email', 'sms', 'push', 'whatsapp'].map((k) => [k, sends.value.rows.filter((r) => r[k].length).length]) : []))
 const CH = { email: 'Email', sms: 'SMS', push: 'Push / in-app', whatsapp: 'WhatsApp' }
-// Last, so everything load() touches is defined when it runs straight away.
-whenStack(load)
+async function start() {
+  if (!stack.value) return load()
+  cacheKey = await currentKey()
+  const saved = readPageCache(cacheKey)
+  if (!saved?.list) return load()
+  list.value = saved.list
+  sends.value = saved.sends || null
+  savedAt.value = saved.savedAt
+}
+// Last, so everything start() touches is defined when it runs straight away.
+whenStack(start)
 </script>
 
 <template>
@@ -55,6 +77,7 @@ whenStack(load)
     <div class="flex items-center gap-2">
       <h1 class="text-base font-semibold flex-1">Journeys in this business unit</h1>
       <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
+      <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
         <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
       </Button>

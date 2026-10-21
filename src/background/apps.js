@@ -12,6 +12,9 @@
 
 export const STACK_RE = /^s?\d+$/
 
+// MM-DD-YYYY, the date format the storage history call takes.
+const mdY = (t) => { const d = new Date(t); return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}` }
+
 export const SFMC_APPS = [
   {
     id: 'automationStudio',
@@ -34,6 +37,19 @@ export const SFMC_APPS = [
       `https://mc.${s}.marketingcloudapps.com/contactsmeta/`,
       `https://mc.${s}.exacttarget.com/cloud/#app/Contact%20Builder`,
     ],
+  },
+  {
+    // Contact Builder's newer data UI (data extension storage, feedback #68). Assumed
+    // to take the MCA Bearer token like contactsmeta; not checked against a live org.
+    // `onDemand`: left out of the connection status and the automatic warm-up (its
+    // cookie probe may never pass); a session is started only when a call needs it.
+    id: 'dataUi',
+    onDemand: true,
+    name: 'Data Extension storage',
+    matches: (url) => url.hostname.startsWith('mc-data-ui.'),
+    bearer: true,
+    probeUrl: (s) => `https://mc-data-ui.${s}.marketingcloudapps.com/fuelapi/data/v1/customobjects/storageHistory?startDate=${mdY(Date.now() - 86400000)}&endDate=${mdY(Date.now())}`,
+    landings: (s) => [`https://mc.${s}.exacttarget.com/cloud/#app/Contact%20Builder`],
   },
   {
     id: 'contentBuilder',

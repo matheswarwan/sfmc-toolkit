@@ -66,9 +66,12 @@ export const ACTIVITY_SEARCH_TYPES = [
   { id: 'filter', label: 'Filter', endpoint: 'filters', objectTypeId: 303 },
 ]
 
-// Endpoints that refuse $orderBy=modifiedDate (filters on some stacks: "Order field is
-// invalid, the following field is not allowed: 'modifiedDate'", feedback #29). Those
-// are listed in SFMC's own order, and each page is sorted here.
+// Endpoints that refuse $orderBy=modifiedDate (filters: "Order field is invalid, the
+// following field is not allowed: 'modifiedDate'", feedback #29, and again on s4 in
+// #67's report). Those are listed in SFMC's own order, and each page is sorted here.
+// Filters are never asked to sort, so the failing request is not sent in every tab;
+// other endpoints are remembered once they refuse.
+const NEVER_SORTED = new Set(['filters'])
 const unsortable = new Set()
 const isOrderError = (e) => /order field is invalid/i.test(e?.message || '')
 const byModifiedDesc = (a, b) => String(b.modifiedDate || '').localeCompare(String(a.modifiedDate || ''))
@@ -79,6 +82,7 @@ export async function searchActivities(stack, endpoint, query, page = 1, pageSiz
   const filter = name ? `&$filter=${encodeURIComponent(`name like "${name}"`)}` : ''
   const url = (orderBy) => `${AS(stack)}/automation/v1/${endpoint}/?$page=${page}&$pageSize=${pageSize}${orderBy ? `&$orderBy=${encodeURIComponent('modifiedDate desc')}` : ''}&retrievalType=1${filter}`
   const key = `${stack}:${endpoint}`
+  if (NEVER_SORTED.has(endpoint)) unsortable.add(key)
   let data
   if (!unsortable.has(key)) {
     try {

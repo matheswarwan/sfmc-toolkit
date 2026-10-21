@@ -91,7 +91,7 @@ export function ensureSession(app, stack, { onLoggedOut } = {}) {
 // Session status per app, for the connection menu. Never opens a tab.
 export async function sessionStatus(stack) {
   const loggedIn = await isLoggedIn(stack)
-  const apps = await Promise.all(SFMC_APPS.map(async (app) => ({
+  const apps = await Promise.all(SFMC_APPS.filter((app) => !app.onDemand).map(async (app) => ({
     id: app.id,
     name: app.name,
     ok: loggedIn && (await probeSession(app, stack)),

@@ -11,8 +11,19 @@ import { useStack, whenStack } from '@/composables/useStack.js'
 import { listAllAutomations, summarizeAutomations, runTrends } from '@/utils/overview.js'
 import { automationStatusName, WATCHES_KEY, watchType } from '@/utils/watches.js'
 import { formatDateTime } from '@/utils/format.js'
+import { fetchCurrentBU } from '@/utils/sfmcApi.js'
+import { pageCacheKey, readPageCache, writePageCache } from '@/utils/pageCache.js'
 
 const { stack } = useStack()
+// What this page read is kept per stack and business unit, so leaving and coming
+// back shows it again (feedback #66). Refresh reads it again.
+let cacheKey = ''
+const savedAt = ref(0)
+async function currentKey() {
+  const bu = await fetchCurrentBU(stack.value).catch(() => null)
+  return pageCacheKey('automation-overview', stack.value, bu?.accountId)
+}
+const save = (patch) => { if (cacheKey) savedAt.value = writePageCache(cacheKey, patch).savedAt }
 const list = ref(null)
 const loading = ref(false)
 const progress = ref({ done: 0, total: 0 })
@@ -24,8 +35,11 @@ async function load() {
   loading.value = true
   error.value = ''
   trends.value = null
+  pickedDay.value = -1
   try {
+    cacheKey = await currentKey()
     list.value = await listAllAutomations(stack.value, (done, total) => { progress.value = { done, total } })
+    save({ list: list.value, trends: null })
   } catch (e) {
     error.value = `Could not read the automations: ${e.message}`
   } finally {
@@ -44,6 +58,7 @@ async function loadTrends() {
   try {
     pickedDay.value = -1
     trends.value = await runTrends(stack.value, list.value, { days: trendDays.value, onProgress: (done, total) => { trendProgress.value = { done, total } } })
+    save({ trends: trends.value, trendDays: trendDays.value })
   } catch (e) {
     error.value = `Could not read the run logs: ${e.message}`
   } finally {
@@ -64,8 +79,20 @@ const onChange = (c, area) => { if (area === 'local' && WATCHES_KEY in c) watche
 onMounted(() => { try { loadWatches(); chrome.storage.onChanged.addListener(onChange) } catch { /* not in an extension */ } })
 onUnmounted(() => { try { chrome.storage.onChanged.removeListener(onChange) } catch { /* ignore */ } })
 const link = (id) => `/automations/${encodeURIComponent(id)}`
-// Last, so everything load() touches is defined when it runs straight away.
-whenStack(load)
+
+// Shows what was read before for this stack and BU, else reads it now.
+async function start() {
+  if (!stack.value) return load()
+  cacheKey = await currentKey()
+  const saved = readPageCache(cacheKey)
+  if (!saved?.list) return load()
+  list.value = saved.list
+  trends.value = saved.trends || null
+  if (saved.trendDays) trendDays.value = saved.trendDays
+  savedAt.value = saved.savedAt
+}
+// Last, so everything start() touches is defined when it runs straight away.
+whenStack(start)
 </script>
 
 <template>
@@ -73,6 +100,7 @@ whenStack(load)
     <div class="flex items-center gap-2">
       <h1 class="text-base font-semibold flex-1">Automations in this business unit</h1>
       <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
+      <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
         <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
       </Button>
