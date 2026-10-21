@@ -57,6 +57,15 @@ describe('Marketing Cloud Toolkit on the Marketing Cloud Dashboard (feedback #65
     expect(sent.at(-1)).toEqual({ type: 'OPEN_APP', path: '/automations/a1' })
   })
 
+  it('picks the visible div.mc-app when SFMC has more than one', () => {
+    const html = '<div class="mc-app" id="old" style="display:none"><iframe id="other"></iframe></div>' + FRAME
+    const { host, iframe, dom } = page(DASH, { html })
+    expect(host().parentElement.id).toBe('')
+    expect(host().parentElement.className).toBe('mc-app')
+    expect(iframe().style.display).toBe('none')
+    expect(dom.window.document.getElementById('other').style.display).toBe('')
+  })
+
   it('is off unless turned on, and stays away from other pages', () => {
     expect(page(DASH, { setting: null }).host()).toBeNull()
     expect(page(DASH, { setting: false }).host()).toBeNull()

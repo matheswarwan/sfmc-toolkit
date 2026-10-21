@@ -79,9 +79,27 @@
 
   var HIDDEN = 'data-sfmc-toolkit-hidden';
 
-  // SFMC's app frame: the div that holds the current app's iframe.
+  // SFMC's app frame: the div that holds the current app's iframe. SFMC can keep
+  // more than one div.mc-app (other apps' frames, hidden), so take the one shown,
+  // the largest if several are.
+  function shown(e) {
+    for (var n = e; n && n.nodeType === 1; n = n.parentElement) {
+      var cs = getComputedStyle(n);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    }
+    return true;
+  }
+
   function findFrame() {
-    return document.querySelector('div.mc-app');
+    var best = null;
+    var bestArea = -1;
+    Array.prototype.forEach.call(document.querySelectorAll('div.mc-app'), function (d) {
+      if (!shown(d)) return;
+      var r = d.getBoundingClientRect();
+      var area = r.width * r.height;
+      if (area > bestArea) { best = d; bestArea = area; }
+    });
+    return best;
   }
 
   // Hides SFMC's iframes in the frame (again if SFMC adds or shows one).
@@ -273,8 +291,8 @@
     if (!enabled) report('off (Settings > Connection turns it on)');
     else if (!parse(location.href)) report('not the Marketing Cloud Dashboard page (' + location.hostname + ' ' + decodeURIComponent(location.hash).slice(0, 60) + ')');
     else if (closedFor === location.href) report('closed for this visit (Show SFMC dashboard)');
-    else if (!(target = findFrame())) report('waiting for div.mc-app');
-    else report('shown in div.mc-app (' + target.querySelectorAll('iframe').length + ' iframe(s) hidden)');
+    else if (!(target = findFrame())) report('waiting for a visible div.mc-app (' + document.querySelectorAll('div.mc-app').length + ' found)');
+    else report('shown in div.mc-app ' + (Array.prototype.indexOf.call(document.querySelectorAll('div.mc-app'), target) + 1) + ' of ' + document.querySelectorAll('div.mc-app').length + ' (' + target.querySelectorAll('iframe').length + ' iframe(s) hidden)');
     if (target) mount(target);
     else if (host || frame) unmount();
   }
