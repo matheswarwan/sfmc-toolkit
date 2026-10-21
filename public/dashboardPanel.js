@@ -107,7 +107,7 @@
     frame = target;
     host = document.createElement('div');
     host.id = HOST_ID;
-    host.style.cssText = 'display:block;width:100%;height:100%';
+    host.style.cssText = 'display:block;width:100%;height:100%;min-height:480px';
     root = host.attachShadow({ mode: 'open' });
     var style = document.createElement('style');
     style.textContent = CSS;
@@ -256,16 +256,30 @@
     });
   }
 
+  // One console line per change of state, to debug the trial on a real page.
+  var lastState = '';
+  function report(state) {
+    if (state === lastState) return;
+    lastState = state;
+    console.info('[Marketing Cloud Toolkit] dashboard trial: ' + state);
+  }
+
   function check() {
     if (location.href !== lastHref) {
       if (closedFor && closedFor !== location.href) closedFor = '';
       lastHref = location.href;
     }
-    var target = enabled && parse(location.href) && closedFor !== location.href ? findFrame() : null;
+    var target = null;
+    if (!enabled) report('off (Settings > Connection turns it on)');
+    else if (!parse(location.href)) report('not the Marketing Cloud Dashboard page (' + location.hostname + ' ' + decodeURIComponent(location.hash).slice(0, 60) + ')');
+    else if (closedFor === location.href) report('closed for this visit (Show SFMC dashboard)');
+    else if (!(target = findFrame())) report('waiting for div.mc-app');
+    else report('shown in div.mc-app (' + target.querySelectorAll('iframe').length + ' iframe(s) hidden)');
     if (target) mount(target);
     else if (host || frame) unmount();
   }
 
+  report('loaded');
   try {
     chrome.storage.local.get([SETTING], function (r) {
       enabled = !!(r && r[SETTING] === true);
