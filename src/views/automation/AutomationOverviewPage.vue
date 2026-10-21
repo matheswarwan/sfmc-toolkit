@@ -13,14 +13,18 @@ import { automationStatusName, WATCHES_KEY, watchType } from '@/utils/watches.js
 import { formatDateTime } from '@/utils/format.js'
 import { fetchCurrentBU } from '@/utils/sfmcApi.js'
 import { pageCacheKey, readPageCache, writePageCache } from '@/utils/pageCache.js'
+import DownloadMenu from '@/components/results/DownloadMenu.vue'
+import { automationOverviewDoc } from '@/utils/overviewDoc.js'
 
 const { stack } = useStack()
 // What this page read is kept per stack and business unit, so leaving and coming
 // back shows it again (feedback #66). Refresh reads it again.
 let cacheKey = ''
 const savedAt = ref(0)
+const buName = ref('')
 async function currentKey() {
   const bu = await fetchCurrentBU(stack.value).catch(() => null)
+  buName.value = bu?.name || ''
   return pageCacheKey('automation-overview', stack.value, bu?.accountId)
 }
 const save = (patch) => { if (cacheKey) savedAt.value = writePageCache(cacheKey, patch).savedAt }
@@ -80,6 +84,12 @@ onMounted(() => { try { loadWatches(); chrome.storage.onChanged.addListener(onCh
 onUnmounted(() => { try { chrome.storage.onChanged.removeListener(onChange) } catch { /* ignore */ } })
 const link = (id) => `/automations/${encodeURIComponent(id)}`
 
+// Download menu (feedback #69): the page as a document to share.
+const getDoc = () => automationOverviewDoc({
+  businessUnit: buName.value, stack: stack.value, savedAt: savedAt.value,
+  summary: summary.value, trends: trends.value, trendDays: trendDays.value, watched: watchedHere.value,
+})
+
 // Shows what was read before for this stack and BU, else reads it now.
 async function start() {
   if (!stack.value) return load()
@@ -101,6 +111,7 @@ whenStack(start)
       <h1 class="text-base font-semibold flex-1">Automations in this business unit</h1>
       <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
       <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
+      <DownloadMenu :get-doc="getDoc" file-name="automation-overview" :disabled="!summary" />
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
         <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
       </Button>
