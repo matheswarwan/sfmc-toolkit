@@ -7,6 +7,7 @@
 import { storageGet, storageSet, delay } from './chromeAsync.js'
 import { resolveStack } from './stack.js'
 import { fetchCurrentBusinessUnit } from './businessUnit.js'
+import { QUERY_STUDIO_2_SETTING, isQueryStudio2 } from '../utils/queryStudio.js'
 
 const decoder = new TextDecoder('utf-8')
 
@@ -55,6 +56,10 @@ export async function captureQueryStudio(details) {
     return
   }
   if (!queryText) return
+  if (isQueryStudio2(details.url)) {
+    const prefs = await storageGet('local', [QUERY_STUDIO_2_SETTING])
+    if (prefs[QUERY_STUDIO_2_SETTING] === false) return
+  }
   const ts = details.timeStamp
   const id = 'sql_' + ts
   await saveRecords({

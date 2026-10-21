@@ -30,7 +30,7 @@ export const FEATURE_GROUPS = [
     intro: 'Queries > Saved queries.',
     items: [
       { title: 'Your business unit first', since: '2.0.6', detail: 'Shows the queries of the business unit you are logged in to; Show all business units (remembered) lists every one.' },
-      { title: 'Query Studio 2 runs', since: '2.0.3', how: 'Settings > Running queries > Save Query Studio 2 runs', detail: 'Queries run in the new Query Studio 2 are saved like Query Studio runs. Turning it on asks Chrome for access to Query Studio 2\'s site; turning it off removes it.' },
+      { title: 'Query Studio 2 runs', since: '2.0.3', how: 'Settings > Running queries > Save Query Studio 2 runs', detail: 'Queries run in the new Query Studio 2 are saved like Query Studio runs. On by default since 2.0.10; turn it off in Settings.' },
       { title: 'Automatic capture from Query Studio', how: 'Automatic', detail: 'Every query you run in Query Studio is saved, named with the date and time, with the business unit you were in. New captures appear without a reload.' },
       { title: 'Search and filters', detail: 'Search names, SQL and business unit names; bu:<name or MID> filters by business unit. Browse by Today, Yesterday, This Week and so on in the sidebar, filter by business unit, or show only favourites.' },
       { title: 'Quick preview', how: 'Click a card', detail: 'See the full SQL, copy it, share it (a link valid for 24 hours), or open it in Run Query or the Query Builder.' },

@@ -38,7 +38,7 @@ function close() {
         <li><strong class="block">DE storage</strong><span class="text-muted-foreground">Data > DE storage shows the GB and rows your data extensions use, how that changed day by day, and the largest data extensions, with CSV and Excel.</span></li>
         <li><strong class="block">On the Marketing Cloud Dashboard (trial)</strong><span class="text-muted-foreground">Turn it on in Settings > Connection and SFMC's dashboard page shows your automations, journeys and watched items instead. Off by default.</span></li>
         <li><strong class="block">Overviews stay put</strong><span class="text-muted-foreground">Automation overview, its run trends and Journey overview are kept while you visit other sections.</span></li>
-        <li><strong class="block">Smaller things</strong><span class="text-muted-foreground">Feedback remembers your name and email. Filter activities no longer cause an error first.</span></li>
+        <li><strong class="block">Smaller things</strong><span class="text-muted-foreground">Queries you run in Query Studio 2 are saved by default (Chrome asked you to allow Query Studio 2's site for this). Feedback remembers your name and email. Filter activities no longer cause an error first.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>

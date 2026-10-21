@@ -147,6 +147,16 @@ describe('Query Studio capture', () => {
     expect(sw.local.sql_1700000000001.queryText).toBe('SELECT 3 AS z')
   })
 
+  it('skips Query Studio 2 runs when turned off in Settings', async () => {
+    const sw = await loadSW({ tabs: [s10Tab] })
+    sw.local._saveQueryStudio2 = false
+    await sw.captureQuery('SELECT 5', 1700000000003, { url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/create' })
+    await sw.captureQuery('SELECT 6', 1700000000004)
+    await flush()
+    expect(sw.local.sql_1700000000003).toBeUndefined()
+    expect(sw.local.sql_1700000000004.queryText).toBe('SELECT 6')
+  })
+
   it('ignores other Query Studio 2 requests', async () => {
     const sw = await loadSW({ tabs: [s10Tab] })
     await sw.captureQuery('SELECT 4', 1700000000002, { url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/validate' })

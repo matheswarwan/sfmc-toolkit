@@ -82,7 +82,7 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
-2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an optional SFMC Toolkit summary in place of the Marketing Cloud Dashboard page (trial, off by default), overviews kept while you move between sections, feedback remembers your name and email, and Filter activities no longer fail first. No new permissions.
+2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an optional SFMC Toolkit summary in place of the Marketing Cloud Dashboard page (trial, off by default), overviews kept while you move between sections, feedback remembers your name and email, Query Studio 2 runs saved by default (new site access: Chrome asks users to approve it), and Filter activities no longer fail first. No new permissions.
 
 2.0.7: Automation Summary tab on Automation Studio automation pages (from SFMC Automation Viewer), data view joins in Query Builder filled in straight away.
 
@@ -116,7 +116,7 @@ SFMC Toolkit helps Salesforce Marketing Cloud users work with their own account:
   - `*.exacttarget.com`, `*.marketingcloudapps.com`, `*.marketingcloud.com`, `*.salesforce-marketingcloud.com`: Marketing Cloud's own domains, which the extension calls on the user's behalf.
   - `querystudio.herokuapp.com`: Query Studio, to save the queries the user runs there.
   - Optional permission `notifications` (from 2.0.6): requested only when the user turns on Settings > Connection > Desktop notifications for watched automations, to show a desktop notification when a watched automation is paused, activated, runs or fails. Turning the setting off removes the permission.
-  - Optional, `*.herokuapp.com` (from 2.0.3): requested only when the user turns on Settings > Running queries > Save Query Studio 2 runs, and then only for Query Studio 2's site (`querystudio2-dev-89f7e4653c61.herokuapp.com`), to save the queries the user runs there. Turning the setting off removes the access. A wildcard is needed in the manifest because Query Studio 2's address may change.
+  - `querystudio2-dev-89f7e4653c61.herokuapp.com` (required from 2.0.10; optional `*.herokuapp.com` in 2.0.3 to 2.0.9): Query Studio 2, to save the queries the user runs there. Settings > Running queries > Save Query Studio 2 runs (on by default) turns the saving off.
   - `sfmc-share-worker.mathes-btech.workers.dev`: creates and opens share links for queries, when the user chooses to share one.
   - `query-saver-feedback.mathes-btech.workers.dev`: receives feedback the user chooses to send.
   - `www.google-analytics.com`: anonymous usage counts (see below).

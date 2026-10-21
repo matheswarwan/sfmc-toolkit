@@ -24,13 +24,13 @@
   },
   "permissions": ["storage", "unlimitedStorage", "webRequest", "tabs", "cookies"],
   "optional_permissions": ["notifications"],
-  "optional_host_permissions": ["https://*.herokuapp.com/*"],
   "host_permissions": [
     "https://*.exacttarget.com/*",
     "https://*.marketingcloudapps.com/*",
     "https://*.marketingcloud.com/*",
     "https://*.salesforce-marketingcloud.com/*",
     "https://querystudio.herokuapp.com/*",
+    "https://querystudio2-dev-89f7e4653c61.herokuapp.com/*",
     "https://sfmc-share-worker.mathes-btech.workers.dev/*",
     "https://query-saver-feedback.mathes-btech.workers.dev/*",
     "https://www.google-analytics.com/*"
