@@ -37,7 +37,7 @@ function scrollTo(id) {
     <nav class="flex items-center gap-1 px-5 py-2 border-b border-border bg-card text-xs" aria-label="Pages">
       <RouterLink to="/features" class="px-2.5 py-1 rounded-md border" :class="page === 'features' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">Features</RouterLink>
       <RouterLink to="/todo" class="px-2.5 py-1 rounded-md border" :class="page === 'todo' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">To do</RouterLink>
-      <span v-if="version" class="ml-auto text-muted-foreground">SFMC Toolkit {{ version }}</span>
+      <span v-if="version" class="ml-auto text-muted-foreground">Marketing Cloud Toolkit {{ version }}</span>
     </nav>
 
     <main class="max-w-3xl mx-auto px-5 py-6">
@@ -45,7 +45,7 @@ function scrollTo(id) {
       <template v-if="page === 'features'">
         <h2 class="text-lg font-bold">Features</h2>
         <p class="text-sm text-muted-foreground mt-1">
-          What SFMC Toolkit does, section by section ({{ featureCount }} features).
+          What Marketing Cloud Toolkit does, section by section ({{ featureCount }} features).
         </p>
 
         <div class="relative mt-4">

@@ -37,7 +37,7 @@ const tick = () => new Promise((r) => setTimeout(r, 10))
 const DASH = 'https://mc.s13.exacttarget.com/cloud/#app/Marketing%20Cloud%20Dashboard/?ks=ks'
 const button = (host, text) => [...host.shadowRoot.querySelectorAll('button')].find((b) => b.textContent === text)
 
-describe('SFMC Toolkit on the Marketing Cloud Dashboard (feedback #65)', () => {
+describe('Marketing Cloud Toolkit on the Marketing Cloud Dashboard (feedback #65)', () => {
   it('replaces the content of div.mc-app and renders the summary as text', async () => {
     const { sent, host, iframe } = page(DASH)
     expect(host().parentElement.className).toBe('mc-app')

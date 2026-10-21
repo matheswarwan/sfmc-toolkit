@@ -93,7 +93,7 @@ export const dataViewArchive = {
       queries,
       automation: {
         name: o.automationName,
-        description: 'Created by SFMC Toolkit (Data view archive template). Schedule it daily.',
+        description: 'Created by Marketing Cloud Toolkit (Data view archive template). Schedule it daily.',
         // Every query writes its own data extension, so they run side by side.
         steps: [{ name: 'Copy data views', queries: queries.map((q) => q.ref) }],
       },

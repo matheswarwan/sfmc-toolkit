@@ -1,5 +1,5 @@
 // SFMC Query Saver's pages, kept so bookmarks and links still work after the
-// update to SFMC Toolkit: each one forwards to its section in app.html.
+// update to Marketing Cloud Toolkit: each one forwards to its section in app.html.
 (function () {
   function target(path, search) {
     var page = path.split('/').pop() || 'index.html'

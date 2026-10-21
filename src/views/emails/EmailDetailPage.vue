@@ -70,7 +70,7 @@ async function deleteVersion(versionId) {
   if (!record.value) return
   const remaining = versions.value.filter((v) => v.versionId !== versionId)
   if (!remaining.length) {
-    if (!confirm('This is the last version. Delete this email from SFMC Toolkit? (Nothing changes in Content Builder.)')) return
+    if (!confirm('This is the last version. Delete this email from Marketing Cloud Toolkit? (Nothing changes in Content Builder.)')) return
     await new Promise((r) => chrome.storage.local.remove(emailId.value, r))
     showToast('Email deleted.')
     router.push('/emails')
@@ -97,7 +97,7 @@ const contentBuilderUrl = (stack) => `https://mc.${stack}.exacttarget.com/cloud/
 
     <div v-else-if="!record" class="flex-1 flex flex-col items-center justify-center gap-3">
       <AlertCircle class="h-10 w-10 text-muted-foreground/40" />
-      <p class="text-sm text-muted-foreground">This email is not saved in SFMC Toolkit.</p>
+      <p class="text-sm text-muted-foreground">This email is not saved in Marketing Cloud Toolkit.</p>
       <RouterLink to="/emails" class="text-xs text-primary underline">Back to emails</RouterLink>
     </div>
 

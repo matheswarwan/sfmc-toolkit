@@ -1,11 +1,11 @@
 <script setup>
 // Shown once after an update that has news: to SFMC Query Saver users the rename
-// to SFMC Toolkit (2.0.0) plus the latest news, to Toolkit users only the news.
+// to Marketing Cloud Toolkit (2.0.0) plus the latest news, to Toolkit users only the news.
 // Fresh installs skip it. Uses Query Saver's `_seenVersion` key.
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.10'
+const VERSION = '2.0.11'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -33,12 +33,11 @@ function close() {
         <span class="text-[11px] font-bold text-primary bg-primary/10 rounded-full px-3 py-1 uppercase tracking-wide">Version {{ VERSION }}</span>
         <button class="p-1 rounded hover:bg-accent" title="Close" @click="close"><X class="h-4 w-4" /></button>
       </div>
-      <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now SFMC Toolkit' : 'What\'s new in SFMC Toolkit' }}</h2>
+      <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">DE storage</strong><span class="text-muted-foreground">Data > DE storage shows the GB and rows your data extensions use, how that changed day by day, and the largest data extensions, with CSV and Excel.</span></li>
-        <li><strong class="block">On the Marketing Cloud Dashboard (trial)</strong><span class="text-muted-foreground">Turn it on in Settings > Connection and SFMC's dashboard page shows your automations, journeys and watched items instead. Off by default.</span></li>
-        <li><strong class="block">Overviews stay put</strong><span class="text-muted-foreground">Automation overview, its run trends and Journey overview are kept while you visit other sections.</span></li>
-        <li><strong class="block">Smaller things</strong><span class="text-muted-foreground">Queries you run in Query Studio 2 are saved by default (Chrome asked you to allow Query Studio 2's site for this). Feedback remembers your name and email. Filter activities no longer cause an error first.</span></li>
+        <li><strong class="block">A new name</strong><span class="text-muted-foreground">SFMC Toolkit is now Marketing Cloud Toolkit. Nothing else changes: everything you saved is still here.</span></li>
+        <li><strong class="block">Share an overview</strong><span class="text-muted-foreground">Automation overview and Journey overview have a Download menu: copy as Markdown, or download Markdown, Word or HTML.</span></li>
+        <li><strong class="block">Skip slow steps in Where used</strong><span class="text-muted-foreground">Untick a step to leave it out, or Skip it while it runs. Saved data from an earlier check is used where there is some.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>

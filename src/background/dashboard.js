@@ -1,4 +1,4 @@
-// The SFMC Toolkit card on SFMC's Marketing Cloud Dashboard page (feedback #65, a
+// The Marketing Cloud Toolkit card on SFMC's Marketing Cloud Dashboard page (feedback #65, a
 // trial; public/dashboardPanel.js). Reads every automation and journey of the
 // current business unit, like the overview pages, and sends back a small summary.
 // Kept for 10 minutes per stack and business unit unless the card asks for a refresh.

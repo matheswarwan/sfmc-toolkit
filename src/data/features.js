@@ -7,9 +7,9 @@ export const FEATURE_GROUPS = [
   {
     id: 'general',
     title: 'Getting around',
-    intro: 'SFMC Toolkit replaces SFMC Query Saver and includes everything SFMC Automation Viewer did. Click the toolbar icon to open it in a new tab.',
+    intro: 'Marketing Cloud Toolkit replaces SFMC Query Saver and includes everything SFMC Automation Viewer did. Click the toolbar icon to open it in a new tab.',
     items: [
-      { title: 'Restart to update', since: '2.0.4', detail: 'When Chrome has downloaded a new version, a card offers to restart SFMC Toolkit into it.' },
+      { title: 'Restart to update', since: '2.0.4', detail: 'When Chrome has downloaded a new version, a card offers to restart Marketing Cloud Toolkit into it.' },
       { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
       { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
@@ -20,6 +20,7 @@ export const FEATURE_GROUPS = [
       { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys, Journey Entry and CloudPages, and a running query in Run Query, are kept while you visit other sections.' },
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
       { title: 'Overviews stay put', since: '2.0.10', detail: 'Automation overview (with its run trends), Journey overview and DE storage keep what they read for each business unit while the tab is open; Refresh reads it again.' },
+      { title: 'Download an overview', since: '2.0.11', how: 'Download on Automation overview or Journey overview', detail: 'Copy as Markdown to share, or download Markdown, Word or HTML: counts by status, what needs a look, run trends if loaded, and watched items.' },
       { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
       { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Say what happened (or your idea), add details, and attach a screenshot: of this page, of another tab or window such as SFMC, or an image you upload or paste. Draw boxes or freehand on it to point at the problem or cover anything private. Technical details (version, browser, section, stack, business unit, the last failed SFMC calls; never SQL or data) are included unless you untick them, and you can see exactly what is sent. Your name and email are filled in from the last time you sent feedback.' },
     ],
@@ -190,11 +191,11 @@ export const FEATURE_GROUPS = [
     title: 'Automations',
     intro: 'Automation > Automations. Viewing an automation never pauses or changes it.',
     items: [
-      { title: 'SFMC Toolkit on the Marketing Cloud Dashboard (trial)', since: '2.0.10', how: 'Settings > Connection, then open the Marketing Cloud Dashboard in SFMC', detail: 'Off by default. When on, it replaces the content of the dashboard page: automations by status, failed last runs and what needs a look, journeys by status and how many are live, and what you watch, with links into SFMC Toolkit. Show SFMC dashboard brings the original back for the visit; Turn off stops it.' },
-      { title: 'Automation Summary in Automation Studio', since: '2.0.7', how: 'The tab on the right edge of an automation\'s page in Automation Studio', detail: 'Status, last run, schedule, next run and each step\'s activities, with Open in SFMC Toolkit. Turn it off in Settings > Connection.' },
+      { title: 'Marketing Cloud Toolkit on the Marketing Cloud Dashboard (trial)', since: '2.0.10', how: 'Settings > Connection, then open the Marketing Cloud Dashboard in SFMC', detail: 'Off by default. When on, it replaces the content of the dashboard page: automations by status, failed last runs and what needs a look, journeys by status and how many are live, and what you watch, with links into Marketing Cloud Toolkit. Show SFMC dashboard brings the original back for the visit; Turn off stops it.' },
+      { title: 'Automation Summary in Automation Studio', since: '2.0.7', how: 'The tab on the right edge of an automation\'s page in Automation Studio', detail: 'Status, last run, schedule, next run and each step\'s activities, with Open in Marketing Cloud Toolkit. Turn it off in Settings > Connection.' },
       { title: 'Automation overview', since: '2.0.6', how: 'Automation > Automation overview', detail: 'Every automation counted by status and last run, the ones that need a look (failed last run, in error, running for hours), the automations you watch, and run trends per day from the run logs.' },
       { title: 'Watch several at once', since: '2.0.9', how: 'Tick automations in the list, then Watch', detail: 'The same choices as Watch on one automation, for every ticked one.' },
-      { title: 'Watch an automation', since: '2.0.6', how: 'Watch on an automation\'s page', detail: 'Be told when it is paused, activated, runs or fails. Checked when SFMC Toolkit opens and at most every 15 minutes while you use SFMC; changes show on the bell and the toolbar icon, and as desktop notifications if you switch them on in Settings.' },
+      { title: 'Watch an automation', since: '2.0.6', how: 'Watch on an automation\'s page', detail: 'Be told when it is paused, activated, runs or fails. Checked when Marketing Cloud Toolkit opens and at most every 15 minutes while you use SFMC; changes show on the bell and the toolbar icon, and as desktop notifications if you switch them on in Settings.' },
       { title: 'Find an automation', detail: 'Search by name, or list all, most recently run first, with status, last run and modified date. Hide columns you do not need.' },
       { title: 'Overview, schedule and notifications', detail: 'Key, status and last run; the schedule in plain words (for example Every 2 weeks on Monday) with the next run; and who gets error notifications.' },
       { title: 'Overview and Full view', detail: 'Overview shows the steps side by side, like Automation Studio; click an activity for its details. Full view lists every activity with its details, SQL and scripts highlighted, and Show additional details for the rest.' },
@@ -259,6 +260,7 @@ export const FEATURE_GROUPS = [
       { title: 'Named anywhere in content', since: '2.0.8', detail: 'Emails, blocks and CloudPages that name a data extension outside Lookup and similar calls (WSProxy, a name kept in a variable, page text) show with Mentions the name.' },
       { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
       { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and what it loads is saved for each business unit: checks in the next 5 minutes, in any tab, use it as is, and later checks read only what changed since (Rescan reads everything again). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
+      { title: 'Skip steps', since: '2.0.11', how: 'Tick boxes and Skip in the Process panel', detail: 'Untick a step to leave it out of this and later checks, or Skip the running one. Saved data from an earlier check is used where there is some; otherwise the step shows Skipped and its sections may be incomplete.' },
     ],
   },
   {
@@ -328,7 +330,7 @@ export const FEATURE_GROUPS = [
     title: 'Settings and connection',
     items: [
       { title: 'Connection menu', how: 'The stack pill in the top bar', detail: 'Shows your stack, business unit and whether the app token is ready. App sessions lists Automation Studio, Data Extensions, Content Builder, CloudPages and Journey Builder; sessions start automatically when needed, and Connect starts one now. Pin a stack if the wrong one is picked.' },
-      { title: 'Backup', how: 'Settings > Backup', detail: 'Export everything (queries with run history, email versions, workspaces, settings) as one file, or import one from SFMC Toolkit or SFMC Query Saver. Import never overwrites what is already here.' },
+      { title: 'Backup', how: 'Settings > Backup', detail: 'Export everything (queries with run history, email versions, workspaces, settings) as one file, or import one from Marketing Cloud Toolkit or SFMC Query Saver. Import never overwrites what is already here.' },
       { title: 'API console', how: 'Settings > Troubleshooting', detail: 'Shows every SFMC call and its response at the bottom of the window, to download or send with feedback when something fails.' },
       { title: 'What is sent where', detail: 'Queries and emails are stored in your browser only. SFMC calls go straight from the extension to your SFMC account using your login; nothing is stored about your credentials. Shared links and feedback go to the extension\'s own Cloudflare workers, and anonymous usage events (such as a query run) go to Google Analytics.' },
     ],

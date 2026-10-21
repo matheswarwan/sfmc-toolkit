@@ -52,7 +52,7 @@ export const routes = [
 export function createAppRouter(history = createWebHashHistory()) {
   const router = createRouter({ history, routes })
   router.afterEach((to) => {
-    document.title = to.meta?.title ? `${to.meta.title} · SFMC Toolkit` : 'SFMC Toolkit'
+    document.title = to.meta?.title ? `${to.meta.title} · Marketing Cloud Toolkit` : 'Marketing Cloud Toolkit'
   })
   return router
 }

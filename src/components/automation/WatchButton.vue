@@ -45,7 +45,7 @@ function save() {
   chrome.storage.local.set({ [WATCHES_KEY]: addWatches(watches.value, props.stack, props.type, props.items, on.value) })
   menu.value = false
   const what = props.items.length === 1 ? props.items[0].name || `this ${noun.value}` : `${props.items.length} ${noun.value}s`
-  showToast(`Watching ${what}. You will see changes when you open SFMC Toolkit or an SFMC page.`)
+  showToast(`Watching ${what}. You will see changes when you open Marketing Cloud Toolkit or an SFMC page.`)
 }
 function stop() {
   chrome.storage.local.set({ [WATCHES_KEY]: removeWatches(watches.value, props.stack, props.type, watched.value.map((it) => it.id)) })
@@ -66,7 +66,7 @@ function stop() {
         <div class="font-semibold">Tell me when {{ items.length === 1 ? `this ${noun}` : `any of these ${items.length} ${noun}s` }}</div>
         <label v-for="[k, text] in WATCH_OPTIONS[type]" :key="k" class="flex items-center gap-2"><input v-model="on[k]" type="checkbox" /> {{ text }}</label>
         <p v-if="bulk && watched.length" class="text-muted-foreground">{{ watched.length }} of these {{ watched.length === 1 ? 'is' : 'are' }} already watched; Watch updates their options.</p>
-        <p class="text-muted-foreground">Checked when you open SFMC Toolkit, and at most every 15 minutes while you use SFMC. Changes show on the bell and the toolbar icon.</p>
+        <p class="text-muted-foreground">Checked when you open Marketing Cloud Toolkit, and at most every 15 minutes while you use SFMC. Changes show on the bell and the toolbar icon.</p>
         <div class="flex items-center gap-2 pt-1">
           <button class="h-7 px-2.5 rounded-md bg-primary text-primary-foreground font-medium" @click="save">{{ allWatched ? 'Save' : 'Watch' }}</button>
           <button v-if="watched.length" class="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-border hover:bg-accent" @click="stop">

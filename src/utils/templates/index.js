@@ -98,7 +98,7 @@ export async function createFromPlan(stack, plan, progress = () => {}) {
       const target = deByRef[q.target]
       queryByRef[q.ref] = await step('query', q.name, async () => {
         const r = await createQueryActivity(stack, {
-          name: q.name, description: 'Created by SFMC Toolkit (Automation Templates).', queryText: q.sql,
+          name: q.name, description: 'Created by Marketing Cloud Toolkit (Automation Templates).', queryText: q.sql,
           targetName: target.name, targetKey: target.key, targetId: target.id, updateType: q.updateType, categoryId: queryFolder,
         })
         return { id: r?.queryDefinitionId ?? r?.id ?? null }

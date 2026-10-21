@@ -1,4 +1,4 @@
-// Backup files: everything SFMC Query Saver or SFMC Toolkit keeps (saved queries with
+// Backup files: everything SFMC Query Saver or Marketing Cloud Toolkit keeps (saved queries with
 // their run history, captured email versions, workspaces, settings) as one JSON file.
 // Query Saver exports this format so its data can move into the Toolkit.
 //
@@ -41,10 +41,10 @@ export function parseBackup(text) {
   let data
   try { data = JSON.parse(text) } catch { throw new Error('This file is not valid JSON.') }
   if (data?.format !== BACKUP_FORMAT || typeof data.items !== 'object' || !data.items) {
-    throw new Error('This is not an SFMC Query Saver or SFMC Toolkit backup file.')
+    throw new Error('This is not an SFMC Query Saver or Marketing Cloud Toolkit backup file.')
   }
   if (data.version > BACKUP_VERSION) {
-    throw new Error('This backup was made by a newer version. Update SFMC Toolkit and try again.')
+    throw new Error('This backup was made by a newer version. Update Marketing Cloud Toolkit and try again.')
   }
   return data
 }

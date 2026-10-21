@@ -221,16 +221,16 @@ function setDebounce(e) {
       <div class="flex items-start gap-3 mt-4">
         <div class="flex-1">
           <div class="text-sm font-medium">Automation Summary tab in Automation Studio</div>
-          <p class="text-xs text-muted-foreground">On an automation's page in Automation Studio, a tab on the right edge opens a summary of it (status, last run, schedule, steps) with a link into SFMC Toolkit.</p>
+          <p class="text-xs text-muted-foreground">On an automation's page in Automation Studio, a tab on the right edge opens a summary of it (status, last run, schedule, steps) with a link into Marketing Cloud Toolkit.</p>
         </div>
         <Switch v-model="automationPanel" aria-label="Automation Summary tab in Automation Studio" />
       </div>
       <div class="flex items-start gap-3 mt-4">
         <div class="flex-1">
-          <div class="text-sm font-medium">SFMC Toolkit on the Marketing Cloud Dashboard (trial)</div>
-          <p class="text-xs text-muted-foreground">Off by default. When on, SFMC's Marketing Cloud Dashboard page shows SFMC Toolkit's summary in place of SFMC's dashboard: this business unit's automations and journeys by status, what needs a look and what you watch, with links into SFMC Toolkit. Show SFMC dashboard on that page brings SFMC's back for the visit.</p>
+          <div class="text-sm font-medium">Marketing Cloud Toolkit on the Marketing Cloud Dashboard (trial)</div>
+          <p class="text-xs text-muted-foreground">Off by default. When on, SFMC's Marketing Cloud Dashboard page shows Marketing Cloud Toolkit's summary in place of SFMC's dashboard: this business unit's automations and journeys by status, what needs a look and what you watch, with links into Marketing Cloud Toolkit. Show SFMC dashboard on that page brings SFMC's back for the visit.</p>
         </div>
-        <Switch v-model="dashboardPanel" aria-label="SFMC Toolkit on the Marketing Cloud Dashboard" />
+        <Switch v-model="dashboardPanel" aria-label="Marketing Cloud Toolkit on the Marketing Cloud Dashboard" />
       </div>
 </section>
 
@@ -249,7 +249,7 @@ function setDebounce(e) {
       <h2 class="text-sm font-semibold">Backup</h2>
       <p class="text-xs text-muted-foreground mt-1">
         One file with your saved queries (with run history), email versions, workspaces and settings.
-        Import a backup from SFMC Query Saver or SFMC Toolkit. Nothing already here is overwritten.
+        Import a backup from SFMC Query Saver or Marketing Cloud Toolkit. Nothing already here is overwritten.
       </p>
       <div class="flex gap-2 mt-3">
         <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="exportBackup">Export backup</button>
@@ -267,7 +267,7 @@ function setDebounce(e) {
 
     <section class="rounded-lg border border-border bg-card p-4 text-sm">
       <h2 class="font-semibold mb-2">About</h2>
-      <p class="text-muted-foreground">SFMC Toolkit {{ version }}. It combines SFMC Query Saver and SFMC Automation Viewer.</p>
+      <p class="text-muted-foreground">Marketing Cloud Toolkit {{ version }}. It combines SFMC Query Saver and SFMC Automation Viewer.</p>
       <div class="flex gap-2 mt-3">
         <RouterLink to="/features" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Features</RouterLink>
         <RouterLink to="/todo" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">To do</RouterLink>

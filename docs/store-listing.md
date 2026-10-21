@@ -1,10 +1,10 @@
-# Chrome Web Store listing: SFMC Toolkit 2.0.0
+# Chrome Web Store listing: Marketing Cloud Toolkit 2.0.0
 
-Text for the Chrome Web Store dashboard. SFMC Toolkit is published as a new version of the existing **SFMC Query Saver** item, so update each field of that item.
+Text for the Chrome Web Store dashboard. Marketing Cloud Toolkit is published as a new version of the existing **SFMC Query Saver** item, so update each field of that item.
 
 ## Name
 
-SFMC Toolkit
+Marketing Cloud Toolkit
 
 (The name shown in Chrome comes from `manifest.json`; the store page name is set here.)
 
@@ -14,7 +14,7 @@ Run and save SFMC SQL, and explore automations, journeys, data extensions, Cloud
 
 ## Description
 
-SFMC Toolkit is a set of tools for Salesforce Marketing Cloud, in one full-tab app. It replaces SFMC Query Saver: if you used Query Saver, your saved queries, run history and email versions are already here.
+Marketing Cloud Toolkit is a set of tools for Salesforce Marketing Cloud, in one full-tab app. It replaces SFMC Query Saver: if you used Query Saver, your saved queries, run history and email versions are already here.
 
 It works with the Marketing Cloud login you already have in this browser. It never asks for or stores your password.
 
@@ -82,7 +82,9 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
-2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an optional SFMC Toolkit summary in place of the Marketing Cloud Dashboard page (trial, off by default), overviews kept while you move between sections, feedback remembers your name and email, Query Studio 2 runs saved by default (new site access: Chrome asks users to approve it), and Filter activities no longer fail first. No new permissions.
+2.0.11: renamed to Marketing Cloud Toolkit (update the store name too), Download menu on Automation overview and Journey overview, Where used steps can be left out or skipped. No new permissions.
+
+2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an optional Marketing Cloud Toolkit summary in place of the Marketing Cloud Dashboard page (trial, off by default), overviews kept while you move between sections, feedback remembers your name and email, Query Studio 2 runs saved by default (new site access: Chrome asks users to approve it), and Filter activities no longer fail first. No new permissions.
 
 2.0.7: Automation Summary tab on Automation Studio automation pages (from SFMC Automation Viewer), data view joins in Query Builder filled in straight away.
 
@@ -96,7 +98,7 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 2.0.0:
 
-SFMC Query Saver is now SFMC Toolkit. Everything you saved is still here. New: Automations, Activities, Journeys (with a journey canvas), Journey Entry, Data Extensions and CloudPages; a full-tab layout with a sidebar; Ctrl+K search; backups; feedback with screenshots; every SQL check can be turned off in Settings.
+SFMC Query Saver is now Marketing Cloud Toolkit. Everything you saved is still here. New: Automations, Activities, Journeys (with a journey canvas), Journey Entry, Data Extensions and CloudPages; a full-tab layout with a sidebar; Ctrl+K search; backups; feedback with screenshots; every SQL check can be turned off in Settings.
 
 ## Category
 
@@ -104,7 +106,7 @@ Developer Tools (Workflow and Planning also fits). Keep whatever the Query Saver
 
 ## Single purpose (Privacy practices tab)
 
-SFMC Toolkit helps Salesforce Marketing Cloud users work with their own account: save, write and run SQL queries, and view automations, journeys, data extensions, CloudPages and saved email versions.
+Marketing Cloud Toolkit helps Salesforce Marketing Cloud users work with their own account: save, write and run SQL queries, and view automations, journeys, data extensions, CloudPages and saved email versions.
 
 ## Permission justifications (Privacy practices tab)
 

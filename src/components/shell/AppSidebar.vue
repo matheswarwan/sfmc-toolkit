@@ -21,7 +21,7 @@ function toggle() {
   >
     <div class="flex items-center gap-2 h-12 px-3 border-b border-border">
       <img src="/images/icon32x32.png" alt="" class="h-6 w-6 shrink-0" />
-      <span v-if="!collapsed" class="font-semibold text-sm truncate">SFMC Toolkit</span>
+      <span v-if="!collapsed" class="font-semibold text-sm truncate">Marketing Cloud Toolkit</span>
     </div>
 
     <div class="flex-1 overflow-y-auto py-2">

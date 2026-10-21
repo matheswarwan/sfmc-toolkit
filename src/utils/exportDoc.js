@@ -11,7 +11,7 @@
 //
 // Excel exports use sheets: [{ name, columns, rows }].
 
-const APP = 'SFMC Toolkit'
+const APP = 'Marketing Cloud Toolkit'
 
 const str = (v) => (v == null ? '' : String(v))
 

@@ -29,7 +29,7 @@ describe('buildBackup', () => {
 describe('parseBackup', () => {
   it('rejects other files with a clear message', () => {
     expect(() => parseBackup('nope')).toThrow(/not valid JSON/)
-    expect(() => parseBackup('{"a":1}')).toThrow(/not an SFMC Query Saver or SFMC Toolkit backup/)
+    expect(() => parseBackup('{"a":1}')).toThrow(/not an SFMC Query Saver or Marketing Cloud Toolkit backup/)
     expect(() => parseBackup(JSON.stringify({ format: BACKUP_FORMAT, version: 99, items: {} }))).toThrow(/newer version/)
   })
   it('accepts a backup', () => {

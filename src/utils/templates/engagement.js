@@ -52,7 +52,7 @@ WHERE s.EventDate >= DATEADD(day, -${d}, GETDATE())
 GROUP BY s.SubscriberKey, sub.EmailAddress
 HAVING COUNT(*) >= ${min}`,
     }
-    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by SFMC Toolkit (Unengaged subscribers template).', [q]) }
+    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by Marketing Cloud Toolkit (Unengaged subscribers template).', [q]) }
   },
 }
 
@@ -97,7 +97,7 @@ FROM ${subscribers(o)} AS sub
     ) AS b ON b.SubscriberKey = sub.SubscriberKey
 WHERE LOWER(sub.Status) IN ('held', 'bounced') OR b.HardBounces > 0`,
     }
-    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by SFMC Toolkit (Held and bouncing subscribers template).', [q]) }
+    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by Marketing Cloud Toolkit (Held and bouncing subscribers template).', [q]) }
   },
 }
 
@@ -141,7 +141,7 @@ export const automationRunLog = {
       sql: `SELECT\n    ${ACTIVITY_RUN_FIELDS.join(',\n    ')}\nFROM _AutomationActivityInstance\nWHERE ActivityInstanceStartTime_UTC >= DATEADD(day, -${d}, GETUTCDATE())` }
     return {
       des: [runs, acts], queries: [q1, q2],
-      automation: { name: o.automationName, description: 'Created by SFMC Toolkit (Automation run log template). Schedule it daily.', steps: [{ name: 'Copy runs', queries: ['runs', 'acts'] }] },
+      automation: { name: o.automationName, description: 'Created by Marketing Cloud Toolkit (Automation run log template). Schedule it daily.', steps: [{ name: 'Copy runs', queries: ['runs', 'acts'] }] },
     }
   },
 }
@@ -183,7 +183,7 @@ FROM (
     LEFT JOIN ${subscribers(o)} AS sub ON sub.SubscriberKey = u.SubscriberKey
 GROUP BY u.SubscriberKey, sub.EmailAddress`,
     }
-    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by SFMC Toolkit (Unsubscribes for CRM template).', [q]) }
+    return { des: [de], queries: [q], automation: oneStep(o.automationName, 'Created by Marketing Cloud Toolkit (Unsubscribes for CRM template).', [q]) }
   },
 }
 

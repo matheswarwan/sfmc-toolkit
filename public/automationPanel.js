@@ -1,6 +1,6 @@
 // Automation Summary tab (feedback #45, ported from SFMC Automation Viewer): on an
 // Automation Studio automation page (#Instance/<id> in the address), a tab on the
-// right edge opens a summary of that automation, with a link into SFMC Toolkit.
+// right edge opens a summary of that automation, with a link into Marketing Cloud Toolkit.
 // Runs in a shadow root so Automation Studio's styles and ours do not mix. Off with
 // Settings > Connection > "Automation Summary tab in Automation Studio".
 (function () {
@@ -59,13 +59,13 @@
       try {
         chrome.runtime.sendMessage(message, function (res) {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          if (!res) return reject(new Error('No reply from SFMC Toolkit.'));
+          if (!res) return reject(new Error('No reply from Marketing Cloud Toolkit.'));
           if (res.error) return reject(new Error(res.error));
           resolve(res);
         });
       } catch (e) {
         // The extension was updated or reloaded: this page has to be reloaded.
-        reject(new Error('SFMC Toolkit was updated. Reload this page to use the summary.'));
+        reject(new Error('Marketing Cloud Toolkit was updated. Reload this page to use the summary.'));
       }
     });
   }
@@ -105,7 +105,7 @@
     var tab = el('button', 'tab', 'Automation Summary');
     tab.type = 'button';
     tab.setAttribute('aria-expanded', 'false');
-    tab.title = 'SFMC Toolkit: summary of this automation';
+    tab.title = 'Marketing Cloud Toolkit: summary of this automation';
     tab.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); setOpen(!open); });
     var panel = el('aside', 'panel');
     panel.setAttribute('aria-label', 'Automation summary');
@@ -113,7 +113,7 @@
     var titles = el('div');
     titles.style.flex = '1';
     titles.appendChild(el('p', 'title', 'Automation summary'));
-    titles.appendChild(el('p', 'sub', 'SFMC Toolkit'));
+    titles.appendChild(el('p', 'sub', 'Marketing Cloud Toolkit'));
     var x = el('button', 'x', '\u00d7');
     x.type = 'button';
     x.setAttribute('aria-label', 'Close');
@@ -123,7 +123,7 @@
     var body = el('div', 'body');
     body.appendChild(el('div', 'msg', 'Loading...'));
     var foot = el('div', 'foot');
-    var openBtn = el('button', 'btn', 'Open in SFMC Toolkit');
+    var openBtn = el('button', 'btn', 'Open in Marketing Cloud Toolkit');
     openBtn.type = 'button';
     openBtn.addEventListener('click', function () {
       var ctx = parse(location.href);

@@ -1,6 +1,6 @@
-// SFMC Toolkit card on SFMC's Marketing Cloud Dashboard page (feedback #65, a trial):
+// Marketing Cloud Toolkit card on SFMC's Marketing Cloud Dashboard page (feedback #65, a trial):
 // automations and journeys of the business unit (counts by status, what needs a
-// look, watched items) with links into SFMC Toolkit. The service worker reads SFMC
+// look, watched items) with links into Marketing Cloud Toolkit. The service worker reads SFMC
 // (DASHBOARD_SUMMARY, src/background/dashboard.js); this script only shows it.
 // Off unless _dashboardPanel is true (Settings > Connection). When on, it replaces
 // the content of SFMC's app frame (div.mc-app, which holds the dashboard's iframe):
@@ -45,12 +45,12 @@
       try {
         chrome.runtime.sendMessage(message, function (res) {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          if (!res) return reject(new Error('No reply from SFMC Toolkit.'));
+          if (!res) return reject(new Error('No reply from Marketing Cloud Toolkit.'));
           if (res.error) return reject(new Error(res.error));
           resolve(res);
         });
       } catch (e) {
-        reject(new Error('SFMC Toolkit was updated. Reload this page to see the card.'));
+        reject(new Error('Marketing Cloud Toolkit was updated. Reload this page to see the card.'));
       }
     });
   }
@@ -112,11 +112,11 @@
     var style = document.createElement('style');
     style.textContent = CSS;
     var card = el('section', 'card');
-    card.setAttribute('aria-label', 'SFMC Toolkit summary');
+    card.setAttribute('aria-label', 'Marketing Cloud Toolkit summary');
     var head = el('div', 'head');
-    head.appendChild(el('p', 'title', 'SFMC Toolkit'));
+    head.appendChild(el('p', 'title', 'Marketing Cloud Toolkit'));
     var trial = el('span', 'trial', 'Trial');
-    trial.title = 'A trial: tell us what you think with Feedback in SFMC Toolkit';
+    trial.title = 'A trial: tell us what you think with Feedback in Marketing Cloud Toolkit';
     head.appendChild(trial);
     var back = el('button', 'lk', 'Show SFMC dashboard');
     back.type = 'button';
@@ -132,7 +132,7 @@
     refresh.addEventListener('click', function () { load(true); });
     var off = el('button', 'lk', 'Turn off');
     off.type = 'button';
-    off.title = 'Stop replacing the dashboard. Turn it back on in SFMC Toolkit: Settings > Connection.';
+    off.title = 'Stop replacing the dashboard. Turn it back on in Marketing Cloud Toolkit: Settings > Connection.';
     off.addEventListener('click', function () { try { chrome.storage.local.set({ _dashboardPanel: false }); } catch (e) { /* gone */ } unmount(); });
     foot.appendChild(when);
     foot.appendChild(sp);
@@ -230,7 +230,7 @@
     }
     var w = s.watched || [];
     heading(b, 'Watched', w.length);
-    if (!w.length) b.appendChild(el('div', 'msg', 'Nothing watched on this stack. Click Watch on an automation or journey in SFMC Toolkit.'));
+    if (!w.length) b.appendChild(el('div', 'msg', 'Nothing watched on this stack. Click Watch on an automation or journey in Marketing Cloud Toolkit.'));
     w.forEach(function (x) {
       var why = [x.status, x.lastRunStatus ? 'last run ' + x.lastRunStatus : ''].filter(Boolean).join(', ');
       item(b, x.name, (x.type === 'journey' ? 'Journey' : 'Automation') + (why ? ': ' + why : ''), (x.type === 'journey' ? '/journeys/' : '/automations/') + encodeURIComponent(x.id));

@@ -38,10 +38,10 @@
 
     if (success) {
       bar.className = 'status-bar imported';
-      text.textContent = 'Query imported into SFMC Toolkit.';
+      text.textContent = 'Query imported into Marketing Cloud Toolkit.';
     } else {
       bar.className = 'status-bar no-ext';
-      text.textContent = 'Could not import. Make sure the SFMC Toolkit extension is installed.';
+      text.textContent = 'Could not import. Make sure the Marketing Cloud Toolkit extension is installed.';
     }
   }
 })();

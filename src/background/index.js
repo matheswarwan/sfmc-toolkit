@@ -1,4 +1,4 @@
-// SFMC Toolkit service worker: wires the modules to chrome events and messages.
+// Marketing Cloud Toolkit service worker: wires the modules to chrome events and messages.
 //
 // Messages (all `{ type, ... }`):
 //   GET_SESSION, GET_STACKS, SET_STACK_OVERRIDE      stack resolution (stack.js)
@@ -140,7 +140,7 @@ const handlers = {
     createTab({ url: chrome.runtime.getURL(`${APP_PAGE}#${path}`) })
     return { ok: true }
   },
-  // From the SFMC Toolkit card on SFMC's dashboard page (public/dashboardPanel.js, feedback #65).
+  // From the Marketing Cloud Toolkit card on SFMC's dashboard page (public/dashboardPanel.js, feedback #65).
   DASHBOARD_SUMMARY: async (m) => ({ summary: await getDashboardSummary(m.stack, { force: !!m.force }) }),
   OPEN_SFMC_LINK: async (m) => {
     let ok = false

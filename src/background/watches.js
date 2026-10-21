@@ -88,7 +88,7 @@ export async function checkWatches(stack, { force = false } = {}) {
     await chrome.storage.local.set({ [WATCHES_KEY]: watches, [NOTICES_KEY]: notices, [CHECKED_KEY]: { ...checkedAt, [stack]: Date.now() } })
     await updateBadge(notices)
     if (fresh.length && store[NOTIFY_KEY] && chrome.notifications?.create) {
-      chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('images/icon128x128.png'), title: 'SFMC Toolkit: watched automations and journeys', message: fresh.slice(0, 3).join('\n') + (fresh.length > 3 ? `\n+${fresh.length - 3} more` : '') })
+      chrome.notifications.create({ type: 'basic', iconUrl: chrome.runtime.getURL('images/icon128x128.png'), title: 'Marketing Cloud Toolkit: watched automations and journeys', message: fresh.slice(0, 3).join('\n') + (fresh.length > 3 ? `\n+${fresh.length - 3} more` : '') })
     }
     return { checked: mine.length, notices: fresh.length }
   } finally {

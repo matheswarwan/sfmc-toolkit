@@ -83,7 +83,7 @@ async function deleteSelected() {
   await new Promise((r) => chrome.storage.local.remove(ids, r))
   await loadData()
   toggleDeleteMode()
-  showToast(`Deleted ${ids.length} ${ids.length === 1 ? 'email' : 'emails'} from SFMC Toolkit.`)
+  showToast(`Deleted ${ids.length} ${ids.length === 1 ? 'email' : 'emails'} from Marketing Cloud Toolkit.`)
 }
 </script>
 

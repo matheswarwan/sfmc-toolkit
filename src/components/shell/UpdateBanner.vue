@@ -1,5 +1,5 @@
 <script setup>
-// Shown when Chrome has downloaded a newer SFMC Toolkit that waits for the
+// Shown when Chrome has downloaded a newer Marketing Cloud Toolkit that waits for the
 // extension to restart (see background/updates.js, feedback #48).
 import { onMounted, onUnmounted, ref } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
@@ -27,14 +27,14 @@ onMounted(() => {
 onUnmounted(() => { try { chrome.storage.onChanged.removeListener(onChange) } catch { /* ignore */ } })
 
 function restart() {
-  if (!window.confirm(`Restart SFMC Toolkit to update to ${waiting.value}?\n\nSFMC Toolkit tabs close; open it again from the toolbar. A query already running keeps running in SFMC.`)) return
+  if (!window.confirm(`Restart Marketing Cloud Toolkit to update to ${waiting.value}?\n\nMarketing Cloud Toolkit tabs close; open it again from the toolbar. A query already running keeps running in SFMC.`)) return
   chrome.runtime.reload()
 }
 </script>
 
 <template>
   <div v-if="waiting" class="fixed bottom-4 right-4 z-140 flex items-center gap-3 max-w-sm rounded-lg border border-primary/40 bg-card shadow-xl px-3 py-2 text-xs" role="status">
-    <span class="flex-1">SFMC Toolkit {{ waiting }} is ready. Restart to start using it.</span>
+    <span class="flex-1">Marketing Cloud Toolkit {{ waiting }} is ready. Restart to start using it.</span>
     <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md bg-primary text-primary-foreground font-medium" @click="restart">
       <RefreshCw class="h-3.5 w-3.5" /> Restart to update
     </button>

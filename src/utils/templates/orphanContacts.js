@@ -114,7 +114,7 @@ FROM [${o.pendingName}] AS pending
       queries,
       automation: {
         name: o.automationName,
-        description: 'Created by SFMC Toolkit (Orphan contacts template). Collects contacts to delete; deletion is done by hand in Contact Builder.',
+        description: 'Created by Marketing Cloud Toolkit (Orphan contacts template). Collects contacts to delete; deletion is done by hand in Contact Builder.',
         // One query per step: each step waits for the one before.
         steps: queries.map((q, i) => ({ name: `Step ${i + 1}`, queries: [q.ref] })),
       },
