@@ -244,9 +244,16 @@ export function describeJourneyNode(node, nameOf = (k) => k) {
   const extra = [['Key', formatValue(a.key ?? node.key)], ['ID', formatValue(a.id)]]
   let code = null
   const tables = []
+  let deRefs = {}
 
   if (t === 'ENTRY') {
     main.push(['Entry type', nodeTypeLabel(a.type) || formatValue(a.type)], ['Event definition key', formatValue(node.eventDefinitionKey)])
+    // The entry data extension, where the trigger names it (field names not checked live; feedback #72).
+    const deName = a.metaData?.dataExtensionName || a.configurationArguments?.dataExtensionName || a.arguments?.dataExtensionName
+    if (typeof deName === 'string' && deName.trim()) {
+      main.push(['Data extension', deName])
+      deRefs = { 'Data extension': { name: deName, id: a.metaData?.dataExtensionId || a.configurationArguments?.dataExtensionId || null, key: null } }
+    }
     tables.push(kvTable('Entry settings', a.configurationArguments), kvTable('Entry details', a.metaData, true), kvTable('Arguments', a.arguments, true))
   } else if (t === 'EXIT') {
     main.push(['', 'Contacts leave the journey here.'])
@@ -293,6 +300,7 @@ export function describeJourneyNode(node, nameOf = (k) => k) {
     link: null,
     main: main.filter(([, v]) => v !== '—'),
     extra,
+    deRefs,
     code,
     tables: tables.filter(Boolean),
   }

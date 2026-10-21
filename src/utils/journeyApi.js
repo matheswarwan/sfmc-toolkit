@@ -81,5 +81,7 @@ export function describeEventDefinition(it, stack) {
     ],
     code: null,
     tables: [kv('Schedule', it.schedule), { ...(kv('Metadata', it.metaData) || {}), extra: true }].filter((t) => t?.rows),
+    // View, SFMC link and row count next to the data extension (feedback #72).
+    deRefs: it.dataExtensionName ? { 'Data extension': { name: it.dataExtensionName, id: it.dataExtensionId || null, key: null } } : {},
   }
 }

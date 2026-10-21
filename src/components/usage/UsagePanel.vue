@@ -12,6 +12,7 @@ import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import LineageNode from './LineageNode.vue'
 import { useUsage, targetTitle, targetKindLabel } from '@/composables/useUsage.js'
 import { formatDateTime } from '@/utils/format.js'
+import DERowCount from '@/components/results/DERowCount.vue'
 
 const router = useRouter()
 const { state, start, stop, follow, back, progress, toggleSkip, canSkip, again } = useUsage()
@@ -183,6 +184,7 @@ function buildDoc() {
                   <span class="text-[10px] uppercase tracking-wide text-muted-foreground">{{ m.kind }}</span>
                   <button v-if="m.route" class="font-medium text-sm text-primary hover:underline text-left" @click="go(m.route)">{{ m.title }}</button>
                   <span v-else class="font-medium text-sm">{{ m.title }}</span>
+                  <DERowCount v-if="m.pivot?.kind === 'de' && m.pivot.de" :name="m.pivot.de.name || ''" :id="m.pivot.de.id || null" />
                   <template v-for="(b, bi) in m.badges" :key="bi">
                     <StatusBadge v-if="b.tone === 'status' && b.text" :status="b.text" />
                     <span v-else-if="b.text && b.tone !== 'status'" class="rounded-full px-1.5 py-px text-[10px] font-semibold" :class="TONES[b.tone] || TONES.info">{{ b.text }}</span>

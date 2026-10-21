@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { ExternalLink, Play, Loader2 } from 'lucide-vue-next'
 import { openInSfmc } from '@/utils/sfmcLinks.js'
 import CodeView from './CodeView.vue'
+import DERowCount from './DERowCount.vue'
 import { useStack } from '@/composables/useStack.js'
 import { showToast } from '@/composables/useToast.js'
 import { contactBuilderDEUrl } from '@/utils/activityTypes.js'
@@ -124,6 +125,7 @@ async function runInSFMC() {
           <dd class="wrap-break-word">
             {{ value }}
             <template v-if="deRef(label)">
+              <DERowCount :name="deRef(label).name" :id="deRef(label).id" />
               <button class="ml-2 text-primary hover:underline" :title="`Find ${deRef(label).name} in Data Extensions`" @click="openDEInToolkit(deRef(label))">View</button>
               <a v-if="contactBuilderDEUrl(stack, deRef(label).id)" :href="contactBuilderDEUrl(stack, deRef(label).id)" target="_blank" rel="noopener"
                 class="ml-2 inline-flex items-center gap-0.5 text-primary hover:underline" title="Open in Contact Builder">SFMC <ExternalLink class="h-3 w-3" /></a>
