@@ -42,7 +42,8 @@
 
   function extractStackFromHostname(hostname) {
     // mc.s51.exacttarget.com → s51, mc.s51.marketingcloud.com → s51
-    var m = hostname.match(/^(?:mc|members|content-builder)\.([^.]+)\./);
+    // mc.exacttarget.com has no stack (feedback #76): the JWT stackKey is the only source.
+    var m = hostname.match(/^(?:mc|members|content-builder)\.(s?\d+)\./);
     return m ? m[1] : null;
   }
 

@@ -17,7 +17,7 @@
 //   PING
 
 import {
-  rememberActiveStack, resolveAndPublish, getStacks, setStackOverride,
+  rememberActiveStack, noteRequestStack, resolveAndPublish, getStacks, setStackOverride,
   captureContext, getSession, forgetStack, onForgetStack,
 } from './stack.js'
 import { restoreCsrfTokens, sniffCsrf, getCoreCsrf } from './csrf.js'
@@ -54,10 +54,10 @@ chrome.action?.onClicked?.addListener((tab) => {
 })
 
 chrome.tabs?.onActivated?.addListener(({ tabId }) => {
-  chrome.tabs.get(tabId, (tab) => { if (!chrome.runtime.lastError && tab) rememberActiveStack(tab.url) })
+  chrome.tabs.get(tabId, (tab) => { if (!chrome.runtime.lastError && tab) rememberActiveStack(tab.url, tab.id) })
 })
 chrome.tabs?.onUpdated?.addListener((tabId, info, tab) => {
-  if (info.status === 'complete' && tab?.active) rememberActiveStack(tab.url)
+  if (info.status === 'complete' && tab?.active) rememberActiveStack(tab.url, tab.id)
 })
 
 chrome.storage?.onChanged?.addListener((changes, area) => {
@@ -67,6 +67,9 @@ chrome.storage?.onChanged?.addListener((changes, area) => {
   applyEmailSaverPrefs(prefs)
 })
 
+// The stack of stackless pages (mc.exacttarget.com, feedback #76): see stack.js.
+chrome.webRequest?.onBeforeRequest.addListener(
+  noteRequestStack, { urls: ['https://*.exacttarget.com/*', 'https://*.marketingcloudapps.com/*'] })
 chrome.webRequest?.onBeforeSendHeaders.addListener(
   sniffCsrf, { urls: ['https://*.exacttarget.com/*'] }, ['requestHeaders', 'extraHeaders'])
 // Query Studio 2's host is an optional permission; Chrome only delivers its

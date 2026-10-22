@@ -82,7 +82,7 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
-2.0.11: renamed to Marketing Cloud Toolkit (update the store name too), schema search and Cmd/Ctrl+Enter in Run Query, row counts next to data extensions, ENT. for Shared DEs in generated SQL, new tabs open next to the current one, Download menu on Automation overview and Journey overview, Where used steps can be left out or skipped. No new permissions.
+2.0.11: renamed to Marketing Cloud Toolkit (update the store name too), connects when SFMC is opened as mc.exacttarget.com, schema search and Cmd/Ctrl+Enter in Run Query, row counts next to data extensions, ENT. for Shared DEs in generated SQL, new tabs open next to the current one, Download menu on Automation overview and Journey overview, Where used steps can be left out or skipped. No new permissions.
 
 2.0.10: DE storage (GB and rows per data extension, storage over time, by business unit), an optional Marketing Cloud Toolkit summary in place of the Marketing Cloud Dashboard page (trial, off by default), overviews kept while you move between sections, feedback remembers your name and email, Query Studio 2 runs saved by default (new site access: Chrome asks users to approve it), and Filter activities no longer fail first. No new permissions.
 

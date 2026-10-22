@@ -40,6 +40,7 @@ function close() {
         <li><strong class="block">Schema search in Run Query</strong><span class="text-muted-foreground">Find a data extension or data view, see its fields and click one to write it at the cursor. Cmd/Ctrl+Enter runs the query (or the selected part).</span></li>
         <li><strong class="block">Row counts everywhere</strong><span class="text-muted-foreground">Data extensions on activity cards, Journey Entry and Where used show their row counts. Shared DEs get ENT. in generated SQL, and new tabs open next to this one.</span></li>
         <li><strong class="block">Skip slow steps in Where used</strong><span class="text-muted-foreground">Untick a step to leave it out, or Skip it while it runs. Saved data from an earlier check is used where there is some.</span></li>
+        <li><strong class="block">Works from mc.exacttarget.com</strong><span class="text-muted-foreground">SFMC opened without a stack in the address (mc.exacttarget.com) now connects too.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>

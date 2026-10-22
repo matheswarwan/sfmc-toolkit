@@ -23,7 +23,7 @@ Chrome MV3 extension, Vue 3 + Vite + Tailwind. It merges SFMC Query Saver (`../S
 
 ## Auth (src/background)
 
-- `stack.js`: stack resolution (pin → last active SFMC tab → open tab → login cookies, verified when several → probe), `forgetStack` after an auth failure.
+- `stack.js`: stack resolution (pin → last active SFMC tab → open tab → login cookies, verified when several → probe), `forgetStack` after an auth failure. Stackless pages (`mc.exacttarget.com`, feedback #76; the user confirmed that login works on `mc.<stack>` too): the tab's stack comes from its requests to stack hosts (`noteRequestStack`, webRequest, `tabStacks` in session storage), else the SSO context for that host, else the first stack whose core host answers `verifyStack`.
 - `csrf.js`: core CSRF captured passively from `*.exacttarget.com` requests (no way to fetch one); `_csrf` cookie for marketingcloudapps apps.
 - `mcaToken.js`: Bearer token minted in an inactive `update-token.json` tab; `content.js` reports `MCA_TOKEN_CAPTURED`. A failed mint backs off for 2 minutes.
 - `sessions.js` + `apps.js`: Automation Viewer's per-app session warm-up (inactive landing tab, probe until 200). Apps with `bearer: true` (Automation Studio, Contact Builder meta, Content Builder) get the token; Journey Builder and CloudPages use cookies only. **Not yet checked live in the merged form**, in particular Journey Builder and CloudPages.

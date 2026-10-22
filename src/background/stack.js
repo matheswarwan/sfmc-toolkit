@@ -19,8 +19,50 @@ const forgetHooks = []
 // Other modules drop their per-stack caches when a stack is forgotten.
 export function onForgetStack(fn) { forgetHooks.push(fn) }
 
-export function rememberActiveStack(url) {
-  const stack = stackFromPageUrl(url)
+// Stackless SFMC pages (mc.exacttarget.com, feedback #76) have no stack in the
+// address. Their stack comes from the requests the tab makes to stack hosts (app
+// frames on <app>.<stack>.marketingcloudapps.com and the like), else from the SSO
+// context content.js reported for that host, else from checking each stack.
+const STACKLESS_PAGE = /^https:\/\/(?:mc|members)\.exacttarget\.com\//
+const STACK_IN_REQUEST = /^https:\/\/[a-z0-9-]+\.([^.]+)\.(?:exacttarget|marketingcloudapps)\.com\//
+const tabStacks = {}
+let tabStacksLoaded = null
+
+function loadTabStacks() {
+  if (!tabStacksLoaded) {
+    tabStacksLoaded = storageGet('session', 'tabStacks')
+      .then((r) => { Object.assign(tabStacks, { ...(r.tabStacks || {}), ...tabStacks }) })
+      .catch(() => {})
+  }
+  return tabStacksLoaded
+}
+
+// webRequest.onBeforeRequest for SFMC hosts: remembers the stack each tab talks to.
+export function noteRequestStack(details) {
+  if (!details || details.tabId == null || details.tabId < 0) return
+  const m = String(details.url || '').match(STACK_IN_REQUEST)
+  if (!m || !STACK_RE.test(m[1]) || tabStacks[details.tabId] === m[1]) return
+  tabStacks[details.tabId] = m[1]
+  storageSet('session', { tabStacks: { ...tabStacks } })
+}
+
+export function isStacklessPage(url) {
+  return STACKLESS_PAGE.test(url || '') && !url.includes('/login') && !url.includes('mc.login.')
+}
+
+// The stack of an open tab: from its address, or for a stackless page from what
+// the tab requested or its SSO context.
+function tabStack(tab) {
+  const fromUrl = stackFromPageUrl(tab?.url)
+  if (fromUrl || !isStacklessPage(tab?.url)) return fromUrl
+  if (tabStacks[tab.id]) return tabStacks[tab.id]
+  const ctx = sfmcSession[new URL(tab.url).hostname]
+  return ctx?.stackKey && STACK_RE.test(ctx.stackKey) ? ctx.stackKey : null
+}
+
+export async function rememberActiveStack(url, tabId) {
+  await loadTabStacks()
+  const stack = tabStack({ url, id: tabId })
   if (stack) storageSet('session', { lastActiveStack: { stack, ts: Date.now() } })
 }
 
@@ -37,12 +79,31 @@ export async function scanCookieStacks() {
 }
 
 async function openStackTabs() {
+  await loadTabStacks()
   const list = []
+  const stackless = []
   for (const t of await queryTabs({})) {
-    const stack = stackFromPageUrl(t.url)
+    const stack = tabStack(t)
     if (stack) list.push({ stack, lastAccessed: t.lastAccessed || 0 })
+    else if (isStacklessPage(t.url)) stackless.push(t)
+  }
+  // A stackless tab whose stack is not known yet: the first stack with a live
+  // session on its core host (the login on mc.exacttarget.com works there too).
+  if (stackless.length) {
+    const live = await firstLiveStack()
+    if (live) {
+      for (const t of stackless) {
+        noteRequestStack({ tabId: t.id, url: `https://mc.${live}.exacttarget.com/` })
+        list.push({ stack: live, lastAccessed: t.lastAccessed || 0 })
+      }
+    }
   }
   return list.sort((a, b) => b.lastAccessed - a.lastAccessed)
+}
+
+function firstLiveStack() {
+  return Promise.any(STACK_IDS.map((id) => verifyStack(id).then((ok) => { if (ok) return id; throw new Error('no') })))
+    .catch(() => null)
 }
 
 // A cheap authenticated GET: 200 means the cookies for this stack are a live session.

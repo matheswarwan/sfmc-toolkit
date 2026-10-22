@@ -45,6 +45,25 @@ describe('stack resolution', () => {
     expect((await sw.send({ type: 'GET_SESSION' })).session.stackKey).toBe('s7')
   })
 
+  it('takes the stack of a stackless mc.exacttarget.com tab from its requests (feedback #76)', async () => {
+    const sw = await loadSW({ tabs: [{ url: 'https://mc.exacttarget.com/cloud/#app/Setup/Users' }], loggedIn: ['s7'] })
+    for (const fn of sw.onBeforeRequest.fns) fn({ tabId: 1, url: 'https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/' })
+    expect((await sw.send({ type: 'GET_SESSION' })).session.stackKey).toBe('s13')
+    await flush()
+    expect(sw.session.tabStacks).toEqual({ 1: 's13' })
+  })
+
+  it('checks each stack for a stackless tab whose stack is not known yet (feedback #76)', async () => {
+    const sw = await loadSW({ tabs: [{ url: 'https://mc.exacttarget.com/cloud/' }], liveStacks: ['s13'] })
+    expect((await sw.send({ type: 'GET_SESSION' })).session.stackKey).toBe('s13')
+  })
+
+  it('ignores requests the extension makes itself (no tab)', async () => {
+    const sw = await loadSW({ tabs: [{ url: 'https://mc.exacttarget.com/cloud/' }], liveStacks: ['s10'] })
+    for (const fn of sw.onBeforeRequest.fns) fn({ tabId: -1, url: 'https://mc.s13.exacttarget.com/cloud/' })
+    expect((await sw.send({ type: 'GET_SESSION' })).session.stackKey).toBe('s10')
+  })
+
   it('checks each cookie stack when there are several and no tabs', async () => {
     const sw = await loadSW({ loggedIn: ['s13', 's10'], liveStacks: ['s10'] })
     expect((await sw.send({ type: 'GET_SESSION' })).session.stackKey).toBe('s10')
