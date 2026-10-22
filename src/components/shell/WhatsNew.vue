@@ -37,6 +37,8 @@ function close() {
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">A new name</strong><span class="text-muted-foreground">SFMC Toolkit is now Marketing Cloud Toolkit. Nothing else changes: everything you saved is still here.</span></li>
         <li><strong class="block">Share an overview</strong><span class="text-muted-foreground">Automation overview and Journey overview have a Download menu: copy as Markdown, or download Markdown, Word or HTML.</span></li>
+        <li><strong class="block">Schema search in Run Query</strong><span class="text-muted-foreground">Find a data extension or data view, see its fields and click one to write it at the cursor. Cmd/Ctrl+Enter runs the query (or the selected part).</span></li>
+        <li><strong class="block">Row counts everywhere</strong><span class="text-muted-foreground">Data extensions on activity cards, Journey Entry and Where used show their row counts. Shared DEs get ENT. in generated SQL, and new tabs open next to this one.</span></li>
         <li><strong class="block">Skip slow steps in Where used</strong><span class="text-muted-foreground">Untick a step to leave it out, or Skip it while it runs. Saved data from an earlier check is used where there is some.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">

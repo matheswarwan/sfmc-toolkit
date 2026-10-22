@@ -21,6 +21,8 @@ export const FEATURE_GROUPS = [
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
       { title: 'Overviews stay put', since: '2.0.10', detail: 'Automation overview (with its run trends), Journey overview and DE storage keep what they read for each business unit while the tab is open; Refresh reads it again.' },
       { title: 'Download an overview', since: '2.0.11', how: 'Download on Automation overview or Journey overview', detail: 'Copy as Markdown to share, or download Markdown, Word or HTML: counts by status, what needs a look, run trends if loaded, and watched items.' },
+      { title: 'Row counts next to data extensions', since: '2.0.11', detail: 'Activity cards (query targets, extract results, import targets), Journey Entry, journey entry steps and Where used show how many rows each data extension has. Shared DEs are written as ENT.[name] in generated SQL.' },
+      { title: 'New tabs next to this one', since: '2.0.11', detail: 'Links into SFMC and other tabs the Toolkit opens appear right after the current tab instead of at the end.' },
       { title: 'Light, dark or system theme', how: 'The moon icon, or Settings', detail: 'System follows your computer.' },
       { title: 'Feedback', how: 'The speech bubble in the top bar', detail: 'Say what happened (or your idea), add details, and attach a screenshot: of this page, of another tab or window such as SFMC, or an image you upload or paste. Draw boxes or freehand on it to point at the problem or cover anything private. Technical details (version, browser, section, stack, business unit, the last failed SFMC calls; never SQL or data) are included unless you untick them, and you can see exactly what is sent. Your name and email are filled in from the last time you sent feedback.' },
     ],
@@ -44,6 +46,8 @@ export const FEATURE_GROUPS = [
     title: 'Run Query',
     intro: 'Queries > Run Query in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
     items: [
+      { title: 'Schema search', since: '2.0.11', how: 'The table button in a panel, or Cmd/Ctrl+Shift+S in the editor', detail: 'Search data extensions (this business unit, Shared and Synchronized) and data views by name, pick one and see its fields with type, length, primary key and required. Click a field to write it at the cursor (with the query\'s alias for that table), or insert the table name (ENT. for Shared) or all fields.' },
+      { title: 'Run with the keyboard', since: '2.0.11', how: 'Cmd+Enter (Mac) or Ctrl+Enter in the editor', detail: 'Runs the query, or only the selected text when something is selected.' },
       { title: 'Clean up SFMC', since: '2.0.3', how: 'Queries > Clean up SFMC', detail: 'Lists the data extensions and Query activities Run Query created (names starting SFMCQS_) and deletes the ones you tick, after asking. Nothing else is ever listed.' },
       { title: 'Data retention on new data extensions', since: '2.0.3', how: 'Settings > Running queries', detail: 'Off by default. Switched on, SFMC deletes each row of a new Run Query data extension after the number of days you set.' },
       { title: 'Export with no rows', since: '2.0.3', detail: 'When a query returns nothing, Copy for AI and MD still give the SQL and the columns, and CSV gives the header.' },
