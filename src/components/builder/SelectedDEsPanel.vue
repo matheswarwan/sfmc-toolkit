@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { X, Loader2, Plus, ChevronDown, ChevronRight, Lock } from 'lucide-vue-next'
+import { X, Loader2, Plus, ChevronDown, ChevronRight, Lock, GripVertical, ArrowUp, ArrowDown } from 'lucide-vue-next'
 import Button from '../ui/button/Button.vue'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
@@ -8,6 +8,7 @@ import { fetchDEFieldsCached } from '../../utils/sfmcApi.js'
 import { DATA_VIEW_FIELDS, DATA_VIEWS } from '../../utils/dataViews.js'
 import { suggestJoinConditions, aliasFor, aliasOf } from '../../utils/sqlBuilder.js'
 import { defaultQueryOptions } from '../../utils/builderStorage.js'
+import { moveDE, swapDEs, joinsForOrder } from '../../utils/builderOrder.js'
 
 const props = defineProps({
   stack: { type: String, default: null },
@@ -52,25 +53,10 @@ const allFieldOptions = computed(() =>
 )
 
 // Keep one join entry between each adjacent DE pair.
+// A pair that was joined the other way round keeps its conditions, turned around
+// (reordering, feedback #90).
 watch(() => selectedList.value.map((d) => d.id).join('|'), () => {
-  const next = []
-  for (let i = 0; i < selectedList.value.length - 1; i++) {
-    const left = selectedList.value[i]
-    const right = selectedList.value[i + 1]
-    const existing = joins.value.find(
-      (j) => j.leftDeId === left.id && j.rightDeId === right.id
-    )
-    next.push(
-      existing || {
-        leftDeId: left.id,
-        rightDeId: right.id,
-        joinType: 'LEFT JOIN',
-        combinator: 'AND',
-        conditions: [],
-      }
-    )
-  }
-  joins.value = next
+  joins.value = joinsForOrder(selectedList.value, joins.value)
   emit('update:joins', joins.value)
   // New join rows: suggest a condition when both sides already have their fields
   // (data views have theirs at once, before this row existed).
@@ -178,6 +164,34 @@ function autoSuggestJoinsForDe(deId) {
   })
   if (changed) emitJoins()
 }
+
+// ── Order (feedback #90): drag a DE between two others to move it, onto another
+// to swap them, or use the arrows.
+const dragFrom = ref(-1)
+const dropTarget = ref(null) // { kind: 'gap' | 'swap', index }
+const ORDER_TYPE = 'application/x-builder-de-index'
+function moveTo(from, to) { selectedList.value = moveDE(selectedList.value, from, to) }
+function onChipDragStart(e, idx) {
+  dragFrom.value = idx
+  try { e.dataTransfer.setData(ORDER_TYPE, String(idx)); e.dataTransfer.effectAllowed = 'move' } catch { /* ignore */ }
+}
+function onDragOver(e, kind, index) {
+  if (dragFrom.value < 0) return
+  e.preventDefault()
+  dropTarget.value = { kind, index }
+}
+function onDrop(e, kind, index) {
+  e.preventDefault()
+  const from = dragFrom.value
+  dragFrom.value = -1
+  dropTarget.value = null
+  if (from < 0) return
+  if (kind === 'swap') selectedList.value = swapDEs(selectedList.value, from, index)
+  // A gap `index` sits before item `index`; moving down removes the item first.
+  else moveTo(from, index > from ? index - 1 : index)
+}
+function onDragEnd() { dragFrom.value = -1; dropTarget.value = null }
+const isDrop = (kind, index) => dropTarget.value?.kind === kind && dropTarget.value?.index === index
 
 function removeDe(index) {
   const next = [...selectedList.value]
@@ -298,9 +312,27 @@ function toggleSection(name) {
           </div>
 
           <template v-for="(de, idx) in selectedList" :key="de.id">
-            <!-- DE chip -->
-            <div class="rounded-lg border border-border bg-card px-2.5 py-2 flex items-center justify-between">
+            <!-- Drop here to move a DE before this one -->
+            <div
+              v-if="selectedList.length > 1"
+              class="h-1.5 -my-0.5 rounded"
+              :class="isDrop('gap', idx) ? 'bg-primary' : ''"
+              @dragover="onDragOver($event, 'gap', idx)"
+              @dragleave="dropTarget = null"
+              @drop="onDrop($event, 'gap', idx)"
+            />
+            <!-- DE chip (drag onto another to swap) -->
+            <div
+              class="rounded-lg border bg-card px-2.5 py-2 flex items-center justify-between"
+              :class="[isDrop('swap', idx) && dragFrom !== idx ? 'border-primary ring-1 ring-primary' : 'border-border', dragFrom === idx ? 'opacity-50' : '']"
+              :draggable="selectedList.length > 1"
+              @dragstart="onChipDragStart($event, idx)"
+              @dragend="onDragEnd"
+              @dragover="onDragOver($event, 'swap', idx)"
+              @drop="onDrop($event, 'swap', idx)"
+            >
               <div class="flex items-center gap-1.5 min-w-0">
+                <GripVertical v-if="selectedList.length > 1" class="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-grab" title="Drag to move, or drop on another to swap" />
                 <input
                   class="w-10 text-[10px] font-mono text-center text-primary border border-border rounded px-0.5 py-0.5 bg-background focus:border-primary focus:outline-none"
                   :value="aliasOf(de, idx)"
@@ -311,9 +343,19 @@ function toggleSection(name) {
                 <span class="text-[9px] px-1 rounded bg-muted text-muted-foreground shrink-0">{{ de.sourceType }}</span>
                 <Loader2 v-if="loadingIds.has(de.id)" class="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
               </div>
-              <Button variant="ghost" size="icon" class="h-6 w-6 shrink-0" title="Remove data extension" @click="removeDe(idx)">
-                <X class="h-3 w-3" />
-              </Button>
+              <div class="flex items-center shrink-0">
+                <template v-if="selectedList.length > 1">
+                  <Button variant="ghost" size="icon" class="h-6 w-6" :disabled="idx === 0" title="Move up" aria-label="Move up" @click="moveTo(idx, idx - 1)">
+                    <ArrowUp class="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" class="h-6 w-6" :disabled="idx === selectedList.length - 1" title="Move down" aria-label="Move down" @click="moveTo(idx, idx + 1)">
+                    <ArrowDown class="h-3 w-3" />
+                  </Button>
+                </template>
+                <Button variant="ghost" size="icon" class="h-6 w-6" title="Remove data extension" @click="removeDe(idx)">
+                  <X class="h-3 w-3" />
+                </Button>
+              </div>
             </div>
 
             <!-- Join row to next DE -->
@@ -394,6 +436,15 @@ function toggleSection(name) {
               </div>
             </div>
           </template>
+          <!-- Drop here to move a DE to the end -->
+          <div
+            v-if="selectedList.length > 1"
+            class="h-1.5 rounded"
+            :class="isDrop('gap', selectedList.length) ? 'bg-primary' : ''"
+            @dragover="onDragOver($event, 'gap', selectedList.length)"
+            @dragleave="dropTarget = null"
+            @drop="onDrop($event, 'gap', selectedList.length)"
+          />
         </div>
       </section>
 
