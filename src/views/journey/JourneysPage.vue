@@ -13,6 +13,8 @@ import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
 import { searchJourneys, JOURNEY_STATUSES, JOURNEY_PAGE_SIZE } from '@/utils/journeys.js'
 import { formatDateTime } from '@/utils/format.js'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 
 const router = useRouter()
 const { stack } = useStack()
@@ -31,15 +33,13 @@ async function search() {
   loading.value = true
   error.value = ''
   try {
-    const r = await searchJourneys(stack.value, { query: query.value, status: status.value, page: 1 })
+    const r = await withReconnect(stack.value, () => searchJourneys(stack.value, { query: query.value, status: status.value, page: 1 }))
     items.value = r.items
     total.value = r.total
     page.value = 1
     searched.value = { query: query.value.trim(), status: status.value }
   } catch (e) {
-    error.value = e.code === 'SFMC_LOGIN_REQUIRED' || e.code === 'SFMC_SESSION_UNAVAILABLE'
-      ? `Could not reach Journey Builder (${e.message}). Open Journey Builder once in SFMC, or use Connect in the connection menu, then search again.`
-      : `Could not search journeys: ${e.message}`
+    error.value = searchError(e, 'search journeys')
   } finally {
     loading.value = false
   }
@@ -104,7 +104,7 @@ const columns = [
       <span class="text-xs text-muted-foreground">Viewing a journey never changes it.</span>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="search" />
       <div v-if="searched === null && !loading" class="max-w-md mx-auto mt-12 text-center text-sm text-muted-foreground">
         Search for a journey by name, or search with an empty box to list all, most recently changed first.
       </div>

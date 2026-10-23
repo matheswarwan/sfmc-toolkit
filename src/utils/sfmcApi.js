@@ -98,6 +98,7 @@ function proxyFetch(url, method, body) {
         const err = new Error(error)
         err.code = response?.code || null
         err.status = response?.status ?? null
+        err.app = response?.app || null
         return reject(err)
       }
       _log({ ts: Date.now(), type: 'res', method, url, result: response.data })

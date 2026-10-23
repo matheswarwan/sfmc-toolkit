@@ -3,6 +3,7 @@ import {
   fetchDEsInCategoryAllPages, searchDEsAllSources,
 } from './sfmcApi.js'
 import { DATA_VIEWS, DATA_VIEW_FIELDS } from './dataViews.js'
+import { withReconnect, isConnectionError, searchError } from './sfmcErrors.js'
 
 /** Map SFMC root folder type to DE source label */
 export const ROOT_TYPE_LABELS = {
@@ -91,13 +92,13 @@ export function debouncedSearchDEs(stack, query, onResults, delayMs = 300) {
   }
   _searchTimer = setTimeout(async () => {
     try {
-      const data = await searchDEsAllSources(stack, query.trim())
+      const data = await withReconnect(stack, () => searchDEsAllSources(stack, query.trim()))
       const items = (data?.items || []).map((de) =>
         normalizeDENode(de, de.sourceType || 'search', ['Search results'])
       )
       onResults(items)
     } catch (e) {
-      onResults([], e?.message || 'Search failed.')
+      onResults([], isConnectionError(e) ? searchError(e, 'search').message : (e?.message || 'Search failed.'))
     }
   }, delayMs)
 }

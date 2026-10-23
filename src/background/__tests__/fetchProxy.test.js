@@ -84,6 +84,22 @@ describe('Bearer apps (Automation Studio, Contact Builder meta, Content Builder)
     expect(r.data.ok).toBe(true)
   })
 
+  it('treats a login page in place of data as no session and warms the app up (feedback #93)', async () => {
+    const landing = 'https://mc.s10.marketingcloudapps.com/AutomationStudioFuel3/update-token.json'
+    const sw = await loadSW({ loggedIn: ['s10'], landings: { [landing]: 'automationStudio' }, loginPageWhenNoSession: true })
+    const r = await sw.send({ type: 'SFMC_FETCH', url: AS, method: 'GET' })
+    expect(r.data.ok).toBe(true)
+    expect(sw.sim.created.map((t) => t.url)).toContain(landing)
+  })
+
+  it('fails with SESSION_UNAVAILABLE and the app to log in to when the login page stays (feedback #93)', async () => {
+    const sw = await loadSW({ loggedIn: ['s10'], loginPageWhenNoSession: true })
+    const r = await sw.send({ type: 'SFMC_FETCH', url: AS, method: 'GET' })
+    expect(r.code).toBe('SFMC_SESSION_UNAVAILABLE')
+    expect(r.app).toEqual({ id: 'automationStudio', name: 'Automation Studio', url: 'https://mc.s10.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/' })
+    expect(r.data).toBeUndefined()
+  })
+
   it('a Content Builder write echoes the CSRF cookie; a GET sends none', async () => {
     const sw = await loadSW({ loggedIn: ['s10'], mintable: ['s10'] })
     await sw.send({ type: 'SFMC_FETCH', url: CB, method: 'GET' })

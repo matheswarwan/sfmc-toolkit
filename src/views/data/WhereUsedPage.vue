@@ -5,6 +5,8 @@
 import { computed, ref, watch } from 'vue'
 import { Search, Loader2, Network } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack } from '@/composables/useStack.js'
 import { useUsage } from '@/composables/useUsage.js'
 import { searchLocalDEs, searchSharedSyncDEs, fetchDEFieldList, fieldTypeLabel } from '@/utils/deApi.js'
@@ -58,40 +60,43 @@ async function search() {
   const q = query.value
   const s = stack.value
   try {
-    let out = []
-    if (kind.value === 'de' || kind.value === 'field') {
-      const [local, shared] = await Promise.all([searchLocalDEs(s, q, 1), searchSharedSyncDEs(s, q).catch(() => [])])
-      const seen = new Set()
-      out = [...shared, ...local.items].filter((d) => !seen.has(d.id) && seen.add(d.id)).map((de) => ({
-        key: de.id, title: de.name, sub: [de.customerKey, de.sourceType ? (de.sourceType === 'shared' ? 'Shared' : 'Synchronized') : '', formatDateTime(de.modifiedDate)].filter(Boolean).join(' · '),
-        ...(kind.value === 'de' ? { target: { kind: 'de', de } } : { pick: de }),
-      }))
-    } else if (kind.value === 'dataview') {
-      out = [...DATA_VIEWS].filter((n) => contains(n, q)).sort().map((name) => ({ key: name, title: name, sub: '', pick: { name, dataView: true } }))
-    } else if (kind.value === 'activity') {
-      const r = await searchActivities(s, activityType.value.endpoint, q, 1)
-      const idField = { 300: 'queryDefinitionId', 423: 'ssjsActivityId', 43: 'importDefinitionId', 73: 'dataExtractDefinitionId', 53: 'id', 303: 'filterActivityId' }[activityType.value.objectTypeId]
-      out = r.items.map((it) => ({
-        key: it[idField] ?? it.id, title: it.name, sub: formatDateTime(it.modifiedDate),
-        target: { kind: 'activity', typeId: activityType.value.objectTypeId, activityObjectId: it[idField] ?? it.id, name: it.name, details: activityType.value.objectTypeId === 300 ? it : null },
-      }))
-    } else if (kind.value === 'automation') {
-      const r = await searchAutomations(s, q, 0)
-      out = r.entries.map((a) => ({ key: a.id, title: a.name, sub: [a.status, a.lastRunTime ? `last run ${formatDateTime(a.lastRunTime)}` : ''].filter(Boolean).join(' · '), target: { kind: 'automation', id: a.id, name: a.name } }))
-    } else if (kind.value === 'event') {
-      all = all || (await fetchEventDefinitions(s)).items
-      out = all.filter((e) => contains(e.name, q) || contains(e.eventDefinitionKey, q) || contains(e.dataExtensionName, q)).slice(0, 100)
-        .map((e) => ({ key: e.id, title: e.name || e.eventDefinitionKey, sub: [e.eventDefinitionKey, e.dataExtensionName].filter(Boolean).join(' · '), target: { kind: 'event', event: e } }))
-    } else if (kind.value === 'email' || kind.value === 'block') {
-      const items = await searchAssets(s, q, kind.value)
-      out = items.map((a) => ({ key: a.id, title: a.name, sub: [a.assetType?.displayName || a.assetType?.name, a.category?.name, formatDateTime(a.modifiedDate)].filter(Boolean).join(' · '), target: { kind: kind.value, asset: a } }))
-    } else if (kind.value === 'location') {
-      all = all || await listFileLocations(s)
-      out = all.filter((l) => contains(l.name, q) || contains(l.relPath, q)).map((l) => ({ key: l.id, title: l.name || l.id, sub: [l.locationType || l.locationTypeId, l.relPath].filter(Boolean).join(' · '), target: { kind: 'location', location: l } }))
-    }
+    const out = await withReconnect(s, async () => {
+      let out = []
+      if (kind.value === 'de' || kind.value === 'field') {
+        const [local, shared] = await Promise.all([searchLocalDEs(s, q, 1), searchSharedSyncDEs(s, q).catch(() => [])])
+        const seen = new Set()
+        out = [...shared, ...local.items].filter((d) => !seen.has(d.id) && seen.add(d.id)).map((de) => ({
+          key: de.id, title: de.name, sub: [de.customerKey, de.sourceType ? (de.sourceType === 'shared' ? 'Shared' : 'Synchronized') : '', formatDateTime(de.modifiedDate)].filter(Boolean).join(' · '),
+          ...(kind.value === 'de' ? { target: { kind: 'de', de } } : { pick: de }),
+        }))
+      } else if (kind.value === 'dataview') {
+        out = [...DATA_VIEWS].filter((n) => contains(n, q)).sort().map((name) => ({ key: name, title: name, sub: '', pick: { name, dataView: true } }))
+      } else if (kind.value === 'activity') {
+        const r = await searchActivities(s, activityType.value.endpoint, q, 1)
+        const idField = { 300: 'queryDefinitionId', 423: 'ssjsActivityId', 43: 'importDefinitionId', 73: 'dataExtractDefinitionId', 53: 'id', 303: 'filterActivityId' }[activityType.value.objectTypeId]
+        out = r.items.map((it) => ({
+          key: it[idField] ?? it.id, title: it.name, sub: formatDateTime(it.modifiedDate),
+          target: { kind: 'activity', typeId: activityType.value.objectTypeId, activityObjectId: it[idField] ?? it.id, name: it.name, details: activityType.value.objectTypeId === 300 ? it : null },
+        }))
+      } else if (kind.value === 'automation') {
+        const r = await searchAutomations(s, q, 0)
+        out = r.entries.map((a) => ({ key: a.id, title: a.name, sub: [a.status, a.lastRunTime ? `last run ${formatDateTime(a.lastRunTime)}` : ''].filter(Boolean).join(' · '), target: { kind: 'automation', id: a.id, name: a.name } }))
+      } else if (kind.value === 'event') {
+        all = all || (await fetchEventDefinitions(s)).items
+        out = all.filter((e) => contains(e.name, q) || contains(e.eventDefinitionKey, q) || contains(e.dataExtensionName, q)).slice(0, 100)
+          .map((e) => ({ key: e.id, title: e.name || e.eventDefinitionKey, sub: [e.eventDefinitionKey, e.dataExtensionName].filter(Boolean).join(' · '), target: { kind: 'event', event: e } }))
+      } else if (kind.value === 'email' || kind.value === 'block') {
+        const items = await searchAssets(s, q, kind.value)
+        out = items.map((a) => ({ key: a.id, title: a.name, sub: [a.assetType?.displayName || a.assetType?.name, a.category?.name, formatDateTime(a.modifiedDate)].filter(Boolean).join(' · '), target: { kind: kind.value, asset: a } }))
+      } else if (kind.value === 'location') {
+        all = all || await listFileLocations(s)
+        out = all.filter((l) => contains(l.name, q) || contains(l.relPath, q)).map((l) => ({ key: l.id, title: l.name || l.id, sub: [l.locationType || l.locationTypeId, l.relPath].filter(Boolean).join(' · '), target: { kind: 'location', location: l } }))
+      }
+      return out
+    })
     if (id === runId) rows.value = out
   } catch (e) {
-    if (id === runId) error.value = `Could not search: ${e.message}`
+    if (id === runId) error.value = searchError(e, 'search')
   } finally {
     if (id === runId) loading.value = false
   }
@@ -150,7 +155,7 @@ function showProfiles() {
 
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
       <p class="mb-3 text-xs text-muted-foreground max-w-2xl">{{ kindInfo.hint }} Results open in the Where used panel, which shows each step of the scan with a progress bar and keeps going if you close it.</p>
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="search" />
 
       <template v-if="fieldDE">
         <div class="mb-2 flex items-center gap-2 text-xs">

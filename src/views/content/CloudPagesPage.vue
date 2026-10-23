@@ -7,6 +7,8 @@ import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
@@ -38,14 +40,14 @@ async function search() {
   loading.value = true
   error.value = ''
   try {
-    const r = await searchCloudPages(stack.value, query.value, 1)
+    const r = await withReconnect(stack.value, () => searchCloudPages(stack.value, query.value, 1))
     pages.value = r.items
     total.value = r.total
     pageNo.value = 1
     searched.value = query.value.trim()
     for (const p of r.items) if (p.url) urls[p.id] = { status: 'ok', url: p.url }
   } catch (e) {
-    error.value = `Could not search CloudPages: ${e.message}`
+    error.value = searchError(e, 'search CloudPages')
   } finally {
     loading.value = false
   }
@@ -155,7 +157,7 @@ const columns = [
       <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached URLs and folders" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="search" />
       <div v-if="searched === null && !loading" class="max-w-md mx-auto mt-12 text-center text-sm text-muted-foreground">
         Search CloudPages by name, content or key, or search with an empty box to list all.
       </div>

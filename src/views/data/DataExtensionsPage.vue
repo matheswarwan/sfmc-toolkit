@@ -8,6 +8,8 @@ import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
@@ -98,11 +100,11 @@ async function search() {
     .then((list) => { if (id === searchId) shared.value = list })
     .catch((e) => { if (id === searchId) { shared.value = []; sharedError.value = e.message } })
   try {
-    await loadLocalPage(id)
+    await withReconnect(stack.value, () => loadLocalPage(id))
     // A filtered search can match nothing on the first page; read on (20 pages at most).
     for (let n = 1; n < 20 && id === searchId && localFiltered.value && !localDone.value && local.value.length < DE_PAGE_SIZE; n++) await loadLocalPage(id)
   } catch (e) {
-    if (id === searchId) error.value = `Could not search data extensions: ${e.message}`
+    if (id === searchId) error.value = searchError(e, 'search data extensions')
   } finally {
     if (id === searchId) loading.value = false
   }
@@ -358,7 +360,7 @@ const columns = [
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="search" />
       <div v-if="searched === null && !loading" class="max-w-md mx-auto mt-12 text-center text-sm text-muted-foreground">
         Search for a data extension by name. Shared and Synchronized data extensions are included and tagged.
         Search with an empty box to list all, newest first.

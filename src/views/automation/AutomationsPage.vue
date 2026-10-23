@@ -9,6 +9,8 @@ import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import WatchButton from '@/components/automation/WatchButton.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
@@ -31,13 +33,13 @@ async function search() {
   loading.value = true
   error.value = ''
   try {
-    const r = await searchAutomations(stack.value, query.value, 0)
+    const r = await withReconnect(stack.value, () => searchAutomations(stack.value, query.value, 0))
     entries.value = r.entries
     total.value = r.total
     picked.value = new Set()
     searched.value = query.value.trim()
   } catch (e) {
-    error.value = `Could not search automations: ${e.message}`
+    error.value = searchError(e, 'search automations')
   } finally {
     loading.value = false
   }
@@ -107,7 +109,7 @@ const columns = [
       <span class="text-xs text-muted-foreground">Viewing an automation never pauses or changes it.</span>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="search" />
       <div v-if="searched === null && !loading" class="max-w-md mx-auto mt-12 text-center text-sm text-muted-foreground">
         Search for an automation by name, or search with an empty box to list all, most recently run first.
       </div>

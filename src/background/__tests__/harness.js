@@ -65,6 +65,7 @@ function response(status, body, { type = 'basic', headers = {} } = {}) {
  * @param {object} [o.landings]      landing URL → app id it creates a session for
  * @param {object} [o.local], [o.session]  initial chrome.storage areas
  * @param {object|null} [o.currentBU]
+ * @param {boolean} [o.loginPageWhenNoSession]  apps answer 200 with their login page instead of 401
  */
 export async function loadSW(o = {}) {
   const sim = {
@@ -84,6 +85,7 @@ export async function loadSW(o = {}) {
     removed: [],
     fetched: [],
     apiStatus: null, // force every app API call to answer this status
+    loginPageWhenNoSession: !!o.loginPageWhenNoSession,
   }
   const local = makeArea(o.local)
   const session = makeArea(o.session)
@@ -157,7 +159,7 @@ export async function loadSW(o = {}) {
     }
     const bearer = (headers.Authorization || '').replace(/^Bearer /, '')
     const authed = sim.sessions.has(`${stack}:${appId}`) || (BEARER_APPS.has(appId) && sim.tokens.has(bearer))
-    if (!authed) return response(401)
+    if (!authed) return sim.loginPageWhenNoSession ? response(200, '<!DOCTYPE html><html><head><title>Login</title></head><body>Sign in</body></html>') : response(401)
     if (isCb && write && headers['X-CSRF-Token'] !== sim.csrf) return response(403)
     if (isCb) sim.csrf = `csrf-${++sim.csrfCount}`
     if (sim.apiStatus) return response(sim.apiStatus, 'boom')

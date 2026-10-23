@@ -7,6 +7,8 @@ import { Search, Loader2, ListChecks, Network } from 'lucide-vue-next'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
@@ -56,7 +58,7 @@ async function search() {
   loading.value = true
   error.value = ''
   try {
-    const r = await searchActivities(stack.value, type.value.endpoint, query.value, 1)
+    const r = await withReconnect(stack.value, () => searchActivities(stack.value, type.value.endpoint, query.value, 1))
     items.value = r.items
     total.value = r.total
     page.value = 1
@@ -64,7 +66,7 @@ async function search() {
     visibleCount.value = RESULTS_PAGE_SIZE
     filterDetails.value = {}
   } catch (e) {
-    error.value = `Could not search ${type.value.label} activities: ${e.message}`
+    error.value = searchError(e, `search ${type.value.label} activities`)
   } finally {
     loading.value = false
   }
@@ -75,7 +77,7 @@ async function fetchAll() {
   error.value = ''
   fetchProgress.value = { done: 0, total: 0 }
   try {
-    const r = await fetchAllActivities(stack.value, type.value.endpoint, (done, t) => { fetchProgress.value = { done, total: t } })
+    const r = await withReconnect(stack.value, () => fetchAllActivities(stack.value, type.value.endpoint, (done, t) => { fetchProgress.value = { done, total: t } }))
     items.value = r.items
     total.value = r.items.length
     searched.value = { type: type.value, query: '', all: true }
@@ -83,7 +85,7 @@ async function fetchAll() {
     filterDetails.value = {}
     if (r.capped) showToast(`Showing the first ${r.items.length.toLocaleString()} of ${r.total.toLocaleString()}.`)
   } catch (e) {
-    error.value = `Could not fetch ${type.value.label} activities: ${e.message}`
+    error.value = searchError(e, `fetch ${type.value.label} activities`)
   } finally {
     fetchProgress.value = null
   }
@@ -154,7 +156,7 @@ function getDoc() {
       </template>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading || !!fetchProgress" @retry="searched?.all ? fetchAll() : search()" />
       <div v-if="!searched && !loading" class="max-w-md mx-auto mt-12 text-center text-sm text-muted-foreground">
         Pick a type, then search by name, search with an empty box to list all (newest first), or use Fetch all to load every one.
       </div>

@@ -104,7 +104,7 @@ export async function connectionStatus() {
 }
 
 function errorReply(err) {
-  return { error: err?.message || String(err), code: err?.code || null, status: err?.status ?? null }
+  return { error: err?.message || String(err), code: err?.code || null, status: err?.status ?? null, app: err?.app || null }
 }
 
 const handlers = {

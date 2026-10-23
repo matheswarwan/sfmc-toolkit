@@ -9,6 +9,8 @@ import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
+import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack } from '@/composables/useStack.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { fetchEventDefinitions, filterEventDefinitions, describeEventDefinition, EVENT_TYPES, EVENT_CATEGORIES } from '@/utils/journeyApi.js'
@@ -30,14 +32,12 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const r = await fetchEventDefinitions(stack.value)
+    const r = await withReconnect(stack.value, () => fetchEventDefinitions(stack.value))
     items.value = r.items
     total.value = r.total
     loaded.value = true
   } catch (e) {
-    error.value = e.code === 'SFMC_LOGIN_REQUIRED' || e.code === 'SFMC_SESSION_UNAVAILABLE'
-      ? `Could not reach Journey Builder (${e.message}). Open Journey Builder once in SFMC, or use Connect in the connection menu, then Refresh.`
-      : `Could not load journey entry events: ${e.message}`
+    error.value = searchError(e, 'load journey entry events')
   } finally {
     loading.value = false
   }
@@ -115,7 +115,7 @@ function getDoc() {
       </Button>
     </div>
     <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <p v-if="error" class="mb-3 text-sm text-red-600" role="alert">{{ error }}</p>
+      <SfmcErrorNotice :error="error" :retrying="loading" @retry="load" />
       <div v-if="loading && !loaded" class="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Loading journey entry events…</div>
       <template v-else-if="loaded">
         <p class="mb-2 text-xs text-muted-foreground">

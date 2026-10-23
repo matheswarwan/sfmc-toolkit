@@ -6,6 +6,8 @@ import {
   loadRootSections, loadFolderContents, getDataViewNodes, debouncedSearchDEs,
 } from '../../utils/deCatalog.js'
 import DETreeNode from './DETreeNode.vue'
+import SfmcErrorNotice from '../results/SfmcErrorNotice.vue'
+import { withReconnect, searchError as describeError } from '../../utils/sfmcErrors.js'
 
 const props = defineProps({
   stack: { type: String, default: null },
@@ -23,13 +25,21 @@ const searchResults = ref([])
 const searching = ref(false)
 const searchError = ref('')
 const showDataViews = ref(true)
+const rootsError = ref(null)
+const loadingRoots = ref(false)
 
+// Failing to read the folders used to leave the tree empty (feedback #93).
 async function loadRoots() {
   if (!props.stack) return
+  loadingRoots.value = true
+  rootsError.value = null
   try {
-    roots.value = await loadRootSections(props.stack)
-  } catch {
+    roots.value = await withReconnect(props.stack, () => loadRootSections(props.stack))
+  } catch (e) {
     roots.value = []
+    rootsError.value = describeError(e, 'read the data extension folders')
+  } finally {
+    loadingRoots.value = false
   }
 }
 
@@ -138,6 +148,7 @@ function badgeClass(sourceType) {
 
       <template v-else>
         <!-- Root folders -->
+        <div class="mt-1 text-xs"><SfmcErrorNotice v-if="rootsError" :error="rootsError" :retrying="loadingRoots" @retry="loadRoots" /></div>
         <div v-for="root in roots" :key="root.id" class="mt-1">
           <button class="w-full flex items-center gap-1 px-1 py-1 hover:bg-muted rounded" @click="toggleExpand(root)">
             <ChevronDown v-if="expanded.has(String(root.id))" class="h-3 w-3" />
