@@ -624,74 +624,10 @@ export function useQueryPanel(options) {
           cacheFolder('deFolderId', deCategoryID)
         }
 
-        // ENT.X is a DE shared from the parent BU: look it up by its bare name,
-        // which fetchDEMetadata also finds under Shared Items.
-        const sourceDeNames = [...new Set(extractDataExtensions(runText).map(bareTableName))]
-          .filter(n => n && !isSkippableDE(n))
-        const fieldMap = {}
-        for (const sourceName of sourceDeNames) {
-          try {
-            const meta       = await fetchDEMetadata(stack.value, sourceName)
-            const fieldsData = await fetchDEFields(stack.value, meta.id)
-            for (const f of (fieldsData?.fields || [])) {
-              fieldMap[f.name.toLowerCase()] = f
-            }
-          } catch {}
-        }
-        let typedColumns
-        if (selectCols.length > 0) {
-          // Data view fields are a fallback source of types for columns the
-          // fetched source DEs don't cover (`s.EventDate AS SendDate` from _Sent).
-          const dvFieldMap = {}
-          for (const srcName of extractDataExtensions(runText)) {
-            for (const f of (DATA_VIEW_FIELDS[srcName.toUpperCase()] || [])) dvFieldMap[f.name.toLowerCase()] = f
-          }
-          const lookupField = (n) => fieldMap[n] ?? dvFieldMap[n]
-          typedColumns = selectCols.map(name => {
-            const d = colDetails[name.toLowerCase()] || {}
-            // An explicit CAST/function type wins over a same-named source field.
-            if (d.type !== undefined) return { name, type: d.type, length: d.length, scale: d.scale, isPrimaryKey: false, isNullable: true }
-            // Pass-through columns ("s.EventDate AS SendDate") keep the source field's type,
-            // but never its primary key flag: the output may repeat values.
-            const src = lookupField(d.source ?? name.toLowerCase())
-            if (src) return { name, type: src.type ?? 0, length: src.length, scale: src.scale, isPrimaryKey: d.source ? false : (src.isPrimaryKey ?? false), isNullable: src.isNullable ?? true }
-            return { name, type: 0, length: DEFAULT_TEXT_LENGTH, scale: 0, isPrimaryKey: false, isNullable: true }
-          })
-        } else {
-          typedColumns = Object.values(fieldMap).map(f => ({
-            name: f.name, type: f.type ?? 0, length: f.length ?? DEFAULT_TEXT_LENGTH,
-            scale: f.scale ?? 0, isPrimaryKey: f.isPrimaryKey ?? false, isNullable: f.isNullable ?? true,
-          }))
-          if (typedColumns.length === 0) {
-            // Fall back to built-in data view field definitions
-            for (const srcName of extractDataExtensions(runText)) {
-              const dvFields = DATA_VIEW_FIELDS[srcName.toUpperCase()]
-              if (dvFields) {
-                for (const f of dvFields) {
-                  if (!fieldMap[f.name.toLowerCase()]) fieldMap[f.name.toLowerCase()] = f
-                }
-              }
-            }
-            typedColumns = Object.values(fieldMap).map(f => ({
-              name: f.name, type: f.type ?? 0, length: f.length ?? DEFAULT_TEXT_LENGTH,
-              scale: f.scale ?? 0, isPrimaryKey: f.isPrimaryKey ?? false, isNullable: f.isNullable ?? true,
-            }))
-          }
-          if (typedColumns.length === 0) {
-            throw new Error('SELECT * requires a resolvable source DE - could not fetch fields from the source table')
-          }
-        }
-        // SFMC refuses field names that start with '_' (_ContactKey on synchronized
-        // DEs, for example). Rename them (t_ContactKey, or t1_, t2_ on a clash) and
-        // run a wrapped query that outputs the new names.
-        const renames = planUnderscoreRenames(typedColumns.map(c => c.name))
-        activitySql = renames.size > 0
-          ? wrapWithRenamedColumns(cleanQueryText(runText), typedColumns.map(c => c.name), renames)
-          : null
-        if (renames.size > 0) {
-          typedColumns = typedColumns.map(c => renames.has(c.name) ? { ...c, name: renames.get(c.name) } : c)
-        }
-        const fields = buildDEFields(typedColumns)
+        const target = await resolveTargetFields(runText)
+        const renames = target.renames
+        activitySql = target.activitySql
+        const fields = target.fields
         targetFieldNames = fields.map((f) => f.name)
 
         // createTargetDE POSTs to core (exacttarget.com) and may need a CSRF token that
@@ -833,6 +769,81 @@ export function useQueryPanel(options) {
     } finally {
       isRunning.value = false
     }
+  }
+
+  // The target DE's fields for a query: names from its SELECT, types from the source
+  // DEs, data views or CASTs; '_' names renamed with a wrapped query (activitySql).
+  // Used by Run and by Save as query activity (feedback #88).
+  async function resolveTargetFields(runText) {
+    // ENT.X is a DE shared from the parent BU: look it up by its bare name,
+    // which fetchDEMetadata also finds under Shared Items.
+    const sourceDeNames = [...new Set(extractDataExtensions(runText).map(bareTableName))]
+      .filter(n => n && !isSkippableDE(n))
+    const fieldMap = {}
+    for (const sourceName of sourceDeNames) {
+      try {
+        const meta       = await fetchDEMetadata(stack.value, sourceName)
+        const fieldsData = await fetchDEFields(stack.value, meta.id)
+        for (const f of (fieldsData?.fields || [])) {
+          fieldMap[f.name.toLowerCase()] = f
+        }
+      } catch {}
+    }
+    let typedColumns
+    if (selectCols.length > 0) {
+      // Data view fields are a fallback source of types for columns the
+      // fetched source DEs don't cover (`s.EventDate AS SendDate` from _Sent).
+      const dvFieldMap = {}
+      for (const srcName of extractDataExtensions(runText)) {
+        for (const f of (DATA_VIEW_FIELDS[srcName.toUpperCase()] || [])) dvFieldMap[f.name.toLowerCase()] = f
+      }
+      const lookupField = (n) => fieldMap[n] ?? dvFieldMap[n]
+      typedColumns = selectCols.map(name => {
+        const d = colDetails[name.toLowerCase()] || {}
+        // An explicit CAST/function type wins over a same-named source field.
+        if (d.type !== undefined) return { name, type: d.type, length: d.length, scale: d.scale, isPrimaryKey: false, isNullable: true }
+        // Pass-through columns ("s.EventDate AS SendDate") keep the source field's type,
+        // but never its primary key flag: the output may repeat values.
+        const src = lookupField(d.source ?? name.toLowerCase())
+        if (src) return { name, type: src.type ?? 0, length: src.length, scale: src.scale, isPrimaryKey: d.source ? false : (src.isPrimaryKey ?? false), isNullable: src.isNullable ?? true }
+        return { name, type: 0, length: DEFAULT_TEXT_LENGTH, scale: 0, isPrimaryKey: false, isNullable: true }
+      })
+    } else {
+      typedColumns = Object.values(fieldMap).map(f => ({
+        name: f.name, type: f.type ?? 0, length: f.length ?? DEFAULT_TEXT_LENGTH,
+        scale: f.scale ?? 0, isPrimaryKey: f.isPrimaryKey ?? false, isNullable: f.isNullable ?? true,
+      }))
+      if (typedColumns.length === 0) {
+        // Fall back to built-in data view field definitions
+        for (const srcName of extractDataExtensions(runText)) {
+          const dvFields = DATA_VIEW_FIELDS[srcName.toUpperCase()]
+          if (dvFields) {
+            for (const f of dvFields) {
+              if (!fieldMap[f.name.toLowerCase()]) fieldMap[f.name.toLowerCase()] = f
+            }
+          }
+        }
+        typedColumns = Object.values(fieldMap).map(f => ({
+          name: f.name, type: f.type ?? 0, length: f.length ?? DEFAULT_TEXT_LENGTH,
+          scale: f.scale ?? 0, isPrimaryKey: f.isPrimaryKey ?? false, isNullable: f.isNullable ?? true,
+        }))
+      }
+      if (typedColumns.length === 0) {
+        throw new Error('SELECT * requires a resolvable source DE - could not fetch fields from the source table')
+      }
+    }
+    // SFMC refuses field names that start with '_' (_ContactKey on synchronized
+    // DEs, for example). Rename them (t_ContactKey, or t1_, t2_ on a clash) and
+    // run a wrapped query that outputs the new names.
+    const renames = planUnderscoreRenames(typedColumns.map(c => c.name))
+    const wrapped = renames.size > 0
+      ? wrapWithRenamedColumns(cleanQueryText(runText), typedColumns.map(c => c.name), renames)
+      : null
+    if (renames.size > 0) {
+      typedColumns = typedColumns.map(c => renames.has(c.name) ? { ...c, name: renames.get(c.name) } : c)
+    }
+    const fields = buildDEFields(typedColumns)
+    return { fields, renames, activitySql: wrapped }
   }
 
   async function pollUntilComplete(stackId, activityId, deKey) {
@@ -1071,7 +1082,7 @@ export function useQueryPanel(options) {
     fetchMoreRows, fetchAllRows, handleDeleteDE, handleDeleteActivity,
     openDeleteConfirm, handleDeleteRun, copyToClipboard, formatRunDate,
     onResizeStart, toggleHistoryResults, toggleQueryView,
-    openSfmcLogin, openAutomationStudio, cleanQueryText, loadQueryRecord,
+    openSfmcLogin, openAutomationStudio, cleanQueryText, loadQueryRecord, resolveTargetFields,
     showQueryPicker, queryPickerLoading, queryPickerSearch, queryPickerError,
     filteredPickerItems, openQueryPicker, refreshQueryPicker, selectQueryActivity,
     relativeDate, queryPickerTree, expandedQaFolders, toggleQaFolder, queryPickerItems,

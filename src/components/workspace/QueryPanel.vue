@@ -4,7 +4,7 @@ import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } f
 import {
   Pencil, Check, X, Play, ShieldCheck, ChevronDown, LogIn, History,
   FolderOpen, RefreshCw, Search, Share2, Copy, ExternalLink, Maximize2, Minimize2, AlignLeft,
-  Table2,
+  Table2, FileOutput,
 } from 'lucide-vue-next'
 import QueryEditor from '../detail/QueryEditor.vue'
 import ValidationPanel from '../detail/ValidationPanel.vue'
@@ -16,6 +16,8 @@ import Input from '../ui/input/Input.vue'
 import QueryActivityTreeNode from './QueryActivityTreeNode.vue'
 import InsertFieldsMenu from './InsertFieldsMenu.vue'
 import SchemaPanel from './SchemaPanel.vue'
+import SaveAsActivityDialog from './SaveAsActivityDialog.vue'
+import { openInSfmc } from '../../utils/sfmcLinks.js'
 import { useQueryPanel } from '../../composables/useQueryPanel.js'
 
 const props = defineProps({
@@ -46,6 +48,7 @@ const {
   filteredPickerItems, openQueryPicker, refreshQueryPicker, selectQueryActivity,
   relativeDate, queryPickerTree, expandedQaFolders, toggleQaFolder, queryPickerItems,
   showShare, shareUrl, shareLoading, shareError, shareQuery, copiedText, copyToClipboard,
+  cleanQueryText, resolveTargetFields,
 } = useQueryPanel({
   queryId: props.queryId,
   stack: toRef(props, 'stack'),
@@ -76,6 +79,13 @@ function runFromKey(selection) {
   if (!props.canInteract || isRunning.value) return
   runQuery(0, selection ? { sql: selection } : {})
 }
+
+// Save as query activity (feedback #88).
+const showSaveAs = ref(false)
+
+// The results DE and query activity of the run on screen (feedback #91).
+const currentRun = computed(() => (Array.isArray(runs.value) ? runs.value : Object.values(runs.value || {})).find((r) => r.runId === currentRunId.value) || null)
+const deSearchLink = computed(() => currentRun.value?.deName ? `/data-extensions?q=${encodeURIComponent(currentRun.value.deName)}` : null)
 
 // Schema search beside the editor (feedback #72), open or closed for every panel.
 const SCHEMA_KEY = 'toolkit_schemaPanel'
@@ -113,11 +123,14 @@ function openSchema() {
         <Minimize2 v-if="isExpanded" class="h-3 w-3" />
         <Maximize2 v-else class="h-3 w-3" />
       </Button>
+      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || isRunning || !queryText.trim()" title="Save as query activity: a named activity writing to a new or existing data extension" @click="showSaveAs = true"><FileOutput class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || isRunning" title="Validate query" @click="runValidation"><ShieldCheck class="h-3 w-3" /></Button>
       <Button size="sm" class="h-6 text-[10px] px-1 bg-[#0176D3] text-white" :disabled="!canInteract || isRunning" :title="`Run query (${runKey}; with text selected, runs only the selection)`" @click="runQuery(0)"><Play class="h-3 w-3 fill-white" /></Button>
       <Button variant="ghost" size="icon" class="h-6 w-6" :title="activeTab === 'history' ? 'Back to editor' : 'View run history'" @click="activeTab = activeTab === 'history' ? 'editor' : 'history'"><History class="h-3 w-3" /></Button>
       <Button v-if="showClose" variant="ghost" size="icon" class="h-6 w-6" title="Close panel" @click="$emit('close')"><X class="h-3 w-3" /></Button>
     </div>
+
+    <SaveAsActivityDialog :open="showSaveAs" :stack="stack" :sql="queryText" :default-name="queryName" :resolve-fields="resolveTargetFields" :clean-sql="cleanQueryText" @close="showSaveAs = false" />
 
     <!-- Query Activity picker ("Open from AS") -->
     <DialogRoot :open="showQueryPicker">
@@ -294,6 +307,15 @@ function openSchema() {
             <span>{{ completedSummary }}</span>
             <ChevronDown class="h-3 w-3" :class="{ 'rotate-180': isResultsOpen }" />
           </button>
+          <div v-if="currentRun && (currentRun.deName || currentRun.activityName)" class="px-2 py-1 border-b text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5">
+            <span v-if="currentRun.deName">Results DE: <b class="text-foreground select-all">{{ currentRun.deName }}</b>
+              <a v-if="currentRun.deId" :href="currentRun.deUrl" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline" @click="openInSfmc($event, currentRun.deUrl)">SFMC</a>
+              <RouterLink v-if="deSearchLink" :to="deSearchLink" class="ml-1 text-primary hover:underline">Data Extensions</RouterLink>
+            </span>
+            <span v-if="currentRun.activityName">Query activity: <b class="text-foreground select-all">{{ currentRun.activityName }}</b>
+              <a v-if="currentRun.activityId" :href="currentRun.activityUrl" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline" @click="openInSfmc($event, currentRun.activityUrl)">SFMC</a>
+            </span>
+          </div>
           <div v-show="isResultsOpen" class="flex-1 overflow-auto min-h-0">
             <ResultsTable :rows="resultRows" :columns="resultColumns" :filename="panelTitle" :sql="queryText" :totalCount="totalRowCount"
               :can-load-more="!!createdDeKey" :loading-more="isFetchingMore" :load-all-limit="LOAD_ALL_LIMIT"

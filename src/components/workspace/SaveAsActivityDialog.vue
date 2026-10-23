@@ -1,0 +1,257 @@
+<script setup>
+// Save as query activity (feedback #88): name the activity, pick or name its target
+// data extension and both folders, choose how rows are written, check, then create.
+// Nothing is run or scheduled.
+import { computed, ref, watch } from 'vue'
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
+import { Loader2, ChevronRight, ChevronDown, Folder, X, Database, ExternalLink } from 'lucide-vue-next'
+import Button from '../ui/button/Button.vue'
+import Input from '../ui/input/Input.vue'
+import { searchDEsAllSources } from '../../utils/sfmcApi.js'
+import {
+  UPDATE_TYPE_OPTIONS, loadQAFolders, loadDERoot, loadDEChildFolders, checkSaveForm, saveAsQueryActivity,
+} from '../../utils/saveAsActivity.js'
+import { openInSfmc } from '../../utils/sfmcLinks.js'
+
+const props = defineProps({
+  open: { type: Boolean, default: false },
+  stack: { type: String, default: null },
+  sql: { type: String, default: '' },
+  defaultName: { type: String, default: '' },
+  resolveFields: { type: Function, required: true },
+  cleanSql: { type: Function, required: true },
+})
+const emit = defineEmits(['close'])
+
+const form = ref(blankForm())
+function blankForm() {
+  return { activityName: '', targetMode: 'new', deName: '', deFolderId: null, existingDE: null, qaFolderId: null, updateType: 0 }
+}
+const step = ref('form') // form | confirm | saving | done
+const error = ref('')
+const result = ref(null)
+
+// ── Folders ──
+const qaFolders = ref([])
+const deRoot = ref(null)
+const deChildren = ref({}) // id -> folders
+const deOpen = ref(new Set())
+const deFolderNames = ref({}) // id -> path
+const loadingFolders = ref(false)
+
+async function loadFolders() {
+  loadingFolders.value = true
+  error.value = ''
+  try {
+    const [qa, root] = await Promise.all([loadQAFolders(props.stack), loadDERoot(props.stack)])
+    qaFolders.value = qa
+    deRoot.value = root
+    if (root) {
+      deFolderNames.value = { [root.id]: root.name }
+      await toggleDE(root)
+    }
+    if (form.value.qaFolderId == null) form.value.qaFolderId = qa.find((f) => f.depth === 0)?.id ?? null
+  } catch (e) {
+    error.value = `Could not read the folders: ${e.message}`
+  } finally {
+    loadingFolders.value = false
+  }
+}
+
+async function toggleDE(folder) {
+  const id = String(folder.id)
+  const open = new Set(deOpen.value)
+  if (open.has(id)) { open.delete(id); deOpen.value = open; return }
+  open.add(id)
+  deOpen.value = open
+  if (!deChildren.value[id]) {
+    try {
+      const kids = await loadDEChildFolders(props.stack, folder.id)
+      deChildren.value = { ...deChildren.value, [id]: kids }
+      const names = { ...deFolderNames.value }
+      for (const k of kids) names[k.id] = `${names[folder.id] || folder.name} > ${k.name}`
+      deFolderNames.value = names
+    } catch (e) {
+      error.value = `Could not read the folder: ${e.message}`
+    }
+  }
+}
+
+// Flattened visible DE folder tree.
+const deRows = computed(() => {
+  const rows = []
+  const walk = (f, depth) => {
+    rows.push({ ...f, depth })
+    if (deOpen.value.has(String(f.id))) for (const c of deChildren.value[String(f.id)] || []) walk(c, depth + 1)
+  }
+  if (deRoot.value) walk(deRoot.value, 0)
+  return rows
+})
+
+// ── Existing DE search ──
+const deQuery = ref('')
+const deResults = ref([])
+const deSearching = ref(false)
+let searchTimer = null
+watch(deQuery, (q) => {
+  clearTimeout(searchTimer)
+  if (!q.trim()) { deResults.value = []; return }
+  searchTimer = setTimeout(async () => {
+    deSearching.value = true
+    try {
+      deResults.value = ((await searchDEsAllSources(props.stack, q.trim(), 25))?.items || []).slice(0, 25)
+    } catch (e) {
+      error.value = `Search failed: ${e.message}`
+    } finally {
+      deSearching.value = false
+    }
+  }, 300)
+})
+
+watch(() => props.open, (o) => {
+  if (!o) return
+  form.value = { ...blankForm(), activityName: props.defaultName || '', deName: props.defaultName ? props.defaultName.replace(/[^A-Za-z0-9_ -]/g, '').trim() : '' }
+  step.value = 'form'
+  error.value = ''
+  result.value = null
+  deQuery.value = ''
+  if (props.stack) loadFolders()
+}, { immediate: true })
+
+const qaFolderPath = computed(() => qaFolders.value.find((f) => f.id === form.value.qaFolderId)?.path || '')
+const updateLabel = computed(() => UPDATE_TYPE_OPTIONS.find((o) => o.id === Number(form.value.updateType))?.label || '')
+
+function review() {
+  error.value = checkSaveForm({ ...form.value, updateType: Number(form.value.updateType) })
+  if (!props.sql.trim()) error.value = 'The editor is empty.'
+  if (!error.value) step.value = 'confirm'
+}
+
+async function create() {
+  step.value = 'saving'
+  error.value = ''
+  try {
+    result.value = await saveAsQueryActivity(props.stack, { ...form.value, updateType: Number(form.value.updateType) }, {
+      sql: props.sql, resolveFields: props.resolveFields, cleanSql: props.cleanSql,
+    })
+    step.value = 'done'
+  } catch (e) {
+    error.value = e.message
+    step.value = 'confirm'
+  }
+}
+
+const activityUrl = computed(() => result.value && `https://mc.${props.stack}.exacttarget.com/cloud/#app/Automation%20Studio/AutomationStudioFuel3/%23ActivityDetails/300/${result.value.activity.id}`)
+const deUrl = computed(() => result.value && `https://mc.${props.stack}.marketingcloudapps.com/contactsmeta/admin.html#admin/data-extension/${result.value.de.id}/properties/`)
+</script>
+
+<template>
+  <DialogRoot :open="open">
+    <DialogPortal>
+      <DialogOverlay class="fixed inset-0 z-9999 bg-black/45" @click="step !== 'saving' && emit('close')" />
+      <DialogContent class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[95vw] max-h-[85vh] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col text-xs focus:outline-none" @click.stop @escape-key-down="step !== 'saving' && emit('close')">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <DialogTitle class="text-sm font-bold">Save as query activity</DialogTitle>
+          <Button variant="ghost" size="icon" class="h-6 w-6" title="Close" :disabled="step === 'saving'" @click="emit('close')"><X class="h-3.5 w-3.5" /></Button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+          <template v-if="step === 'form'">
+            <label class="block space-y-1">
+              <span class="font-semibold">Query activity name</span>
+              <Input v-model="form.activityName" class="h-8 text-xs" />
+            </label>
+
+            <div class="space-y-1">
+              <span class="font-semibold">Query activity folder</span>
+              <div v-if="loadingFolders" class="flex items-center gap-1 text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Reading folders...</div>
+              <select v-else v-model="form.qaFolderId" class="w-full h-8 border border-border rounded px-2 bg-background" aria-label="Query activity folder">
+                <option v-for="f in qaFolders" :key="f.id" :value="f.id">{{ '  '.repeat(f.depth) + f.name }}</option>
+              </select>
+            </div>
+
+            <fieldset class="space-y-2">
+              <legend class="font-semibold mb-1">Target data extension</legend>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-1.5"><input v-model="form.targetMode" type="radio" value="new" /> New data extension</label>
+                <label class="flex items-center gap-1.5"><input v-model="form.targetMode" type="radio" value="existing" /> Existing data extension</label>
+              </div>
+
+              <template v-if="form.targetMode === 'new'">
+                <label class="block space-y-1">
+                  <span class="text-muted-foreground">Name (its fields come from the query's columns)</span>
+                  <Input v-model="form.deName" class="h-8 text-xs" />
+                </label>
+                <div class="space-y-1">
+                  <span class="text-muted-foreground">Folder: <b class="text-foreground">{{ deFolderNames[form.deFolderId] || 'none picked' }}</b></span>
+                  <div class="max-h-40 overflow-y-auto border border-border rounded p-1" role="tree" aria-label="Data extension folders">
+                    <div v-for="f in deRows" :key="f.id" class="flex items-center gap-1 rounded px-1 py-0.5" :class="form.deFolderId === f.id ? 'bg-primary/10' : 'hover:bg-muted'" :style="{ paddingLeft: `${4 + f.depth * 14}px` }" role="treeitem" :aria-selected="form.deFolderId === f.id">
+                      <button class="h-4 w-4 flex items-center justify-center" :aria-label="deOpen.has(String(f.id)) ? 'Collapse' : 'Expand'" @click="toggleDE(f)">
+                        <ChevronDown v-if="deOpen.has(String(f.id))" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" />
+                      </button>
+                      <button class="flex items-center gap-1 flex-1 text-left" @click="form.deFolderId = f.id"><Folder class="h-3 w-3" /> {{ f.name }}</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <template v-else>
+                <Input v-model="deQuery" class="h-8 text-xs" placeholder="Search data extensions by name" aria-label="Search data extensions" />
+                <div v-if="form.existingDE" class="text-muted-foreground">Picked: <b class="text-foreground">{{ form.existingDE.name }}</b></div>
+                <div class="max-h-40 overflow-y-auto border border-border rounded p-1">
+                  <div v-if="deSearching" class="flex items-center gap-1 p-1 text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Searching...</div>
+                  <button v-for="d in deResults" :key="d.id" class="w-full flex items-center gap-1.5 px-1 py-1 rounded text-left" :class="form.existingDE?.id === d.id ? 'bg-primary/10' : 'hover:bg-muted'" @click="form.existingDE = d">
+                    <Database class="h-3 w-3 shrink-0" /><span class="truncate flex-1">{{ d.name }}</span>
+                    <span v-if="d.sourceType" class="text-[9px] px-1 rounded bg-muted">{{ d.sourceType }}</span>
+                  </button>
+                  <div v-if="!deSearching && deQuery.trim() && !deResults.length" class="p-1 text-muted-foreground italic">No matches</div>
+                </div>
+              </template>
+            </fieldset>
+
+            <label class="block space-y-1">
+              <span class="font-semibold">Data action</span>
+              <select v-model="form.updateType" class="w-full h-8 border border-border rounded px-2 bg-background">
+                <option v-for="o in UPDATE_TYPE_OPTIONS" :key="o.id" :value="o.id">{{ o.label }}</option>
+              </select>
+              <span class="text-muted-foreground">Update needs a primary key in the data extension.</span>
+            </label>
+          </template>
+
+          <template v-else-if="step === 'confirm' || step === 'saving'">
+            <p>This creates the following in SFMC. Nothing is run or scheduled.</p>
+            <ul class="list-disc pl-5 space-y-1">
+              <li v-if="form.targetMode === 'new'">Data extension <b>{{ form.deName.trim() }}</b> in <b>{{ deFolderNames[form.deFolderId] }}</b>, with the query's columns as fields</li>
+              <li v-else>Writes to the existing data extension <b>{{ form.existingDE?.name }}</b></li>
+              <li>Query activity <b>{{ form.activityName.trim() }}</b> in <b>{{ qaFolderPath }}</b>, data action <b>{{ updateLabel }}</b></li>
+            </ul>
+          </template>
+
+          <template v-else-if="step === 'done' && result">
+            <p class="font-semibold text-green-700 dark:text-green-400">Created.</p>
+            <ul class="space-y-1">
+              <li v-if="result.de.created">Data extension <b>{{ result.de.name }}</b> <a :href="deUrl" target="_blank" rel="noopener" class="text-primary inline-flex items-center gap-0.5 hover:underline" @click="openInSfmc($event, deUrl)">Open in SFMC <ExternalLink class="h-3 w-3" /></a></li>
+              <li>Query activity <b>{{ result.activity.name }}</b> <a :href="activityUrl" target="_blank" rel="noopener" class="text-primary inline-flex items-center gap-0.5 hover:underline" @click="openInSfmc($event, activityUrl)">Open in SFMC <ExternalLink class="h-3 w-3" /></a></li>
+            </ul>
+          </template>
+
+          <p v-if="error" class="text-red-600" role="alert">{{ error }}</p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border shrink-0">
+          <template v-if="step === 'form'">
+            <Button variant="outline" size="sm" class="h-8 text-xs" @click="emit('close')">Cancel</Button>
+            <Button size="sm" class="h-8 text-xs" :disabled="loadingFolders" @click="review">Review</Button>
+          </template>
+          <template v-else-if="step === 'confirm' || step === 'saving'">
+            <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="step = 'form'">Back</Button>
+            <Button size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="create">
+              <Loader2 v-if="step === 'saving'" class="h-3.5 w-3.5 mr-1 animate-spin" /> Create in SFMC
+            </Button>
+          </template>
+          <Button v-else size="sm" class="h-8 text-xs" @click="emit('close')">Done</Button>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
+</template>
