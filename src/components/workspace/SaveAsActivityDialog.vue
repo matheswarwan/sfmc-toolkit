@@ -4,12 +4,13 @@
 // Nothing is run or scheduled.
 import { computed, ref, watch } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
-import { Loader2, ChevronRight, ChevronDown, Folder, X, Database, ExternalLink } from 'lucide-vue-next'
+import { Loader2, X, Database, ExternalLink } from 'lucide-vue-next'
 import Button from '../ui/button/Button.vue'
 import Input from '../ui/input/Input.vue'
+import DEFolderPicker from '../data/DEFolderPicker.vue'
 import { searchDEsAllSources } from '../../utils/sfmcApi.js'
 import {
-  UPDATE_TYPE_OPTIONS, loadQAFolders, loadDERoot, loadDEChildFolders, checkSaveForm, saveAsQueryActivity,
+  UPDATE_TYPE_OPTIONS, loadQAFolders, checkSaveForm, saveAsQueryActivity,
 } from '../../utils/saveAsActivity.js'
 import { openInSfmc } from '../../utils/sfmcLinks.js'
 
@@ -33,23 +34,15 @@ const result = ref(null)
 
 // ── Folders ──
 const qaFolders = ref([])
-const deRoot = ref(null)
-const deChildren = ref({}) // id -> folders
-const deOpen = ref(new Set())
-const deFolderNames = ref({}) // id -> path
+const deFolderPath = ref('') // shown path of the picked DE folder (DEFolderPicker)
 const loadingFolders = ref(false)
 
 async function loadFolders() {
   loadingFolders.value = true
   error.value = ''
   try {
-    const [qa, root] = await Promise.all([loadQAFolders(props.stack), loadDERoot(props.stack)])
+    const qa = await loadQAFolders(props.stack)
     qaFolders.value = qa
-    deRoot.value = root
-    if (root) {
-      deFolderNames.value = { [root.id]: root.name }
-      await toggleDE(root)
-    }
     if (form.value.qaFolderId == null) form.value.qaFolderId = qa.find((f) => f.depth === 0)?.id ?? null
   } catch (e) {
     error.value = `Could not read the folders: ${e.message}`
@@ -57,36 +50,6 @@ async function loadFolders() {
     loadingFolders.value = false
   }
 }
-
-async function toggleDE(folder) {
-  const id = String(folder.id)
-  const open = new Set(deOpen.value)
-  if (open.has(id)) { open.delete(id); deOpen.value = open; return }
-  open.add(id)
-  deOpen.value = open
-  if (!deChildren.value[id]) {
-    try {
-      const kids = await loadDEChildFolders(props.stack, folder.id)
-      deChildren.value = { ...deChildren.value, [id]: kids }
-      const names = { ...deFolderNames.value }
-      for (const k of kids) names[k.id] = `${names[folder.id] || folder.name} > ${k.name}`
-      deFolderNames.value = names
-    } catch (e) {
-      error.value = `Could not read the folder: ${e.message}`
-    }
-  }
-}
-
-// Flattened visible DE folder tree.
-const deRows = computed(() => {
-  const rows = []
-  const walk = (f, depth) => {
-    rows.push({ ...f, depth })
-    if (deOpen.value.has(String(f.id))) for (const c of deChildren.value[String(f.id)] || []) walk(c, depth + 1)
-  }
-  if (deRoot.value) walk(deRoot.value, 0)
-  return rows
-})
 
 // ── Existing DE search ──
 const deQuery = ref('')
@@ -111,6 +74,7 @@ watch(deQuery, (q) => {
 watch(() => props.open, (o) => {
   if (!o) return
   form.value = { ...blankForm(), activityName: props.defaultName || '', deName: props.defaultName ? props.defaultName.replace(/[^A-Za-z0-9_ -]/g, '').trim() : '' }
+  deFolderPath.value = ''
   step.value = 'form'
   error.value = ''
   result.value = null
@@ -182,17 +146,7 @@ const deUrl = computed(() => result.value && `https://mc.${props.stack}.marketin
                   <span class="text-muted-foreground">Name (its fields come from the query's columns)</span>
                   <Input v-model="form.deName" class="h-8 text-xs" />
                 </label>
-                <div class="space-y-1">
-                  <span class="text-muted-foreground">Folder: <b class="text-foreground">{{ deFolderNames[form.deFolderId] || 'none picked' }}</b></span>
-                  <div class="max-h-40 overflow-y-auto border border-border rounded p-1" role="tree" aria-label="Data extension folders">
-                    <div v-for="f in deRows" :key="f.id" class="flex items-center gap-1 rounded px-1 py-0.5" :class="form.deFolderId === f.id ? 'bg-primary/10' : 'hover:bg-muted'" :style="{ paddingLeft: `${4 + f.depth * 14}px` }" role="treeitem" :aria-selected="form.deFolderId === f.id">
-                      <button class="h-4 w-4 flex items-center justify-center" :aria-label="deOpen.has(String(f.id)) ? 'Collapse' : 'Expand'" @click="toggleDE(f)">
-                        <ChevronDown v-if="deOpen.has(String(f.id))" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" />
-                      </button>
-                      <button class="flex items-center gap-1 flex-1 text-left" @click="form.deFolderId = f.id"><Folder class="h-3 w-3" /> {{ f.name }}</button>
-                    </div>
-                  </div>
-                </div>
+                <DEFolderPicker v-model="form.deFolderId" v-model:path="deFolderPath" :stack="stack" @error="(m) => (error = m)" />
               </template>
 
               <template v-else>
@@ -221,7 +175,7 @@ const deUrl = computed(() => result.value && `https://mc.${props.stack}.marketin
           <template v-else-if="step === 'confirm' || step === 'saving'">
             <p>This creates the following in SFMC. Nothing is run or scheduled.</p>
             <ul class="list-disc pl-5 space-y-1">
-              <li v-if="form.targetMode === 'new'">Data extension <b>{{ form.deName.trim() }}</b> in <b>{{ deFolderNames[form.deFolderId] }}</b>, with the query's columns as fields</li>
+              <li v-if="form.targetMode === 'new'">Data extension <b>{{ form.deName.trim() }}</b> in <b>{{ deFolderPath }}</b>, with the query's columns as fields</li>
               <li v-else>Writes to the existing data extension <b>{{ form.existingDE?.name }}</b></li>
               <li>Query activity <b>{{ form.activityName.trim() }}</b> in <b>{{ qaFolderPath }}</b>, data action <b>{{ updateLabel }}</b></li>
             </ul>

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 const props = defineProps({
   class: { type: String, default: '' },
-  modelValue: { type: String, default: '' },
+  modelValue: { type: [String, Number], default: '' },
 })
 
 defineEmits(['update:modelValue'])

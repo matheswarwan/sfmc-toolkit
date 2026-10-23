@@ -517,6 +517,27 @@ export async function createTemplateDE(stack, { name, key, fields, categoryID, s
   }
 }
 
+/**
+ * Create DE (feedback #94): posts a complete data extension body (fields, folder,
+ * sendable, retention) as built by utils/createDE/createDE.js. Unlike
+ * createTargetDE and createTemplateDE it never drops settings SFMC refuses: the
+ * error goes back to the user.
+ */
+export async function createDataExtension(stack, body) {
+  _logInfo(`Creating data extension "${body.name}" (${body.fields.length} fields${body.isSendable ? ', sendable' : ''}${body.dataRetentionProperties ? ', with data retention' : ''})`)
+  return proxyFetch(`${CM_BASE(stack)}/v1/customobjects/`, 'POST', body)
+}
+
+/**
+ * Adds rows to a data extension by key with SFMC's async insert (no primary key
+ * needed). SFMC answers with a request id and adds the rows in the background.
+ * Not checked live.
+ */
+export async function insertDERowsAsync(stack, key, items) {
+  _logInfo(`Adding ${items.length} row(s) to data extension "${key}"`)
+  return proxyFetch(`${AS_BASE(stack)}/data/v1/async/dataextensions/key:${encodeURIComponent(key)}/rows`, 'POST', { items })
+}
+
 export async function deleteAutomation(stack, id) {
   _logInfo(`Deleting automation (id: ${id})`)
   await proxyFetch(`${AS_BASE(stack)}/automation/v1/automations/${encodeURIComponent(id)}`, 'DELETE', null)

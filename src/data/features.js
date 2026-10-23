@@ -13,7 +13,7 @@ export const FEATURE_GROUPS = [
       { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
       { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
-      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Where used, DE storage, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Create DE, Where used, DE storage, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
       { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
       { title: 'Results 50 at a time', detail: 'Every SFMC search (data extensions, automations, activities, journeys, journey entry events, CloudPages) shows the first 50 results; Load 50 more shows the next.' },
@@ -269,6 +269,19 @@ export const FEATURE_GROUPS = [
       { title: 'Profiles', detail: 'Every sender profile, delivery profile or send classification used by journeys and Send Email activities, with what uses each one.' },
       { title: 'Process panel', detail: 'Each step of the scan with a progress bar. It keeps going when you close the panel or open another section (the top bar shows its progress), and what it loads is saved for each business unit: checks in the next 5 minutes, in any tab, use it as is, and later checks read only what changed since (Rescan reads everything again). Follow Where used on any result to check it in turn, and Back to return. Download as Markdown, Word or HTML.' },
       { title: 'Skip steps', since: '2.0.11', how: 'Tick boxes and Skip in the Process panel', detail: 'Untick a step to leave it out of this and later checks, or Skip the running one. Saved data from an earlier check is used where there is some; otherwise the step shows Skipped and its sections may be incomplete.' },
+    ],
+  },
+  {
+    id: 'create-de',
+    title: 'Create DE',
+    intro: 'Data > Create DE. Creates one data extension in SFMC after a review step.',
+    items: [
+      { title: 'From a sample', since: '2.0.12', how: 'Paste rows, or drop a file', detail: 'CSV, tab separated, semicolon or pipe separated text (the separator is detected), JSON (an array of objects), Parquet and Excel (first sheet). Only the first 1,000 rows (5 MB at most) are read.' },
+      { title: 'Fields guessed for you', since: '2.0.12', detail: 'Each column becomes a field with a type guessed from its values: Number, Decimal (with its places), Date, Boolean, EmailAddress or Text with a length a little above the longest value. Numbers with leading zeros stay Text. Change any name, type, length, primary key, required or default value; add, remove and reorder fields.' },
+      { title: 'Without a sample', since: '2.0.12', how: 'No sample: add fields by hand', detail: 'Start with one field and add the rest.' },
+      { title: 'Check the sample', since: '2.0.12', detail: 'The first rows are shown with your fields; values that would not fit (too long, not a number or date, a required value missing) are marked.' },
+      { title: 'Settings', since: '2.0.12', detail: 'Name, external key, description, folder (the last one used is remembered per business unit), sendable with its relationship to Subscriber Key, testable, and data retention (individual records, all records, or all records and the data extension, after days, weeks, months or years, optionally reset on import).' },
+      { title: 'Add the sample rows', since: '2.0.12', how: 'Tick it on the review step', detail: 'The sample rows that fit are added to the new data extension; SFMC adds them in the background.' },
     ],
   },
   {
