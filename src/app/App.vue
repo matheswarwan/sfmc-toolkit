@@ -18,6 +18,7 @@ import { useStack } from '@/composables/useStack.js'
 import { sendToBackground } from '@/utils/messaging.js'
 import { useTheme } from '@/composables/useTheme.js'
 import { trackEvent } from '@/utils/analytics.js'
+import { preloadWhenIdle } from '@/utils/preloadOverviews.js'
 
 const route = useRoute()
 const KEEP_ALIVE = ['WorkspacePage', 'BuilderPage', 'DataExtensionsPage', 'WhereUsedPage', 'DEStoragePage', 'AutomationsPage', 'ActivitiesPage', 'JourneysPage', 'JourneyEntryPage', 'CloudPagesPage']
@@ -34,6 +35,8 @@ const { stack } = useStack()
 watch(stack, (s) => { if (s) sendToBackground({ type: 'SFMC_WARM_UP', stack: s }) }, { immediate: true })
 // Watched automations are checked when the Toolkit opens (feedback #50).
 watch(stack, (s) => { if (s) sendToBackground({ type: 'WATCH_CHECK', stack: s, force: true }).catch(() => undefined) }, { immediate: true })
+// Automation and Journey overview read quietly once the browser is idle (feedback #78).
+watch(stack, (s) => preloadWhenIdle(s), { immediate: true })
 
 function onKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {

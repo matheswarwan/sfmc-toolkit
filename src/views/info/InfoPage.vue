@@ -1,9 +1,9 @@
 <script setup>
-// Features and To do pages. Content lives in src/data/features.js and src/data/todo.js.
+// Features page. Content lives in src/data/features.js. The To do page is hidden from
+// users (feedback #77); its list stays in src/data/todo.js.
 import { ref, computed } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { FEATURE_GROUPS } from '@/data/features.js'
-import { TODO_GROUPS, TODO_STATUS_LABELS } from '@/data/todo.js'
 
 defineProps({
   page: { type: String, default: 'features' },
@@ -36,7 +36,6 @@ function scrollTo(id) {
   <div class="min-h-full bg-background text-foreground">
     <nav class="flex items-center gap-1 px-5 py-2 border-b border-border bg-card text-xs" aria-label="Pages">
       <RouterLink to="/features" class="px-2.5 py-1 rounded-md border" :class="page === 'features' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">Features</RouterLink>
-      <RouterLink to="/todo" class="px-2.5 py-1 rounded-md border" :class="page === 'todo' ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-muted'">To do</RouterLink>
       <span v-if="version" class="ml-auto text-muted-foreground">Marketing Cloud Toolkit {{ version }}</span>
     </nav>
 
@@ -82,28 +81,6 @@ function scrollTo(id) {
         </section>
       </template>
 
-      <!-- To do -->
-      <template v-else>
-        <h2 class="text-lg font-bold">To do</h2>
-        <p class="text-sm text-muted-foreground mt-1">
-          What is being worked on or considered next. Have an idea or found a bug? Use the feedback button on any page.
-        </p>
-
-        <section v-for="g in TODO_GROUPS" :id="g.id" :key="g.id" class="mt-8">
-          <h3 class="text-base font-bold border-b border-border pb-1">{{ g.title }}</h3>
-          <ul class="mt-3 space-y-3">
-            <li v-for="t in g.items" :key="t.title" class="flex gap-3">
-              <span class="mt-0.5 h-4 shrink-0 text-[10px] font-medium px-1.5 rounded-full bg-muted text-muted-foreground leading-4">
-                {{ TODO_STATUS_LABELS[g.id] }}
-              </span>
-              <div>
-                <div class="text-sm font-semibold">{{ t.title }}</div>
-                <div class="text-sm text-muted-foreground">{{ t.detail }}</div>
-              </div>
-            </li>
-          </ul>
-        </section>
-      </template>
     </main>
   </div>
 </template>

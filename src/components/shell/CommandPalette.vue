@@ -3,7 +3,7 @@
 // section (see utils/paletteSearch.js).
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, FileCode2, Mail, Settings, BookOpen, ListTodo, ArrowRight } from 'lucide-vue-next'
+import { Search, FileCode2, Mail, Settings, BookOpen, ArrowRight } from 'lucide-vue-next'
 import { NAV_ITEMS } from '@/app/nav.js'
 import { paletteEntries } from '@/utils/paletteSearch.js'
 
@@ -15,7 +15,6 @@ const SECTIONS = [
   ...NAV_ITEMS,
   { path: '/settings', name: 'Settings', group: 'App', icon: Settings },
   { path: '/features', name: 'Features', group: 'App', icon: BookOpen },
-  { path: '/todo', name: 'To do', group: 'App', icon: ListTodo },
 ]
 const KIND_ICONS = { query: FileCode2, email: Mail, search: Search }
 

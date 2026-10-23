@@ -19,4 +19,20 @@ export function writePageCache(key, patch, now = Date.now()) {
 
 export function clearPageCache() {
   cache.clear()
+  pending.clear()
+}
+
+// A read in progress for a key (the preload, feedback #78), so a page opened
+// meanwhile waits for it instead of reading SFMC a second time.
+const pending = new Map()
+
+export function pendingPageCache(key) {
+  return pending.get(key) || null
+}
+
+export function setPendingPageCache(key, promise) {
+  pending.set(key, promise)
+  const done = () => { if (pending.get(key) === promise) pending.delete(key) }
+  promise.then(done, done)
+  return promise
 }

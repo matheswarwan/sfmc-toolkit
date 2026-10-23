@@ -270,7 +270,6 @@ function setDebounce(e) {
       <p class="text-muted-foreground">Marketing Cloud Toolkit {{ version }}. It combines SFMC Query Saver and SFMC Automation Viewer.</p>
       <div class="flex gap-2 mt-3">
         <RouterLink to="/features" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Features</RouterLink>
-        <RouterLink to="/todo" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">To do</RouterLink>
         <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="showFeedback = true">Send feedback</button>
       </div>
     </section>

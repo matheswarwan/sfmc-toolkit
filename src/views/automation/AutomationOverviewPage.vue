@@ -12,7 +12,7 @@ import { listAllAutomations, summarizeAutomations, runTrends } from '@/utils/ove
 import { automationStatusName, WATCHES_KEY, watchType } from '@/utils/watches.js'
 import { formatDateTime } from '@/utils/format.js'
 import { fetchCurrentBU } from '@/utils/sfmcApi.js'
-import { pageCacheKey, readPageCache, writePageCache } from '@/utils/pageCache.js'
+import { pageCacheKey, readPageCache, writePageCache, pendingPageCache } from '@/utils/pageCache.js'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import { automationOverviewDoc } from '@/utils/overviewDoc.js'
 
@@ -94,6 +94,13 @@ const getDoc = () => automationOverviewDoc({
 async function start() {
   if (!stack.value) return load()
   cacheKey = await currentKey()
+  // The quiet preload (feedback #78) may be reading it right now: wait for it.
+  const pending = pendingPageCache(cacheKey)
+  if (pending) {
+    loading.value = true
+    await pending.catch(() => undefined)
+    loading.value = false
+  }
   const saved = readPageCache(cacheKey)
   if (!saved?.list) return load()
   list.value = saved.list

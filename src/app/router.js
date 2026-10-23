@@ -44,7 +44,8 @@ export const routes = [
     meta: { title: 'Saved Emails', group: 'Content' },
   },
   { path: '/features', component: () => import('../views/info/InfoPage.vue'), props: { page: 'features' }, meta: { title: 'Features' } },
-  { path: '/todo', component: () => import('../views/info/InfoPage.vue'), props: { page: 'todo' }, meta: { title: 'To do' } },
+  // To do is hidden from users (feedback #77); old links and todo.html land on Features.
+  { path: '/todo', redirect: '/features' },
   { path: '/settings', component: () => import('../views/settings/SettingsPage.vue'), meta: { title: 'Settings' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
