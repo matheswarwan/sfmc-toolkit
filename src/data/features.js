@@ -20,6 +20,7 @@ export const FEATURE_GROUPS = [
       { title: 'Results stay put', detail: 'Search results in Data Extensions, Automations, Activities, Journeys, Journey Entry and CloudPages, and a running query in Run Query, are kept while you visit other sections.' },
       { title: 'Download any result', how: 'Download on a result screen', detail: 'View or copy as Markdown (ready to paste into Claude or another assistant), or download Markdown, Word or HTML. Data Extensions and CloudPages also export to Excel.' },
       { title: 'Overviews stay put', since: '2.0.10', detail: 'Automation overview (with its run trends), Journey overview and DE storage keep what they read for each business unit while the tab is open; Refresh reads it again.' },
+      { title: 'Overviews ready when you open them', since: '2.0.12', detail: 'Automation overview and Journey overview are read quietly once the app is idle, so they show at once (not again within 10 minutes).' },
       { title: 'Download an overview', since: '2.0.11', how: 'Download on Automation overview or Journey overview', detail: 'Copy as Markdown to share, or download Markdown, Word or HTML: counts by status, what needs a look, run trends if loaded, and watched items.' },
       { title: 'Row counts next to data extensions', since: '2.0.11', detail: 'Activity cards (query targets, extract results, import targets), Journey Entry, journey entry steps and Where used show how many rows each data extension has. Shared DEs are written as ENT.[name] in generated SQL.' },
       { title: 'New tabs next to this one', since: '2.0.11', detail: 'Links into SFMC and other tabs the Toolkit opens appear right after the current tab instead of at the end.' },
@@ -46,6 +47,8 @@ export const FEATURE_GROUPS = [
     title: 'Run Query',
     intro: 'Queries > Run Query in the sidebar, or Open in editor on a saved query. It keeps running while you use other sections.',
     items: [
+      { title: 'Save as query activity', since: '2.0.12', how: 'The save-to-SFMC button in a panel', detail: 'Name a Query Activity, pick its folder, write to a new data extension (name and folder; fields from the query) or an existing one, and choose Overwrite, Update or Append. Review, then create. Nothing is run or scheduled.' },
+      { title: 'Where the results went', since: '2.0.12', detail: 'After a run, the results data extension and the Query Activity are named under the summary, with links to SFMC and to Data Extensions.' },
       { title: 'Schema search', since: '2.0.11', how: 'The table button in a panel, or Cmd/Ctrl+Shift+S in the editor', detail: 'Search data extensions (this business unit, Shared and Synchronized) and data views by name, pick one and see its fields with type, length, primary key and required. Click a field to write it at the cursor (with the query\'s alias for that table), or insert the table name (ENT. for Shared) or all fields.' },
       { title: 'Run with the keyboard', since: '2.0.11', how: 'Cmd+Enter (Mac) or Ctrl+Enter in the editor', detail: 'Runs the query, or only the selected text when something is selected.' },
       { title: 'Clean up SFMC', since: '2.0.3', how: 'Queries > Clean up SFMC', detail: 'Lists the data extensions and Query activities Run Query created (names starting SFMCQS_) and deletes the ones you tick, after asking. Nothing else is ever listed.' },
@@ -171,6 +174,7 @@ export const FEATURE_GROUPS = [
     title: 'Query Builder (experimental)',
     intro: 'Queries > Query Builder in the sidebar. It builds SQL from Data Extensions without typing it.',
     items: [
+      { title: 'Reorder data extensions', since: '2.0.12', how: 'Drag in Query structure, or the arrows', detail: 'Drag a data extension between two others to move it, or onto another to swap them. The first one is the FROM table; joins between a pair keep their conditions when turned around.' },
       { title: 'Generate SQL when you are ready', since: '2.0.9', how: 'Generate SQL in the toolbar, or the SQL tab on the right edge', detail: 'The SQL panel starts hidden while you pick tables and map fields; Hide SQL puts it away again.' },
       {
         title: 'Pick tables',

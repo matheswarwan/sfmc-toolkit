@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.11'
+const VERSION = '2.0.12'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,12 +35,10 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">A new name</strong><span class="text-muted-foreground">SFMC Toolkit is now Marketing Cloud Toolkit. Nothing else changes: everything you saved is still here.</span></li>
-        <li><strong class="block">Share an overview</strong><span class="text-muted-foreground">Automation overview and Journey overview have a Download menu: copy as Markdown, or download Markdown, Word or HTML.</span></li>
-        <li><strong class="block">Schema search in Run Query</strong><span class="text-muted-foreground">Find a data extension or data view, see its fields and click one to write it at the cursor. Cmd/Ctrl+Enter runs the query (or the selected part).</span></li>
-        <li><strong class="block">Row counts everywhere</strong><span class="text-muted-foreground">Data extensions on activity cards, Journey Entry and Where used show their row counts. Shared DEs get ENT. in generated SQL, and new tabs open next to this one.</span></li>
-        <li><strong class="block">Skip slow steps in Where used</strong><span class="text-muted-foreground">Untick a step to leave it out, or Skip it while it runs. Saved data from an earlier check is used where there is some.</span></li>
-        <li><strong class="block">Works from mc.exacttarget.com</strong><span class="text-muted-foreground">SFMC opened without a stack in the address (mc.exacttarget.com) now connects too.</span></li>
+        <li><strong class="block">Save as query activity</strong><span class="text-muted-foreground">From Run Query, create a named Query Activity in the folder you pick, writing to a new or existing data extension. Nothing is run or scheduled.</span></li>
+        <li><strong class="block">See where results went</strong><span class="text-muted-foreground">After a run, the results data extension and Query Activity are named, with links.</span></li>
+        <li><strong class="block">Query Builder</strong><span class="text-muted-foreground">Drag data extensions to reorder or swap them, and the search finds every data extension.</span></li>
+        <li><strong class="block">Overviews ready sooner</strong><span class="text-muted-foreground">Automation overview and Journey overview load quietly in the background after the app opens.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
