@@ -96,8 +96,8 @@ export function debouncedSearchDEs(stack, query, onResults, delayMs = 300) {
         normalizeDENode(de, de.sourceType || 'search', ['Search results'])
       )
       onResults(items)
-    } catch {
-      onResults([])
+    } catch (e) {
+      onResults([], e?.message || 'Search failed.')
     }
   }, delayMs)
 }

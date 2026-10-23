@@ -124,6 +124,31 @@ describe('fetchDEMetadata and searchDEsAllSources (sfmcApi.js)', () => {
     await expect(fetchDEMetadata('s10', 'NoSuchDE')).rejects.toThrow('Network error')
   })
 
+  it('tries Contact Builder and $search when the core name search finds nothing (feedback #89)', async () => {
+    const urls = []
+    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage(msg, cb) {
+      urls.push(msg.url)
+      if (/\/folder\?\$where=/.test(msg.url)) return cb({ data: { entry: [] } })
+      if (msg.url.includes('exacttarget.com')) return cb({ data: { items: [] } })
+      if (msg.url.includes('name=')) return cb({ data: { items: [{ id: 'X', name: 'Other' }] } })
+      if (msg.url.includes('$search=national_database')) return cb({ data: { items: [{ id: 'N', name: 'National_Database' }] } })
+      cb({ data: {} })
+    } } })
+    const { searchDEsAllSources } = await import('../sfmcApi.js')
+    const { items } = await searchDEsAllSources('s10', 'national_database')
+    expect(items.map((d) => d.name)).toEqual(['National_Database'])
+    expect(urls.filter((u) => u.includes('category/0')).length).toBe(3)
+  })
+
+  it('reports an error instead of no matches when every search fails', async () => {
+    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage(msg, cb) {
+      if (/\/folder\?\$where=/.test(msg.url)) return cb({ data: { entry: [] } })
+      cb({ error: 'SFMC API error 500: boom' })
+    } } })
+    const { searchDEsAllSources } = await import('../sfmcApi.js')
+    await expect(searchDEsAllSources('s10', 'x')).rejects.toThrow('boom')
+  })
+
   it('searchDEsAllSources lists shared matches first, tagged', async () => {
     stubChrome()
     const { searchDEsAllSources } = await import('../sfmcApi.js')

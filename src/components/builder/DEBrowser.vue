@@ -21,6 +21,7 @@ const folderChildren = ref({}) // folderId -> nodes[]
 const searchQuery = ref('')
 const searchResults = ref([])
 const searching = ref(false)
+const searchError = ref('')
 const showDataViews = ref(true)
 
 async function loadRoots() {
@@ -67,8 +68,15 @@ function onSearchInput() {
     return
   }
   searching.value = true
-  debouncedSearchDEs(props.stack, searchQuery.value, (items) => {
-    searchResults.value = items
+  debouncedSearchDEs(props.stack, searchQuery.value, (items, error) => {
+    // DEs already shown in opened folders count too (feedback #89: a DE in the tree
+    // the search did not return).
+    const q = searchQuery.value.trim().toLowerCase()
+    const ids = new Set(items.map((d) => String(d.id)))
+    const inTree = Object.values(folderChildren.value).flat()
+      .filter((n) => n?.type === 'de' && String(n.name || '').toLowerCase().includes(q) && !ids.has(String(n.id)))
+    searchResults.value = [...items, ...inTree]
+    searchError.value = searchResults.value.length ? '' : (error || '')
     searching.value = false
   })
 }
@@ -124,7 +132,8 @@ function badgeClass(sourceType) {
           <span class="truncate flex-1">{{ node.name }}</span>
           <span class="text-[9px] px-1 rounded" :class="badgeClass(node.sourceType)">{{ node.sourceType }}</span>
         </button>
-        <div v-if="!searching && !searchResults.length" class="p-2 text-muted-foreground italic">No matches</div>
+        <div v-if="!searching && !searchResults.length && searchError" class="p-2 text-red-600" role="alert">Search failed: {{ searchError }}</div>
+        <div v-else-if="!searching && !searchResults.length" class="p-2 text-muted-foreground italic">No matches</div>
       </div>
 
       <template v-else>

@@ -655,6 +655,41 @@ export async function searchDEsGlobal(stack, name, page = 1, pageSize = 25) {
   return proxyFetch(url, 'GET', null)
 }
 
+/**
+ * Local DEs whose name contains `name` (case-insensitive, taken literally). The core
+ * `name=%text%` search came back empty on s10 for "National_Database" (feedback
+ * #89), so when it finds nothing, fails or is ignored (returns names without the
+ * text), Contact Builder's host is asked the same, then with `$search` (matches from
+ * the start of a word, as the Data Extensions page does). Results are matched here.
+ */
+export async function searchLocalDEsByName(stack, name, pageSize = 25) {
+  const term = String(name || '').trim()
+  if (!term) return { items: [] }
+  const has = (d) => String(d?.name || '').toLowerCase().includes(term.toLowerCase())
+  const query = `retrievalType=1&$page=1&$pagesize=${pageSize}&$orderBy=modifiedDate%20DESC`
+  const meta = `https://mc.${stack}.marketingcloudapps.com/contactsmeta/fuelapi/data-internal/v1/customobjects/category/0?${query}`
+  const like = `&name=${encodeURIComponent(`%${term}%`)}`
+  const attempts = [
+    `${CM_DATA(stack)}/v1/customobjects/category/0?${query}${like}`,
+    meta + like,
+    `${meta}&$search=${encodeURIComponent(term)}`,
+  ]
+  let lastError = null
+  let answered = false
+  for (const url of attempts) {
+    try {
+      const data = await proxyFetch(url, 'GET', null)
+      answered = true
+      const items = (data?.items || []).filter(has)
+      if (items.length) return { ...data, items }
+    } catch (e) {
+      lastError = e
+    }
+  }
+  if (!answered && lastError) throw lastError
+  return { items: [] }
+}
+
 // ── Shared and Synchronized DEs ──────────────────────────
 // searchDEsGlobal (category/0) only covers the local Data Extensions tree.
 const _sharedDEs = createSharedDECatalog({
@@ -685,7 +720,7 @@ export function findSharedDE(stack, name) {
  */
 export async function searchDEsAllSources(stack, name, pageSize = 25) {
   const [local, shared] = await Promise.all([
-    searchDEsGlobal(stack, name, 1, pageSize),
+    searchLocalDEsByName(stack, name, pageSize),
     searchSharedDEs(stack, name).catch(() => []),
   ])
   const sharedIds = new Set(shared.map(de => de.id))
