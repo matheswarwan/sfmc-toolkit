@@ -43,5 +43,6 @@ describe('Save as query activity dialog (feedback #88)', () => {
     expect(created[1][1]).toMatchObject({ name: 'My query', categoryId: 5, targetId: 'D9', targetKey: 'K9', updateType: 0, queryText: 'SELECT 1 AS One' })
     expect(body()).toContain('Created.')
     w.unmount()
-  })
+  // The first import compiles the dialog and its icons, which can pass 5 s on a busy machine.
+  }, 20000)
 })

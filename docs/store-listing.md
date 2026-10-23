@@ -82,7 +82,7 @@ Your queries and emails are stored in your browser only. SFMC calls go straight 
 
 ## What's new (for the version notes, if asked)
 
-2.0.12: Save as query activity in Run Query (new or existing data extension, folders, data action; never run), results data extension and Query Activity named after a run, Query Builder reorder and swap by dragging, Query Builder search finds every data extension, overviews load in the background, To do page hidden. No new permissions.
+2.0.12: Create DE (paste or upload a sample: CSV, TSV, JSON, Parquet, Excel; or start empty; guessed field types, folder, sendable, retention), searches reconnect an SFMC app with no session and otherwise say which app to log in to, Save as query activity in Run Query (new or existing data extension, folders, data action; never run), results data extension and Query Activity named after a run, Query Builder reorder and swap by dragging, Query Builder search finds every data extension, overviews load in the background, To do page hidden. No new permissions.
 
 2.0.11: renamed to Marketing Cloud Toolkit (update the store name too), connects when SFMC is opened as mc.exacttarget.com, schema search and Cmd/Ctrl+Enter in Run Query, row counts next to data extensions, ENT. for Shared DEs in generated SQL, new tabs open next to the current one, Download menu on Automation overview and Journey overview, Where used steps can be left out or skipped. No new permissions.
 

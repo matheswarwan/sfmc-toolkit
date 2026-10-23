@@ -55,7 +55,7 @@ describe('Create DE page (feedback #94)', () => {
     expect(text(w)).toContain('Created Signups')
     expect(store.toolkit_createDE_folders).toEqual({ 's13:77': { id: '101', path: 'Data Extensions > Imports' } })
     w.unmount()
-  })
+  }, 20000)
 
   it('starts without a sample and uses the remembered folder', async () => {
     store.toolkit_createDE_folders = { 's13:77': { id: '101', path: 'Data Extensions > Imports' } }

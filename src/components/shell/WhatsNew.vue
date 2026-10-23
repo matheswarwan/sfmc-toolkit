@@ -40,6 +40,7 @@ function close() {
         <li><strong class="block">See where results went</strong><span class="text-muted-foreground">After a run, the results data extension and Query Activity are named, with links.</span></li>
         <li><strong class="block">Query Builder</strong><span class="text-muted-foreground">Drag data extensions to reorder or swap them, and the search finds every data extension.</span></li>
         <li><strong class="block">Overviews ready sooner</strong><span class="text-muted-foreground">Automation overview and Journey overview load quietly in the background after the app opens.</span></li>
+        <li><strong class="block">No more empty searches</strong><span class="text-muted-foreground">When an SFMC app has no session, a search connects it and tries again; if that fails it says which app, with Retry and a link to log in.</span></li>
       </ul>
       <ul v-else class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Everything you saved is here</strong><span class="text-muted-foreground">Saved queries with their run history, workspaces, Query Builder queries and email versions, under Queries and Saved Emails in the sidebar.</span></li>
