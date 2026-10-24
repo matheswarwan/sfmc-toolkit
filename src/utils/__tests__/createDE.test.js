@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  fieldProblem, cellProblem, checkCreateForm, isFormValid, buildCreateBody, rowsToLoad, createDE, blankSettings, LOAD_BATCH,
+  fieldProblem, cellProblem, checkCreateForm, isFormValid, buildCreateBody, rowsToLoad, createDE, blankSettings, LOAD_BATCH, lengthErrorField,
 } from '../createDE/createDE.js'
 
 const f = (o) => ({ name: 'F', type: 'Text', length: 50, scale: 0, isPrimaryKey: false, isNullable: true, defaultValue: '', ...o })
@@ -95,5 +95,13 @@ describe('Create DE rules (feedback #94)', () => {
     const out = await createDE('s13', settings(), [f()], { rows: [['a']], columnIndex: [0], api })
     expect(out.loadError).toContain('bad row')
     await expect(createDE('s13', settings({ name: '' }), [f()], { api })).rejects.toThrow('Enter a name')
+  })
+})
+
+describe('SFMC length error (feedback #131)', () => {
+  it('names the field SFMC refused', () => {
+    expect(lengthErrorField('SFMC API error 400: {"message":"Length is invalid for field email because it does not have a data type of Text.","errorcode":10000}')).toBe('email')
+    expect(lengthErrorField('SFMC API error 400: something else')).toBeNull()
+    expect(lengthErrorField('')).toBeNull()
   })
 })

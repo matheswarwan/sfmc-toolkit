@@ -176,3 +176,16 @@ export function saveBlob(blob, fileName) {
   a.remove()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
+
+/** Opens the browser's print dialog on the document's HTML (choose "Save as PDF"). */
+export function printDoc(doc) {
+  const frame = document.createElement('iframe')
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  frame.srcdoc = toHtml(doc)
+  frame.onload = () => {
+    frame.contentWindow.focus()
+    frame.contentWindow.print()
+    setTimeout(() => frame.remove(), 60000)
+  }
+  document.body.appendChild(frame)
+}

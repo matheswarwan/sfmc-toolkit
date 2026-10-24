@@ -18,7 +18,7 @@ import {
 } from '@/utils/createDE/sample.js'
 import {
   FIELD_TYPES, RETENTION_MODES, RETENTION_UNITS, blankField, blankSettings, cellProblem, checkCreateForm, isFormValid,
-  createDE, readLastFolder, saveLastFolder, rowsToLoad,
+  createDE, readLastFolder, saveLastFolder, rowsToLoad, lengthErrorField,
 } from '@/utils/createDE/createDE.js'
 
 const { stack } = useStack()
@@ -168,6 +168,21 @@ async function create() {
     error.value = `SFMC did not create the data extension: ${e.message}`
     step.value = 'confirm'
   }
+}
+
+// SFMC sometimes wants a length on a field it will not take one for (feedback #131,
+// an EmailAddress primary key): offer to make that field Text (254) and try again.
+const textFix = computed(() => {
+  const name = lengthErrorField(error.value)
+  if (!name) return null
+  return fields.value.find((f) => String(f.name).trim().toLowerCase() === name.toLowerCase() && f.type !== 'Text') || null
+})
+function retryAsText() {
+  const f = textFix.value
+  if (!f) return
+  f.type = 'Text'
+  f.length = 254
+  create()
 }
 
 function startOver() {
@@ -360,6 +375,10 @@ const maxMB = Math.round(MAX_SAMPLE_BYTES / 1048576)
       </label>
       <ProgressBar v-if="step === 'saving'" indeterminate :label="sample && loadRows ? 'Creating the data extension and sending rows' : 'Creating the data extension'" class="max-w-md" />
       <p v-if="error" class="text-red-600" role="alert">{{ error }}</p>
+      <div v-if="textFix && step !== 'saving'" class="rounded-md border border-border bg-muted/40 p-2 space-y-1.5">
+        <p>SFMC would not take <b>{{ textFix.name.trim() }}</b> as {{ textFix.type }}{{ textFix.isPrimaryKey ? ' while it is the primary key' : '' }}. A Text field of 254 characters holds the same values (254 is the longest email address).</p>
+        <Button variant="outline" size="sm" class="h-7 text-xs" @click="retryAsText">Make {{ textFix.name.trim() }} Text (254) and try again</Button>
+      </div>
       <div class="flex gap-2">
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="step = 'edit'">Back</Button>
         <Button size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="create">

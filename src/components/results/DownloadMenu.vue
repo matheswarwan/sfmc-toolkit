@@ -1,11 +1,11 @@
 <script setup>
 // Download menu shared by the result screens (from SFMC Automation Viewer):
-// View as Markdown, Copy as Markdown, Markdown, Word and HTML files.
+// View as Markdown, Copy as Markdown, Markdown, Word, PDF (print dialog) and HTML files.
 // `getDoc` returns the document described in utils/exportDoc.js (it may fetch).
 import { ref } from 'vue'
 import { Download, ChevronDown, Loader2 } from 'lucide-vue-next'
 import MarkdownModal from './MarkdownModal.vue'
-import { toMarkdown, toHtml, toDocxBlob, saveBlob } from '@/utils/exportDoc.js'
+import { toMarkdown, toHtml, toDocxBlob, saveBlob, printDoc } from '@/utils/exportDoc.js'
 import { showToast } from '@/composables/useToast.js'
 import { useStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
@@ -35,6 +35,7 @@ async function run(kind) {
     } else if (kind === 'md') saveBlob(new Blob([toMarkdown(doc)], { type: 'text/markdown;charset=utf-8' }), `${base}.md`)
     else if (kind === 'html') saveBlob(new Blob([toHtml(doc)], { type: 'text/html;charset=utf-8' }), `${base}.html`)
     else if (kind === 'docx') saveBlob(await toDocxBlob(doc), `${base}.docx`)
+    else if (kind === 'pdf') printDoc({ ...doc, title: doc.title || base })
   } catch (e) {
     showToast(`Could not export: ${e.message}`)
   } finally {
@@ -47,6 +48,7 @@ const ITEMS = [
   { kind: 'copy', label: 'Copy as Markdown' },
   { kind: 'md', label: 'Markdown (.md)' },
   { kind: 'docx', label: 'Word (.docx)' },
+  { kind: 'pdf', label: 'PDF (print, Save as PDF)' },
   { kind: 'html', label: 'HTML (.html)' },
 ]
 </script>

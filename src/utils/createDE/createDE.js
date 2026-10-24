@@ -166,6 +166,15 @@ export function retentionBody(r) {
   }
 }
 
+/**
+ * The field SFMC names in "Length is invalid for field <name> because it does not
+ * have a data type of Text" (feedback #131: an EmailAddress primary key), else null.
+ */
+export function lengthErrorField(message) {
+  const m = String(message || '').match(/Length is invalid for field (.+?) because it does not have a data type of Text/i)
+  return m ? m[1].trim() : null
+}
+
 /** The body for Contact Builder's customobjects POST. */
 export function buildCreateBody(settings, fields) {
   const body = {
