@@ -8,6 +8,8 @@ import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import WatchButton from '@/components/automation/WatchButton.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
+import { automationRunState } from '@/utils/runProgress.js'
 import Button from '@/components/ui/button/Button.vue'
 import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
 import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
@@ -116,7 +118,7 @@ const columns = [
       <template v-else-if="searched !== null">
         <div class="mb-2 flex flex-wrap items-center gap-2">
           <p class="text-xs text-muted-foreground flex-1">{{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}.{{ entries.length < total ? ` Download covers the ${entries.length} shown; load more to include more.` : '' }}</p>
-          <span v-if="docProgress" class="text-xs text-muted-foreground tabular-nums">Loading {{ docProgress.done }} of {{ docProgress.total }}...</span>
+          <ProgressBar v-if="docProgress" :value="docProgress.done" :max="docProgress.total" label="Loading" show-count class="w-56" />
           <WatchButton v-if="entries.length" bulk :stack="stack" :items="entries.filter((a) => picked.has(a.id))" />
           <DownloadMenu v-if="entries.length" :get-doc="buildDoc" :file-name="picked.size === 1 ? entries.find((a) => picked.has(a.id))?.name || 'automation' : `automations-${searched || 'all'}`"
             :label="picked.size ? `Download ${picked.size}` : `Download all ${entries.length}`" />
@@ -131,8 +133,12 @@ const columns = [
           <template #cell-name="{ row }">
             <RouterLink :to="`/automations/${encodeURIComponent(row.id)}`" class="font-medium hover:underline">{{ row.name || 'Untitled automation' }}</RouterLink>
           </template>
-          <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
-          <template #cell-lastRunStatus="{ row }"><StatusBadge :status="row.lastRunStatus" /></template>
+          <template #cell-status="{ row }">
+            <StatusBadge :status="row.status" automation />
+            <ProgressBar v-if="automationRunState(row).running" indeterminate size="xs" :label="automationRunState(row).step ? automationRunState(row).label : ''"
+              aria-label="Running" class="mt-1 w-28" />
+          </template>
+          <template #cell-lastRunStatus="{ row }"><StatusBadge :status="row.lastRunStatus" automation /></template>
           <template #cell-lastRunTime="{ row }">{{ formatDateTime(row.lastRunTime) }}</template>
           <template #cell-modifiedDate="{ row }">{{ formatDateTime(row.modifiedDate) }}</template>
           <template #cell-actions="{ row }">

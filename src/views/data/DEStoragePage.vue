@@ -4,6 +4,7 @@
 // by business unit, and every data extension with its rows and size, largest
 // first. When those calls fail, row counts can be read instead (RowCountStorage).
 // Kept per stack and BU while the tab is open (utils/pageCache.js).
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref } from 'vue'
 import { Loader2, RefreshCw, Download, FileSpreadsheet, Search } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
@@ -111,7 +112,7 @@ whenStack(async () => {
         <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
       </Button>
     </div>
-    <p v-if="loading && !items" class="text-xs text-muted-foreground"><Loader2 class="inline h-3.5 w-3.5 animate-spin mr-1" /> Reading storage from SFMC...</p>
+    <ProgressBar v-if="loading && !items" indeterminate label="Reading storage from SFMC" class="max-w-md" />
     <template v-if="error">
       <p class="text-red-600 text-xs" role="alert">{{ error }}. Open Contact Builder once in SFMC, then Refresh, or read row counts below.</p>
       <section class="rounded-lg border border-border bg-card p-3"><RowCountStorage /></section>

@@ -4,6 +4,7 @@
 import { computed, ref } from 'vue'
 import { Loader2, RefreshCw, Mail } from 'lucide-vue-next'
 import StatusBadge from '@/components/results/StatusBadge.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { listAllJourneys, summarizeJourneys, journeyChannels } from '@/utils/overview.js'
@@ -89,7 +90,7 @@ whenStack(start)
   <div class="h-full overflow-y-auto p-4 space-y-4 text-sm">
     <div class="flex items-center gap-2">
       <h1 class="text-base font-semibold flex-1">Journeys in this business unit</h1>
-      <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
+      <ProgressBar v-if="loading" :value="progress.done" :max="progress.total" label="Reading" show-count class="w-56" />
       <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <DownloadMenu :get-doc="getDoc" file-name="journey-overview" :disabled="!summary" />
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
@@ -116,6 +117,7 @@ whenStack(start)
             {{ sendBusy ? `Reading ${sendProgress.done} of ${sendProgress.total}` : sends ? 'Read again' : 'Find what they send' }}
           </Button>
         </div>
+        <ProgressBar v-if="sendBusy" :value="sendProgress.done" :max="sendProgress.total" aria-label="Reading live journeys" class="mb-2" />
         <p v-if="!sends" class="text-xs text-muted-foreground">Reads each live journey's definition (up to 100, one request each) and lists the emails, SMS and push messages in it.</p>
         <template v-else>
           <p class="text-xs mb-2">

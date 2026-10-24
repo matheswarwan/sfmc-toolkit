@@ -7,6 +7,9 @@ import { useRouter } from 'vue-router'
 import { X, RefreshCw, Loader2, CheckCircle2, Circle, MinusCircle, AlertCircle, Square, ChevronDown, ChevronRight, Network, ArrowLeft, ExternalLink } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
+import ActivityIcon from '@/components/results/ActivityIcon.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
+import { activityIconKind } from '@/utils/activityIcons.js'
 import CodeView from '@/components/results/CodeView.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import LineageNode from './LineageNode.vue'
@@ -21,6 +24,8 @@ const skipped = (id) => state.skip.includes(id)
 const canInclude = computed(() => !state.running && state.order.some((s) => canSkip(s.id) && !skipped(s.id) && (state.stages[s.id]?.state === 'skipped' || /^skipped,/.test(state.stages[s.id]?.note || ''))))
 
 const percent = computed(() => Math.round(100 * progress()))
+// Activity rows get their type's icon; other kinds (data extension, email, ...) none.
+const isActivityKind = (kind) => activityIconKind(kind) !== 'other' && !/data extension|email$|journey|content|page|file location|profile/i.test(String(kind || ''))
 const sections = computed(() => state.result?.sections || [])
 const total = computed(() => sections.value.reduce((n, s) => n + (s.items?.length || 0), 0))
 const title = computed(() => state.result?.title || targetTitle(state.target))
@@ -119,9 +124,8 @@ function buildDoc() {
           <button v-if="canInclude" class="inline-flex items-center gap-1 text-primary hover:underline" title="Check again with the ticked steps; saved data is reused" @click="again"><RefreshCw class="h-3 w-3" /> Check again</button>
           <button v-if="state.running" class="inline-flex items-center gap-1 text-primary hover:underline" @click="stop"><Square class="h-3 w-3" /> Stop</button>
         </div>
-        <div class="h-1.5 rounded bg-muted overflow-hidden mb-3" role="progressbar" aria-label="Overall progress" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
-          <div class="h-full transition-all" :class="state.error && !state.running ? 'bg-amber-500' : 'bg-primary'" :style="{ width: `${state.running || state.error ? percent : 100}%` }" />
-        </div>
+        <ProgressBar :value="state.running || state.error ? percent : 100" :max="100" :striped="state.running" :tone="state.error && !state.running ? 'warning' : 'primary'"
+          aria-label="Overall progress" class="mb-3" />
         <ol class="space-y-2">
           <li v-for="(s, i) in state.order" :key="s.id" class="text-xs">
             <div class="flex items-start gap-2">
@@ -136,9 +140,8 @@ function buildDoc() {
               <button v-if="state.stages[s.id]?.state === 'running' && canSkip(s.id) && !skipped(s.id)" class="text-primary hover:underline shrink-0" title="Stop loading this step and go on with the next; remembered for later checks" @click="toggleSkip(s.id)">Skip</button>
               <span class="ml-auto text-muted-foreground text-right" :class="{ 'text-red-600': state.stages[s.id]?.state === 'error' }">{{ stageText(state.stages[s.id]) }}</span>
             </div>
-            <div v-if="state.stages[s.id]?.state === 'running' && state.stages[s.id].total" class="mt-1 h-1 rounded bg-muted overflow-hidden" style="margin-left: 1.375rem">
-              <div class="h-full bg-primary/70 transition-all" :style="{ width: `${100 * state.stages[s.id].done / state.stages[s.id].total}%` }" />
-            </div>
+            <ProgressBar v-if="state.stages[s.id]?.state === 'running'" :value="state.stages[s.id].done || 0" :max="state.stages[s.id].total || 0" size="xs"
+              :aria-label="s.label" class="mt-1" style="margin-left: 1.375rem" />
           </li>
         </ol>
         <p class="mt-2 text-[11px] text-muted-foreground">Untick a step, or click Skip while it loads, to leave it out; data saved by an earlier check is still used. Your choice is remembered.</p>
@@ -181,7 +184,7 @@ function buildDoc() {
             <ul v-else class="space-y-2">
               <li v-for="m in s.items" :key="m.key" class="rounded-md border border-border p-2.5 text-xs">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="text-[10px] uppercase tracking-wide text-muted-foreground">{{ m.kind }}</span>
+                  <span class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground"><ActivityIcon v-if="m.activityType != null || isActivityKind(m.kind)" :type="m.activityType ?? m.kind" size="h-3 w-3" />{{ m.kind }}</span>
                   <button v-if="m.route" class="font-medium text-sm text-primary hover:underline text-left" @click="go(m.route)">{{ m.title }}</button>
                   <span v-else class="font-medium text-sm">{{ m.title }}</span>
                   <DERowCount v-if="m.pivot?.kind === 'de' && m.pivot.de" :name="m.pivot.de.name || ''" :id="m.pivot.de.id || null" />
@@ -201,7 +204,7 @@ function buildDoc() {
                     <li v-for="a in m.automations" :key="`${a.automationId}-${a.step}`" class="flex flex-wrap items-center gap-1.5">
                       <button class="text-primary hover:underline font-medium" @click="go(`/automations/${encodeURIComponent(a.automationId)}`)">{{ a.name }}</button>
                       <span class="text-muted-foreground">step {{ a.step }}{{ a.stepName ? ` (${a.stepName})` : '' }}</span>
-                      <StatusBadge :status="a.status" />
+                      <StatusBadge :status="a.status" automation />
                       <span v-if="a.lastRunTime" class="text-muted-foreground">last run {{ formatDateTime(a.lastRunTime) }}</span>
                     </li>
                   </ul>

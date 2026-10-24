@@ -5,6 +5,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Loader2, RefreshCw, TrendingUp, Eye } from 'lucide-vue-next'
 import StatusBadge from '@/components/results/StatusBadge.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
+import { isRunningStatus } from '@/utils/runProgress.js'
 import StackedBars from '@/components/results/StackedBars.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
@@ -33,6 +35,7 @@ const loading = ref(false)
 const progress = ref({ done: 0, total: 0 })
 const error = ref('')
 const summary = computed(() => (list.value ? summarizeAutomations(list.value) : null))
+const runningNow = computed(() => (list.value || []).filter((a) => isRunningStatus(a.status)))
 
 async function load() {
   if (!stack.value) { error.value = 'Not connected to Marketing Cloud.'; return }
@@ -116,7 +119,7 @@ whenStack(start)
   <div class="h-full overflow-y-auto p-4 space-y-4 text-sm">
     <div class="flex items-center gap-2">
       <h1 class="text-base font-semibold flex-1">Automations in this business unit</h1>
-      <span v-if="loading" class="text-xs text-muted-foreground tabular-nums">Reading {{ progress.done }} of {{ progress.total || '...' }}</span>
+      <ProgressBar v-if="loading" :value="progress.done" :max="progress.total" label="Reading" show-count class="w-56" />
       <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <DownloadMenu :get-doc="getDoc" file-name="automation-overview" :disabled="!summary" />
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
@@ -135,6 +138,17 @@ whenStack(start)
             <span v-for="s in summary.byStatus" :key="s.label" class="inline-flex items-center gap-1"><StatusBadge :status="s.label" /> <span class="tabular-nums text-xs">{{ s.count }}</span></span>
           </div>
         </div>
+      </section>
+
+      <section v-if="runningNow.length" class="rounded-lg border border-border bg-card p-3">
+        <h2 class="font-semibold mb-2">Running when read <span class="text-xs font-normal text-muted-foreground">({{ runningNow.length }})</span></h2>
+        <ul class="space-y-1.5 text-xs">
+          <li v-for="a in runningNow" :key="a.id" class="flex items-center gap-3">
+            <RouterLink :to="link(a.id)" class="font-medium hover:underline truncate max-w-80">{{ a.name }}</RouterLink>
+            <ProgressBar indeterminate size="xs" aria-label="Running" class="w-32" />
+            <span class="text-muted-foreground whitespace-nowrap">since {{ formatDateTime(a.lastRunTime) }}</span>
+          </li>
+        </ul>
       </section>
 
       <section class="rounded-lg border border-border bg-card p-3">
@@ -162,6 +176,7 @@ whenStack(start)
             {{ trendBusy ? `Reading run logs ${trendProgress.done} of ${trendProgress.total}` : trends ? 'Load again' : 'Load run trends' }}
           </Button>
         </div>
+        <ProgressBar v-if="trendBusy" :value="trendProgress.done" :max="trendProgress.total" aria-label="Reading run logs" class="mb-2" />
         <p v-if="!trends" class="text-xs text-muted-foreground">Runs of every automation in this business unit, not only watched ones: reads the run log of the 40 that ran most recently in the period (one request each), then shows runs and failures per day.</p>
         <template v-else>
           <p class="text-xs text-muted-foreground mb-2">{{ trendTotals.ok + trendTotals.failed }} runs, {{ trendTotals.failed }} failed, across {{ trends.read }} automations (all automations that ran, not only watched ones){{ trends.errors ? `; ${trends.errors} run logs could not be read` : '' }}. Click a day to see its runs.</p>

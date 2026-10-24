@@ -39,6 +39,11 @@ export async function fetchAutomation(stack, id) {
   return { details, notifications }
 }
 
+/** Only the automation (no notifications): what the running bar polls (feedback #123). */
+export async function fetchAutomationStatus(stack, id) {
+  return sfmcFetch(`${AS(stack)}/automation/v1/automations/${encodeURIComponent(id)}`, 'GET')
+}
+
 /**
  * Full details of one step activity. Wait (467) and Journey (952) have no endpoint;
  * nor do types SFMC offers no API for: those return the step's own activity object.
@@ -149,6 +154,12 @@ export async function fetchRunHistory(stack, id, { days = 30, top = 50, now = ne
   const data = await sfmcFetch(url, 'GET')
   const list = data?.entry ?? data?.items ?? (Array.isArray(data) ? data : [])
   return { runs: list.map(normalizeRun), total: data?.totalResults ?? data?.count ?? list.length }
+}
+
+/** The latest run's raw record (or null), for the running bar's step (feedback #123). */
+export async function fetchLatestRun(stack, id, now = new Date()) {
+  const { runs } = await fetchRunHistory(stack, id, { days: 1, top: 1, now })
+  return runs[0]?.raw || null
 }
 
 /** Automation Studio's health summary for one automation (shape not known; shown as is). */

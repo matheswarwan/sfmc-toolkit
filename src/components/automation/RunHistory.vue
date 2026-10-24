@@ -3,15 +3,17 @@
 // Studio's run log. Loads when opened; each run can show its raw record, since the
 // response fields are read by their likely names.
 import { ref, watch } from 'vue'
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import CodeView from '@/components/results/CodeView.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { fetchRunHistory, fetchAutomationHealth } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
 
 const props = defineProps({
   stack: { type: String, default: null },
   automationId: { type: String, required: true },
+  refreshKey: { type: Number, default: 0 }, // bumped when a run ends (feedback #123)
 })
 
 const open = ref(false)
@@ -47,6 +49,7 @@ function toggle() {
   open.value = !open.value
   if (open.value && runs.value === null) load()
 }
+watch(() => props.refreshKey, () => { if (open.value) load() })
 watch(days, () => { top.value = 50; if (open.value) load() })
 function more() { top.value += 50; load() }
 function toggleRaw(i) {
@@ -72,7 +75,7 @@ const label = (k) => String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^
           </select>
         </label>
         <button class="h-7 px-2 rounded-md border border-border hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load">Refresh</button>
-        <Loader2 v-if="loading" class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        <ProgressBar v-if="loading" indeterminate size="xs" aria-label="Reading the run history" class="w-24" />
         <span v-for="[k, v] in health || []" :key="k" class="rounded-full border border-border px-2 py-0.5 text-muted-foreground">{{ label(k) }}: <span class="text-foreground">{{ v }}</span></span>
       </div>
       <p v-if="error" class="text-red-600" role="alert">{{ error }}</p>
@@ -88,7 +91,7 @@ const label = (k) => String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^
                 <td class="py-1.5 pr-3 whitespace-nowrap">{{ formatDateTime(r.start) }}</td>
                 <td class="py-1.5 pr-3 whitespace-nowrap">{{ formatDateTime(r.end) }}</td>
                 <td class="py-1.5 pr-3 whitespace-nowrap">{{ duration(r.durationMs) }}</td>
-                <td class="py-1.5 pr-3"><StatusBadge v-if="r.status" :status="String(r.status)" /><span v-else>—</span></td>
+                <td class="py-1.5 pr-3"><StatusBadge v-if="r.status" :status="String(r.status)" automation /><span v-else>—</span></td>
                 <td class="py-1.5 pr-3 break-words">{{ r.message || '' }}</td>
                 <td class="py-1.5 text-right"><button class="text-primary hover:underline" @click="toggleRaw(i)">{{ expanded.has(i) ? 'Hide' : 'Details' }}</button></td>
               </tr>

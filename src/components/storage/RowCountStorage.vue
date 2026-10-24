@@ -2,6 +2,7 @@
 // DE storage fallback (feedback #68), used when SFMC's storage calls fail: every DE
 // in the business unit with its row count, largest first, and totals per folder.
 // Kept per stack and BU while the tab is open (utils/pageCache.js).
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref } from 'vue'
 import { Loader2, Play, Square, FolderTree, Download } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
@@ -112,7 +113,7 @@ whenStack(async () => {
   <div class="space-y-4 text-sm">
     <div class="flex flex-wrap items-center gap-2">
       <h2 class="font-semibold flex-1">Row counts instead</h2>
-      <span v-if="busy" class="text-xs text-muted-foreground tabular-nums">{{ PHASE[phase] }} {{ progress.done.toLocaleString() }} of {{ progress.total ? progress.total.toLocaleString() : '...' }}</span>
+      <ProgressBar v-if="busy" :value="progress.done" :max="progress.total" :label="PHASE[phase]" show-count class="w-72" />
       <span v-else-if="savedAt" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <Button v-if="busy" variant="outline" size="sm" class="h-8 text-xs" @click="stop = true"><Square class="h-3.5 w-3.5 mr-1" /> Stop</Button>
       <Button v-else size="sm" class="h-8 text-xs" @click="start"><Play class="h-3.5 w-3.5 mr-1" /> {{ rows.length ? 'Read again' : 'Read row counts' }}</Button>

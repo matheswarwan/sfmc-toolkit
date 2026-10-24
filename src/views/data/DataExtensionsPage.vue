@@ -2,6 +2,7 @@
 // Data Extensions (SFMC Automation Viewer's Data Extension Finder): search local,
 // Shared and Synchronized DEs, see folder paths and fields, tick fields to build a
 // query, export to Excel or a document.
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink, Rows3 } from 'lucide-vue-next'
@@ -203,9 +204,11 @@ async function loadCount(de) {
   }
 }
 const countsBusy = ref(false)
+const batchDone = ref(0) // DEs done by Get all counts / Get all folders (feedback #123)
 async function loadAllCounts() {
   countsBusy.value = true
-  await runInBatches(shown.value, 4, (de) => loadCount(de))
+  batchDone.value = 0
+  await runInBatches(shown.value, 4, async (de) => { await loadCount(de); batchDone.value++ })
   countsBusy.value = false
 }
 const countText = (de) => (counts[de.id]?.status === 'ok' ? counts[de.id].count.toLocaleString() : '')
@@ -213,7 +216,8 @@ const countText = (de) => (counts[de.id]?.status === 'ok' ? counts[de.id].count.
 const pathsBusy = ref(false)
 async function loadAllPaths() {
   pathsBusy.value = true
-  await runInBatches(shown.value, 4, (de) => loadPath(de))
+  batchDone.value = 0
+  await runInBatches(shown.value, 4, async (de) => { await loadPath(de); batchDone.value++ })
   pathsBusy.value = false
 }
 
@@ -355,11 +359,12 @@ const columns = [
       <Button variant="ghost" size="icon" class="h-8 w-8" title="Refresh: forget cached fields, folders and the Shared/Synchronized list" @click="refresh"><RefreshCw class="h-4 w-4" /></Button>
     </div>
 
+    <div v-if="countsBusy || pathsBusy" class="px-4 py-1.5 border-b border-border bg-card">
+      <ProgressBar :value="batchDone" :max="shown.length" :label="countsBusy ? 'Reading row counts' : 'Reading folders'" show-count />
+    </div>
     <div v-if="allFields.running || exporting.running" class="px-4 py-1.5 border-b border-border bg-card text-xs text-muted-foreground flex items-center gap-3">
       <span>{{ exporting.running ? 'Preparing the export' : 'Loading fields' }} {{ exporting.running ? exporting.done : allFields.done }} of {{ exporting.running ? exporting.total : allFields.total }}</span>
-      <div class="flex-1 h-1.5 rounded bg-muted overflow-hidden" role="progressbar" :aria-valuenow="exporting.running ? exporting.done : allFields.done" :aria-valuemax="exporting.running ? exporting.total : allFields.total">
-        <div class="h-full bg-primary transition-all" :style="{ width: `${100 * (exporting.running ? exporting.done / (exporting.total || 1) : allFields.done / (allFields.total || 1))}%` }" />
-      </div>
+      <ProgressBar :value="exporting.running ? exporting.done : allFields.done" :max="exporting.running ? exporting.total : allFields.total" aria-label="Progress" class="flex-1" />
       <button v-if="allFields.running" class="underline" @click="stopAllFields">Stop</button>
     </div>
 

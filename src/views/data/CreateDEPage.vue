@@ -4,6 +4,7 @@
 // length, primary key, required, default), set the data extension's name, folder
 // (the last one used is remembered per stack and BU), sendable, testable and data
 // retention, review, then create it in SFMC. The sample rows can be added too.
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref, watch } from 'vue'
 import { Loader2, Upload, Plus, Trash2, ArrowUp, ArrowDown, ExternalLink, FileText, AlertTriangle, RotateCcw } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
@@ -357,6 +358,7 @@ const maxMB = Math.round(MAX_SAMPLE_BYTES / 1048576)
         <input v-model="loadRows" type="checkbox" />
         Also add the {{ loadPlan.items.length.toLocaleString() }} sample row(s){{ loadPlan.skipped ? ` (${loadPlan.skipped.toLocaleString()} with values that do not fit are left out)` : '' }}
       </label>
+      <ProgressBar v-if="step === 'saving'" indeterminate :label="sample && loadRows ? 'Creating the data extension and sending rows' : 'Creating the data extension'" class="max-w-md" />
       <p v-if="error" class="text-red-600" role="alert">{{ error }}</p>
       <div class="flex gap-2">
         <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="step = 'edit'">Back</Button>

@@ -2,6 +2,7 @@
 // The rows of one data extension (feedback #117), read straight from SFMC: no query
 // activity, no results DE. 50 at a time, Load all up to 50,000 with Stop; filter and
 // hide columns on what is loaded; CSV, Markdown, Copy for AI (ResultsTable) and Excel.
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { X, Loader2, Search, Columns3, FileSpreadsheet } from 'lucide-vue-next'
 import ResultsTable from '@/components/detail/ResultsTable.vue'
@@ -133,9 +134,7 @@ onUnmounted(() => { all.value.stop = true; document.removeEventListener('keydown
             Load all{{ knownTotal > LOAD_ALL_LIMIT ? ` (up to ${LOAD_ALL_LIMIT.toLocaleString()})` : '' }}
           </Button>
           <template v-else>
-            <div class="w-40 h-1.5 rounded bg-muted overflow-hidden" role="progressbar" :aria-valuenow="rows.length" :aria-valuemax="Math.min(knownTotal, LOAD_ALL_LIMIT)">
-              <div class="h-full bg-primary transition-all" :style="{ width: `${100 * rows.length / (Math.min(knownTotal, LOAD_ALL_LIMIT) || 1)}%` }" />
-            </div>
+            <ProgressBar :value="rows.length" :max="Math.min(knownTotal, LOAD_ALL_LIMIT)" aria-label="Loading rows" class="w-40" />
             <button class="underline" @click="all.stop = true">Stop</button>
           </template>
         </template>

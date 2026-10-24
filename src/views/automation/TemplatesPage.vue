@@ -1,6 +1,7 @@
 <script setup>
 // Automation Templates (feedback #38): pick a template, fill in its options, read
 // exactly what will be created, then create it in SFMC. Nothing is scheduled or run.
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, reactive, ref } from 'vue'
 import { ExternalLink, Loader2, Check, X, ChevronRight } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
@@ -160,6 +161,7 @@ async function undo() {
 
       <section v-if="progress.length" class="rounded-lg border border-border bg-card p-4 space-y-2">
         <h2 class="font-semibold">{{ creating ? 'Creating...' : result?.failed ? 'Stopped' : 'Created' }}</h2>
+        <ProgressBar v-if="creating" indeterminate :label="`${progress.filter((e) => e.status === 'done').length} done`" class="max-w-md" />
         <ul class="text-xs space-y-1">
           <li v-for="e in progress" :key="e.kind + e.name" class="flex items-start gap-2">
             <Loader2 v-if="e.status === 'creating'" class="h-3.5 w-3.5 mt-0.5 animate-spin shrink-0" />

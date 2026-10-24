@@ -244,6 +244,16 @@ export const FEATURE_GROUPS = [
     ],
   },
   {
+    id: 'progress',
+    title: 'Progress and icons',
+    intro: 'Across the app.',
+    items: [
+      { title: 'Running automations', since: '2.0.12', how: 'Open a running automation', detail: 'A moving bar shows "Running step X of Y" (or "Running" when SFMC does not say which step), and the running step is marked. It checks again every 5 seconds while the page is open and stops when the run ends. The Automations list and the Automation overview mark running automations too.' },
+      { title: 'Icons', since: '2.0.12', detail: 'Statuses (running, scheduled, paused, stopped, error, complete) and activity types (Query, Script, Import, Extract, File Transfer, Send Email, Verification, Filter, Wait) have icons.' },
+      { title: 'Progress bars', since: '2.0.12', detail: 'Long loads show a bar instead of text: Load all rows, row counts and folders, Where used steps, storage, overviews, Create DE, templates.' },
+    ],
+  },
+  {
     id: 'saved-activities',
     title: 'Saved Activities',
     intro: 'Automation > Saved Activities. Turn saving on or off, and set how many versions to keep, in Settings.',

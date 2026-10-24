@@ -1,4 +1,5 @@
 <script setup>
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref } from 'vue'
 import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check, Loader2 } from 'lucide-vue-next'
 import { buildResultsMarkdown, MARKDOWN_ROW_LIMIT } from '@/utils/markdownExport.js'
@@ -97,6 +98,7 @@ function downloadCSV() {
           :title="total > loadAllLimit ? `Loads up to ${loadAllLimit.toLocaleString()} rows; export the target data extension in SFMC for all of them` : 'Loads every row'">
           Load all{{ total > loadAllLimit ? ` (up to ${loadAllLimit.toLocaleString()})` : '' }}
         </Button>
+        <ProgressBar v-if="loadingMore" :value="rows.length" :max="Math.min(total, loadAllLimit)" aria-label="Loading rows" class="w-32" />
       </div>
 
       <div class="flex items-center gap-2">

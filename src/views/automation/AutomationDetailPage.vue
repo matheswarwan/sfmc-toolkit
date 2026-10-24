@@ -2,17 +2,20 @@
 // One automation: overview, schedule, error notifications and every step's activities,
 // as an Overview (steps side by side, like Automation Studio) or a Full view (every
 // activity's details). Read-only.
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Loader2, ExternalLink, Mail, ChevronDown, ChevronRight, X, Network } from 'lucide-vue-next'
 import { useUsage } from '@/composables/useUsage.js'
 import ActivityCard from '@/components/results/ActivityCard.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
+import ActivityIcon from '@/components/results/ActivityIcon.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import RunHistory from '@/components/automation/RunHistory.vue'
 import WatchButton from '@/components/automation/WatchButton.vue'
 import { useStack } from '@/composables/useStack.js'
-import { fetchAutomation, fetchActivityDetails } from '@/utils/automationApi.js'
+import { fetchAutomation, fetchActivityDetails, fetchAutomationStatus, fetchLatestRun } from '@/utils/automationApi.js'
+import { automationRunState, createPoller } from '@/utils/runProgress.js'
 import { describeActivity, activityTypeLabel, automationUrl } from '@/utils/activityTypes.js'
 import { openInSfmc } from '@/utils/sfmcLinks.js'
 import { automationOverviewRows, scheduleRows, automationDoc } from '@/utils/automationDoc.js'
@@ -46,6 +49,8 @@ async function load() {
     const r = await fetchAutomation(stack.value, id.value)
     details.value = r.details
     notifications.value = r.notifications
+    latestRun.value = null
+    watchRun()
   } catch (e) {
     error.value = `Could not load this automation: ${e.message}`
     loading.value = false
@@ -68,6 +73,30 @@ async function load() {
 }
 watch([id, stack], load, { immediate: true })
 
+// ── Running bar (feedback #123) ─────────────────────────
+// While the automation runs, its status and latest run are read again every 5 seconds;
+// it stops when the run ends, the page is left, or (until shown again) the tab is hidden.
+const latestRun = ref(null)
+const runState = computed(() => automationRunState(details.value, latestRun.value))
+const historyKey = ref(0) // reloads an open run history when a run ends
+async function pollTick() {
+  const [d, run] = await Promise.all([
+    fetchAutomationStatus(stack.value, id.value),
+    fetchLatestRun(stack.value, id.value).catch(() => latestRun.value),
+  ])
+  if (d && String(d.id ?? id.value) === String(details.value?.id ?? id.value)) details.value = { ...details.value, ...d, steps: d.steps || details.value?.steps }
+  latestRun.value = run
+  if (!automationRunState(details.value, run).running) historyKey.value++
+}
+const poller = createPoller({ interval: 5000, tick: pollTick, shouldContinue: () => runState.value.running })
+function watchRun() {
+  poller.stop()
+  if (!runState.value.running) return
+  fetchLatestRun(stack.value, id.value).then((r) => { latestRun.value = r }).catch(() => {})
+  poller.start()
+}
+onBeforeUnmount(() => poller.stop())
+
 const steps = computed(() => details.value?.steps || [])
 const workers = computed(() => notifications.value?.workers || [])
 const pending = computed(() => Object.values(acts).filter((x) => x.status === 'loading').length)
@@ -82,7 +111,7 @@ function getDoc() {
     <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card">
       <RouterLink to="/automations" class="p-1.5 rounded-md text-muted-foreground hover:bg-accent" title="Back to automations"><ArrowLeft class="h-4 w-4" /></RouterLink>
       <h1 class="text-sm font-semibold truncate">{{ details?.name || 'Automation' }}</h1>
-      <StatusBadge v-if="details" :status="details.status" />
+      <StatusBadge v-if="details" :status="details.status ?? details.statusId" automation />
       <span v-if="pending" class="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Loading {{ pending }} activities</span>
       <div class="flex-1" />
       <template v-if="details">
@@ -96,6 +125,11 @@ function getDoc() {
         <a :href="automationUrl(stack, details.id)" @click="openInSfmc($event, automationUrl(stack, details.id))" title="Open this automation in Automation Studio" target="_blank" rel="noopener" class="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-border text-xs hover:bg-accent">Automation Studio <ExternalLink class="h-3 w-3" /></a>
         <DownloadMenu :get-doc="getDoc" :file-name="details.name || 'automation'" :disabled="pending > 0" />
       </template>
+    </div>
+
+    <div v-if="details && runState.running" class="px-4 py-2 border-b border-border bg-card" role="status">
+      <ProgressBar :value="runState.step || 0" :max="runState.step && runState.total ? runState.total : 0" striped size="md"
+        :label="runState.label" aria-label="Automation running" bar-class="max-w-md" />
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
@@ -131,21 +165,23 @@ function getDoc() {
           </div>
         </section>
 
-        <RunHistory :stack="stack" :automation-id="id" />
+        <RunHistory :stack="stack" :automation-id="id" :refresh-key="historyKey" />
 
         <!-- Overview: steps left to right, like Automation Studio -->
         <section v-if="view === 'overview'" class="overflow-x-auto pb-2">
           <div class="flex items-start gap-1 min-w-max">
             <template v-for="(step, si) in steps" :key="si">
               <div v-if="si" class="self-center px-1 text-muted-foreground" aria-hidden="true">→</div>
-              <div class="w-56 rounded-lg border border-border bg-card">
+              <div class="w-56 rounded-lg border bg-card" :class="runState.running && runState.step === si + 1 ? 'border-primary ring-1 ring-primary' : 'border-border'">
                 <div class="px-3 py-2 border-b border-border bg-muted/40 rounded-t-lg">
                   <div class="text-xs font-bold text-primary">Step {{ si + 1 }}</div>
+                  <ProgressBar v-if="runState.running && runState.step === si + 1" indeterminate size="xs" aria-label="This step is running" class="mt-1" />
                   <div v-if="step.name" class="text-[11px] text-muted-foreground line-clamp-2">{{ step.name }}</div>
                 </div>
                 <div class="p-2 space-y-1.5">
                   <button v-for="(a, ai) in step.activities || []" :key="ai" class="w-full text-left rounded-md border border-border px-2 py-1.5 hover:bg-accent" @click="modal = key(si, ai)">
                     <div class="flex items-center gap-1 text-[10px] font-semibold uppercase text-primary">
+                      <ActivityIcon :type="a.objectTypeId" size="h-3 w-3" />
                       {{ activityTypeLabel(a.objectTypeId) }}
                       <Loader2 v-if="acts[key(si, ai)]?.status === 'loading'" class="h-3 w-3 animate-spin" />
                       <span class="ml-auto text-muted-foreground font-normal">{{ si + 1 }}.{{ ai + 1 }}</span>
@@ -162,11 +198,13 @@ function getDoc() {
         <!-- Full view: every activity's details -->
         <section v-else class="space-y-5">
           <div v-for="(step, si) in steps" :key="si">
-            <h2 class="text-sm font-semibold text-primary mb-2">Step {{ si + 1 }}{{ step.name ? `: ${step.name}` : '' }}</h2>
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-primary mb-2">Step {{ si + 1 }}{{ step.name ? `: ${step.name}` : '' }}
+              <ProgressBar v-if="runState.running && runState.step === si + 1" indeterminate size="xs" label="Running" class="w-40 font-normal" />
+            </h2>
             <div class="space-y-3">
               <template v-for="(a, ai) in step.activities || []" :key="ai">
                 <div v-if="acts[key(si, ai)]?.status === 'loading'" class="flex items-center gap-2 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-                  <Loader2 class="h-3.5 w-3.5 animate-spin" /> {{ si + 1 }}.{{ ai + 1 }} {{ a.name }}
+                  <Loader2 class="h-3.5 w-3.5 animate-spin" /> <ActivityIcon :type="a.objectTypeId" /> {{ si + 1 }}.{{ ai + 1 }} {{ a.name }}
                 </div>
                 <template v-else-if="acts[key(si, ai)]">
                   <p v-if="acts[key(si, ai)].status === 'error'" class="text-xs text-red-600">Could not load {{ si + 1 }}.{{ ai + 1 }}: {{ acts[key(si, ai)].error }}</p>
