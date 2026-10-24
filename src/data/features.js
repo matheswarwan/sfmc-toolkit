@@ -179,7 +179,7 @@ export const FEATURE_GROUPS = [
       { title: 'Generate SQL when you are ready', since: '2.0.9', how: 'Generate SQL in the toolbar, or the SQL tab on the right edge', detail: 'The SQL panel starts hidden while you pick tables and map fields; Hide SQL puts it away again.' },
       {
         title: 'Pick tables',
-        detail: 'Browse your DE folders, search all DEs, or pick a data view. Click to add one, or drag it onto the canvas in Visual mode. Data views are joined the way SFMC documents them (for example _Journey to _JourneyActivity on VersionID, _JourneyActivity to _Sent on JourneyActivityObjectID = TriggererSendDefinitionObjectID, tracking views on JobID, ListID, BatchID and SubscriberID).',
+        detail: 'Browse your DE folders, search all DEs and data views (the search box finds data views such as _ChatMessagingSubscription by name since 2.0.12), or pick a data view. Click to add one, or drag it onto the canvas in Visual mode. Data views are joined the way SFMC documents them (for example _Journey to _JourneyActivity on VersionID, _JourneyActivity to _Sent on JourneyActivityObjectID = TriggererSendDefinitionObjectID, tracking views on JobID, ListID, BatchID and SubscriberID).',
       },
       {
         title: 'List mode',
@@ -241,6 +241,7 @@ export const FEATURE_GROUPS = [
       { title: 'Filters on every stack', since: '2.0.3', detail: 'Filter activities load where SFMC refuses to sort them.' },
       { title: 'Activities by type', detail: 'Query, Script, Import, Data Extract, File Transfer and Filter. Search by name, list all (newest first), or Fetch all to load every one (up to 2,000).' },
       { title: 'Details for each', detail: 'The same details as in an automation, with All fields to show every property. Filters can load their filter definitions.' },
+      { title: 'Run once', since: '2.0.12', how: 'Run once on a Data Extract, Import, File Transfer or Script card', detail: 'Starts the activity in SFMC after a confirm, the same as when its automation runs it. Checked for Data Extracts; Imports, File Transfers and Scripts use the same request and show SFMC\'s message if it is refused. SQL Query activities keep Run this query.' },
     ],
   },
   {
@@ -272,7 +273,7 @@ export const FEATURE_GROUPS = [
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',
     items: [
-      { title: 'View rows', since: '2.0.12', how: 'View rows on a data extension, or above its fields', detail: 'Reads the rows straight from SFMC (no query activity, no results data extension): 50 at a time, or Load all up to 50,000 with Stop. Filter the loaded rows, hide columns, and download CSV, Excel or Markdown, or copy for AI. Shared data extensions may only be readable from the business unit that owns them.' },
+      { title: 'Preview data', since: '2.0.12', how: 'Preview data on a data extension, or above its fields', detail: 'Reads the rows straight from SFMC (no query activity, no results data extension): 50 at a time, or Load all up to 50,000 with Stop, and Refresh to read them again (filters, sort and hidden columns stay). Sort by a column header, filter per column, hide columns, tick rows (Shift for a range) to copy them with the header or download only those; download CSV, Excel or Markdown, or copy for AI. Shared data extensions may only be readable from the business unit that owns them.' },
       { title: 'Find data extensions', detail: 'Search by name, or any part of it ("120" finds BS_Klaviyo_120D_Snapshot; names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, PDF, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Row counts', since: '2.0.4', how: 'Get count on a row, or Get all counts', detail: 'How many rows each data extension holds; also in Download and Excel.' },
@@ -307,6 +308,7 @@ export const FEATURE_GROUPS = [
       { title: 'Without a sample', since: '2.0.12', how: 'No sample: add fields by hand', detail: 'Start with one field and add the rest.' },
       { title: 'Check the sample', since: '2.0.12', detail: 'The first rows are shown with your fields; values that would not fit (too long, not a number or date, a required value missing) are marked.' },
       { title: 'Settings', since: '2.0.12', detail: 'Name, external key, description, folder (the last one used is remembered per business unit), sendable with its relationship to Subscriber Key, testable, and data retention (individual records, all records, or all records and the data extension, after days, weeks, months or years, optionally reset on import).' },
+      { title: 'Current date default', since: '2.0.12', how: 'Current date next to a Date field\'s default value', detail: 'The field gets the date and time each row is added, like Current date in Contact Builder.' },
       { title: 'Add the sample rows', since: '2.0.12', how: 'Tick it on the review step', detail: 'The sample rows that fit are added to the new data extension; SFMC adds them in the background.' },
     ],
   },

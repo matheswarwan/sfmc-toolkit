@@ -3,8 +3,10 @@
 import { createDataExtension, insertDERowsAsync, DEFAULT_TEXT_LENGTH } from '../sfmcApi.js'
 import { isBoolText, isDateText, isEmailText, isIntText } from './sample.js'
 
-// SFMC field types and their numbers in Contact Builder's customobjects API.
-// Text to Decimal match buildDEFields in sfmcApi.js; Locale (7) is not checked live.
+// SFMC field types. The body names them ('EmailAddress'), as SFMC's customobjects API
+// does when it returns fields (feedback #134: numeric types got "Length is invalid for
+// field EmailAddress" with no length sent). `num` is the older numeric form (as in
+// buildDEFields in sfmcApi.js), sent once more when SFMC refuses the type names.
 export const FIELD_TYPES = [
   { id: 'Text', num: 0, length: true },
   { id: 'Number', num: 1 },
@@ -16,6 +18,10 @@ export const FIELD_TYPES = [
   { id: 'Locale', num: 7 },
 ]
 const TYPE = Object.fromEntries(FIELD_TYPES.map((t) => [t.id, t]))
+
+// "Current date" default for Date fields (feedback #133), as SFMC stores it for the
+// Current date option in Contact Builder. Not checked live.
+export const CURRENT_DATE_DEFAULT = 'getdate()'
 
 // Data retention: what is deleted, and the period units (SFMC's unit numbers).
 export const RETENTION_MODES = [
@@ -38,7 +44,7 @@ const DE_NAME_CHARS = /^[A-Za-z0-9_ -]+$/
 const KEY_CHARS = /^[A-Za-z0-9_-]+$/
 
 export function blankField(n = 1) {
-  return { name: `Field${n}`, type: 'Text', length: 255, scale: 0, isPrimaryKey: false, isNullable: true, defaultValue: '' }
+  return { name: `Field${n}`, type: 'Text', length: 255, scale: 0, isPrimaryKey: false, isNullable: true, defaultValue: '', currentDate: false }
 }
 
 export function blankSettings() {
@@ -70,7 +76,7 @@ export function fieldProblem(f, all = []) {
   }
   if (f.isPrimaryKey && f.isNullable) return 'A primary key field must be required.'
   const d = String(f.defaultValue ?? '')
-  if (d && valueProblem(d, f)) return `Default value: ${valueProblem(d, f)}`
+  if (d && !usesCurrentDate(f) && valueProblem(d, f)) return `Default value: ${valueProblem(d, f)}`
   return ''
 }
 
@@ -98,8 +104,10 @@ export function valueProblem(value, f) {
 }
 
 /** Why a sample cell would be refused ('' when fine). */
+const usesCurrentDate = (f) => f.type === 'Date' && !!f.currentDate
+
 export function cellProblem(value, f) {
-  if (String(value ?? '').trim() === '') return f.isNullable || String(f.defaultValue ?? '') ? '' : 'Required'
+  if (String(value ?? '').trim() === '') return f.isNullable || usesCurrentDate(f) || String(f.defaultValue ?? '') ? '' : 'Required'
   return valueProblem(value, f)
 }
 
@@ -132,15 +140,18 @@ export function isFormValid(check) {
   return !check.form.length && check.fields.every((p) => !p)
 }
 
-/** The fields array SFMC gets (same shape as buildDEFields in sfmcApi.js). */
-export function buildFields(fields) {
+/**
+ * The fields array SFMC gets. Types go as names, with `scale` only on Decimal and
+ * `length` only on Text and Decimal; `{ numeric: true }` gives the older shape
+ * (numeric types, scale 0 on every field), as buildDEFields in sfmcApi.js sends.
+ */
+export function buildFields(fields, { numeric = false } = {}) {
   return fields.map((f, i) => {
     const t = TYPE[f.type] || TYPE.Text
     const field = {
       name: String(f.name).trim(),
       ordinal: i,
-      type: t.num,
-      scale: 0,
+      type: numeric ? t.num : t.id,
       isPrimaryKey: !!f.isPrimaryKey,
       isTemplateField: false, isHidden: false, isReadOnly: false, isOverridable: false, isInheritable: false,
       updatable: true, retrievable: true, isActive: true, mustOverride: false,
@@ -148,8 +159,9 @@ export function buildFields(fields) {
     }
     // Text with an empty length gets SFMC's maximum; other types must omit length.
     if (t.num === 0) field.length = f.length !== '' && f.length != null ? Number(f.length) : DEFAULT_TEXT_LENGTH
+    if (numeric) field.scale = 0
     if (t.num === 6) { field.length = Number(f.length); field.scale = Number(f.scale) }
-    const d = String(f.defaultValue ?? '').trim()
+    const d = usesCurrentDate(f) ? CURRENT_DATE_DEFAULT : String(f.defaultValue ?? '').trim()
     if (d) field.defaultValue = d
     return field
   })
@@ -166,6 +178,12 @@ export function retentionBody(r) {
   }
 }
 
+/** An SFMC refusal about a field's type that the numeric types might fix. */
+export function isTypeRefusal(message) {
+  const m = String(message || '')
+  return /\btype\b/i.test(m) && !lengthErrorField(m)
+}
+
 /**
  * The field SFMC names in "Length is invalid for field <name> because it does not
  * have a data type of Text" (feedback #131: an EmailAddress primary key), else null.
@@ -176,7 +194,7 @@ export function lengthErrorField(message) {
 }
 
 /** The body for Contact Builder's customobjects POST. */
-export function buildCreateBody(settings, fields) {
+export function buildCreateBody(settings, fields, { numeric = false } = {}) {
   const body = {
     importActivity: {},
     name: String(settings.name).trim(),
@@ -189,7 +207,7 @@ export function buildCreateBody(settings, fields) {
     isFieldModificationAllowed: true,
     isTestable: !!settings.isTestable,
     isSendable: !!settings.isSendable,
-    fields: buildFields(fields),
+    fields: buildFields(fields, { numeric }),
   }
   const key = String(settings.key ?? '').trim()
   if (key) body.customerKey = key
@@ -228,7 +246,15 @@ export function rowsToLoad(fields, rows, columnIndex) {
 export async function createDE(stack, settings, fields, { rows = null, columnIndex = [], api = { createDataExtension, insertDERowsAsync } } = {}) {
   const check = checkCreateForm(settings, fields)
   if (!isFormValid(check)) throw new Error(check.form[0] || check.fields.find(Boolean))
-  const created = await api.createDataExtension(stack, buildCreateBody(settings, fields))
+  let created
+  try {
+    created = await api.createDataExtension(stack, buildCreateBody(settings, fields))
+  } catch (e) {
+    // Field types as names are not confirmed live (feedback #134); when SFMC refuses
+    // a type, try once more with the numeric types.
+    if (!isTypeRefusal(e?.message)) throw e
+    created = await api.createDataExtension(stack, buildCreateBody(settings, fields, { numeric: true }))
+  }
   const de = { id: created?.id, key: created?.customerKey || String(settings.key ?? '').trim(), name: String(settings.name).trim() }
   const out = { de, loaded: 0, skipped: 0, loadError: '' }
   if (!rows?.length) return out

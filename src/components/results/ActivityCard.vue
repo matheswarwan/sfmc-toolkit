@@ -13,7 +13,7 @@ import DERowCount from './DERowCount.vue'
 import { useStack } from '@/composables/useStack.js'
 import { showToast } from '@/composables/useToast.js'
 import { contactBuilderDEUrl } from '@/utils/activityTypes.js'
-import { startQueryActivity, getQueryActivityStatus } from '@/utils/sfmcApi.js'
+import { startQueryActivity, getQueryActivityStatus, startActivity } from '@/utils/sfmcApi.js'
 
 const props = defineProps({
   description: { type: Object, required: true },
@@ -96,6 +96,28 @@ async function runInSFMC() {
   }
   pollTimer = setTimeout(poll, POLL_MS)
 }
+
+// ── Run once (data extracts, imports, file transfers, scripts; feedback #135) ──
+const starting = ref(false)
+async function runOnce() {
+  const t = d.value.start
+  if (!t) return
+  const ok = window.confirm(
+    `Run the ${t.label} activity "${d.value.title}" in SFMC now?\n\n` +
+    'It runs for real, the same as when its automation runs it.' +
+    (t.tested ? '' : `\n\nRun once for ${t.label} activities has not been checked against SFMC yet; if SFMC refuses, its message is shown.`)
+  )
+  if (!ok) return
+  starting.value = true
+  try {
+    await startActivity(stack.value, t.typeId, t.id)
+    showToast(`Started "${d.value.title}" in SFMC. Check its result in Automation Studio.`)
+  } catch (e) {
+    showToast(`SFMC did not start "${d.value.title}": ${e.message}`)
+  } finally {
+    starting.value = false
+  }
+}
 </script>
 
 <template>
@@ -128,6 +150,10 @@ async function runInSFMC() {
           </button>
         </div>
       </div>
+      <button v-if="d.start" class="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60 shrink-0" :disabled="starting"
+        :title="d.start.tested ? 'Start this activity in SFMC' : 'Start this activity in SFMC (not checked against SFMC yet)'" @click="runOnce">
+        <Loader2 v-if="starting" class="h-3 w-3 animate-spin" /><Play v-else class="h-3 w-3" /> {{ starting ? 'Starting' : 'Run once' }}
+      </button>
       <a v-if="d.link" :href="d.link" @click="openInSfmc($event, d.link)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0">
         Open in SFMC <ExternalLink class="h-3 w-3" />
       </a>

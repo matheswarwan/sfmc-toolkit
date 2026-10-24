@@ -292,7 +292,15 @@ const maxMB = Math.round(MAX_SAMPLE_BYTES / 1048576)
                   <td class="p-1"><Input v-if="f.type === 'Decimal'" v-model.number="f.scale" type="number" min="0" :max="f.length" class="h-7 text-xs min-w-16 px-2" :aria-label="`Field ${i + 1} decimal places`" /></td>
                   <td class="p-1 text-center"><input v-model="f.isPrimaryKey" type="checkbox" :aria-label="`Field ${i + 1} primary key`" @change="onPrimaryKey(f)" /></td>
                   <td class="p-1 text-center"><input type="checkbox" :checked="!f.isNullable" :disabled="f.isPrimaryKey" :aria-label="`Field ${i + 1} required`" @change="f.isNullable = !$event.target.checked" /></td>
-                  <td class="p-1"><Input v-model="f.defaultValue" class="h-7 text-xs min-w-28" :aria-label="`Field ${i + 1} default value`" /></td>
+                  <td class="p-1">
+                    <div class="flex items-center gap-2">
+                      <Input v-model="f.defaultValue" class="h-7 text-xs min-w-28" :disabled="f.type === 'Date' && f.currentDate"
+                        :placeholder="f.type === 'Date' && f.currentDate ? 'Current date' : ''" :aria-label="`Field ${i + 1} default value`" />
+                      <label v-if="f.type === 'Date'" class="flex items-center gap-1 whitespace-nowrap text-[11px]" title="The date and time the row is added">
+                        <input v-model="f.currentDate" type="checkbox" :aria-label="`Field ${i + 1} defaults to the current date`" /> Current date
+                      </label>
+                    </div>
+                  </td>
                   <td class="p-1"><button type="button" class="p-1 rounded hover:bg-muted" :aria-label="`Remove ${f.name}`" @click="removeField(i)"><Trash2 class="h-3.5 w-3.5" /></button></td>
                 </tr>
                 <tr v-if="check.fields[i]"><td></td><td colspan="8" class="px-1 pb-1 text-[11px] text-red-600">{{ check.fields[i] }}</td></tr>
@@ -365,7 +373,7 @@ const maxMB = Math.round(MAX_SAMPLE_BYTES / 1048576)
       <h2 class="font-semibold">Check before creating</h2>
       <ul class="list-disc pl-5 space-y-1">
         <li>Data extension <b>{{ settings.name.trim() }}</b>{{ settings.key.trim() ? ` (key ${settings.key.trim()})` : '' }} in <b>{{ settings.folderPath }}</b></li>
-        <li>{{ fields.length }} field(s): {{ fields.map((f) => `${f.name.trim()} (${f.type}${f.type === 'Text' && f.length ? ' ' + f.length : ''}${f.type === 'Decimal' ? ` ${f.length},${f.scale}` : ''}${f.isPrimaryKey ? ', primary key' : ''})`).join(', ') }}</li>
+        <li>{{ fields.length }} field(s): {{ fields.map((f) => `${f.name.trim()} (${f.type}${f.type === 'Text' && f.length ? ' ' + f.length : ''}${f.type === 'Decimal' ? ` ${f.length},${f.scale}` : ''}${f.isPrimaryKey ? ', primary key' : ''}${f.type === 'Date' && f.currentDate ? ', defaults to the current date' : ''})`).join(', ') }}</li>
         <li>Sendable: {{ settings.isSendable ? `yes, ${settings.sendField} relates to Subscriber Key` : 'no' }}. Testable: {{ settings.isTestable ? 'yes' : 'no' }}.</li>
         <li>Data retention: {{ retentionLabel }}</li>
       </ul>

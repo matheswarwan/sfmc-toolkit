@@ -1,4 +1,5 @@
 import { createSharedDECatalog } from './sharedDEs.js'
+import { startRequest } from './activityStart.js'
 
 // Base URLs - exacttarget.com/cloud/fuelapi for core APIs (injected from ET tab)
 const AS_BASE = (stack) => `https://mc.${stack}.exacttarget.com/cloud/fuelapi`
@@ -525,7 +526,7 @@ export async function createTemplateDE(stack, { name, key, fields, categoryID, s
  * error goes back to the user.
  */
 export async function createDataExtension(stack, body) {
-  _logInfo(`Creating data extension "${body.name}" (${body.fields.length} fields${body.isSendable ? ', sendable' : ''}${body.dataRetentionProperties ? ', with data retention' : ''})`)
+  _logInfo(`Creating data extension "${body.name}" (${body.fields.length} fields, types as ${typeof body.fields[0]?.type === 'number' ? 'numbers' : 'names'}${body.isSendable ? ', sendable' : ''}${body.dataRetentionProperties ? ', with data retention' : ''})`)
   return proxyFetch(`${CM_BASE(stack)}/v1/customobjects/`, 'POST', body)
 }
 
@@ -563,6 +564,13 @@ export async function startQueryActivity(stack, queryDefinitionId) {
   _logInfo(`Starting Query Activity (id: ${queryDefinitionId}) - SFMC will now execute the SQL and populate the target DE`)
   const url = `${AS_BASE(stack)}/automation/v1/queries/${queryDefinitionId}/actions/start/`
   await proxyFetch(url, 'POST', {})
+}
+
+/** Run once for a data extract, import, file transfer or script (utils/activityStart.js). */
+export async function startActivity(stack, typeId, id) {
+  const { url, body } = startRequest(stack, typeId, id)
+  _logInfo(`Starting activity (type ${typeId}, id: ${id}) in SFMC`)
+  return proxyFetch(url, 'POST', body)
 }
 
 // ── Run step 3b: Poll status ──────────────────────────────

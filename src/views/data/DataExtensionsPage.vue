@@ -415,8 +415,8 @@ const columns = [
           <template #cell-actions="{ row }">
             <a :href="deContactBuilderUrl(stack, row)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3"
               :title="row.sourceType ? 'Open in Contact Builder (from the business unit that owns it)' : 'Open in Contact Builder'">SFMC <ExternalLink class="h-3 w-3" /></a>
-            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Read this data extension's rows (no query is run)" @click="rowsDE = row">
-              <Rows3 class="h-3.5 w-3.5" /> View rows
+            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Preview this data extension's rows (no query is run)" @click="rowsDE = row">
+              <Rows3 class="h-3.5 w-3.5" /> Preview data
             </button>
             <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="whereUsed(row)">
               <Network class="h-3.5 w-3.5" /> Where used
@@ -431,7 +431,7 @@ const columns = [
             <div v-else-if="fields[row.id]?.status === 'ok'">
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="font-semibold">{{ fields[row.id].list.length }} {{ fields[row.id].list.length === 1 ? 'field' : 'fields' }}</span>
-                <button class="inline-flex items-center gap-1 text-primary hover:underline" @click="rowsDE = row"><Rows3 class="h-3.5 w-3.5" /> View rows</button>
+                <button class="inline-flex items-center gap-1 text-primary hover:underline" @click="rowsDE = row"><Rows3 class="h-3.5 w-3.5" /> Preview data</button>
                 <button class="text-primary hover:underline" @click="tickAll(row)">
                   {{ fields[row.id].list.length && fields[row.id].list.every((f) => isTicked(row, f.name)) ? 'Untick all' : 'Tick all for a query' }}
                 </button>

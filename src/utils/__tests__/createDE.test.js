@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   fieldProblem, cellProblem, checkCreateForm, isFormValid, buildCreateBody, rowsToLoad, createDE, blankSettings, LOAD_BATCH, lengthErrorField,
+  buildFields, isTypeRefusal, CURRENT_DATE_DEFAULT,
 } from '../createDE/createDE.js'
 
 const f = (o) => ({ name: 'F', type: 'Text', length: 50, scale: 0, isPrimaryKey: false, isNullable: true, defaultValue: '', ...o })
@@ -57,11 +58,11 @@ describe('Create DE rules (feedback #94)', () => {
       dataRetentionProperties: { isRowBasedRetention: false, isDeleteAtEndOfRetentionPeriod: true, isResetRetentionPeriodOnImport: true, dataRetentionPeriodLength: 6, dataRetentionPeriodUnitOfMeasure: 5 },
     })
     expect(body.fields.map((x) => [x.name, x.type, x.length, x.scale, x.isPrimaryKey, x.isNullable])).toEqual([
-      ['SubKey', 0, 254, 0, true, false],
-      ['Notes', 0, 4000, 0, false, true],
-      ['Amount', 6, 12, 2, false, true],
-      ['Email', 4, undefined, 0, false, true],
-      ['Lang', 7, undefined, 0, false, true],
+      ['SubKey', 'Text', 254, undefined, true, false],
+      ['Notes', 'Text', 4000, undefined, false, true],
+      ['Amount', 'Decimal', 12, 2, false, true],
+      ['Email', 'EmailAddress', undefined, undefined, false, true],
+      ['Lang', 'Locale', undefined, undefined, false, true],
     ])
     expect(body.fields[2].defaultValue).toBe('0')
     expect(buildCreateBody(settings(), [f()])).not.toHaveProperty('dataRetentionProperties')
@@ -103,5 +104,48 @@ describe('SFMC length error (feedback #131)', () => {
     expect(lengthErrorField('SFMC API error 400: {"message":"Length is invalid for field email because it does not have a data type of Text.","errorcode":10000}')).toBe('email')
     expect(lengthErrorField('SFMC API error 400: something else')).toBeNull()
     expect(lengthErrorField('')).toBeNull()
+  })
+})
+
+describe('field types as names, numeric retry (feedback #134)', () => {
+  const email = f({ name: 'EmailAddress', type: 'EmailAddress', length: null })
+  it('builds the older numeric shape on request', () => {
+    expect(buildFields([email, f({ name: 'N', type: 'Number' })], { numeric: true }).map((x) => [x.type, x.scale, x.length]))
+      .toEqual([[4, 0, undefined], [1, 0, undefined]])
+  })
+  it('tells a type refusal from the length error', () => {
+    expect(isTypeRefusal('SFMC API error 400: {"message":"Invalid field type EmailAddress"}')).toBe(true)
+    expect(isTypeRefusal('SFMC API error 400: {"message":"Length is invalid for field EmailAddress because it does not have a data type of Text."}')).toBe(false)
+    expect(isTypeRefusal('SFMC API error 400: name taken')).toBe(false)
+  })
+  it('retries once with numeric types when SFMC refuses the type names', async () => {
+    const sent = []
+    const api = {
+      createDataExtension: async (s, body) => {
+        sent.push(body.fields[0].type)
+        if (typeof body.fields[0].type === 'string') throw new Error('SFMC API error 400: {"message":"Unknown field type"}')
+        return { id: 'D1', customerKey: 'K1' }
+      },
+      insertDERowsAsync: async () => {},
+    }
+    const out = await createDE('s13', settings(), [email], { api })
+    expect(sent).toEqual(['EmailAddress', 4])
+    expect(out.de.id).toBe('D1')
+  })
+  it('does not retry other refusals', async () => {
+    let n = 0
+    const api = { createDataExtension: async () => { n++; throw new Error('SFMC API error 400: {"message":"Length is invalid for field EmailAddress because it does not have a data type of Text."}') } }
+    await expect(createDE('s13', settings(), [email], { api })).rejects.toThrow('Length is invalid')
+    expect(n).toBe(1)
+  })
+})
+
+describe('Current date default (feedback #133)', () => {
+  it('sends the current date default and accepts empty cells', () => {
+    const d = f({ name: 'Added', type: 'Date', length: null, isNullable: false, currentDate: true, defaultValue: 'ignored' })
+    expect(buildFields([d])[0].defaultValue).toBe(CURRENT_DATE_DEFAULT)
+    expect(fieldProblem(d)).toBe('')
+    expect(cellProblem('', d)).toBe('')
+    expect(buildFields([f({ name: 'T', currentDate: true })])[0].defaultValue).toBeUndefined()
   })
 })

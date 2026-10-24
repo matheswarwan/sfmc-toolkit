@@ -78,6 +78,13 @@ function onSearchInput() {
     return
   }
   searching.value = true
+  // Data views are not data extensions, so SFMC's DE search never returns them
+  // (feedback #137: _ChatMessagingSubscription); match them by name here.
+  const dvMatches = () => {
+    const q = searchQuery.value.trim().toLowerCase()
+    return q ? dataViews.value.filter((n) => n.name.toLowerCase().includes(q)) : []
+  }
+  searchResults.value = dvMatches()
   debouncedSearchDEs(props.stack, searchQuery.value, (items, error) => {
     // DEs already shown in opened folders count too (feedback #89: a DE in the tree
     // the search did not return).
@@ -85,7 +92,7 @@ function onSearchInput() {
     const ids = new Set(items.map((d) => String(d.id)))
     const inTree = Object.values(folderChildren.value).flat()
       .filter((n) => n?.type === 'de' && String(n.name || '').toLowerCase().includes(q) && !ids.has(String(n.id)))
-    searchResults.value = [...items, ...inTree]
+    searchResults.value = [...dvMatches(), ...items, ...inTree]
     searchError.value = searchResults.value.length ? '' : (error || '')
     searching.value = false
   })
@@ -121,7 +128,7 @@ function badgeClass(sourceType) {
     <div class="p-2 border-b border-border shrink-0">
       <div class="relative">
         <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input v-model="searchQuery" class="pl-8 h-8 text-xs" placeholder="Search all DEs…" @input="onSearchInput" />
+        <Input v-model="searchQuery" class="pl-8 h-8 text-xs" placeholder="Search all DEs and data views…" @input="onSearchInput" />
       </div>
     </div>
 
@@ -140,7 +147,7 @@ function badgeClass(sourceType) {
         >
           <Database class="h-3 w-3 shrink-0" />
           <span class="truncate flex-1">{{ node.name }}</span>
-          <span class="text-[9px] px-1 rounded" :class="badgeClass(node.sourceType)">{{ node.sourceType }}</span>
+          <span class="text-[9px] px-1 rounded" :class="badgeClass(node.sourceType)">{{ node.sourceType === 'dataview' ? 'Data view' : node.sourceType }}</span>
         </button>
         <div v-if="!searching && !searchResults.length && searchError" class="p-2 text-red-600" role="alert">Search failed: {{ searchError }}</div>
         <div v-else-if="!searching && !searchResults.length" class="p-2 text-muted-foreground italic">No matches</div>

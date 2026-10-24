@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rowsFrom, columnsFor, fetchRowsAt, loadRemainingRows, filterRows } from '../deRows.js'
+import { rowsFrom, columnsFor, fetchRowsAt, loadRemainingRows, filterRows, reloadRows } from '../deRows.js'
 
 // A fake rowset of `n` rows: SFMC sends lower-cased names, keys and values apart.
 function fakeRowset(n) {
@@ -62,5 +62,18 @@ describe('DE rows (feedback #117)', () => {
     expect(filterRows(rows, ['a', 'b'], 'ALP')).toEqual([rows[0]])
     expect(filterRows(rows, ['b'], '2')).toEqual([rows[1]])
     expect(filterRows(rows, ['a'], '')).toBe(rows)
+  })
+})
+
+describe('Refresh (feedback #139)', () => {
+  it('reads as many rows as were loaded, from the start', async () => {
+    const all = Array.from({ length: 120 }, (_, i) => ({ keys: { id: String(i) }, values: { n: String(i) } }))
+    const fetchPage = async (s, k, page, size) => ({ items: all.slice((page - 1) * size, page * size), count: all.length })
+    const r = await reloadRows({ stack: 's13', key: 'K', want: 100, fetchPage })
+    expect(r.rows).toHaveLength(100)
+    expect(r.total).toBe(120)
+    expect(r.done).toBe(false)
+    const one = await reloadRows({ stack: 's13', key: 'K', want: 10, fetchPage })
+    expect(one.rows).toHaveLength(50)
   })
 })

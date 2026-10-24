@@ -1,18 +1,17 @@
 <script setup>
-// The rows of one data extension (feedback #117), read straight from SFMC: no query
-// activity, no results DE. 50 at a time, Load all up to 50,000 with Stop; filter and
-// hide columns on what is loaded; CSV, Markdown, Copy for AI (ResultsTable) and Excel.
+// Preview data (feedback #117, renamed in #138): the rows of one data extension, read
+// straight from SFMC: no query activity, no results DE. 50 at a time, Load all up to
+// 50,000 with Stop, Refresh (#139); filter and hide columns on what is loaded; sort,
+// column filters, ticked rows, CSV, Excel, Markdown and Copy for AI (ResultsTable).
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { X, Loader2, Search, Columns3, FileSpreadsheet } from 'lucide-vue-next'
+import { X, Loader2, Search, Columns3, RefreshCw } from 'lucide-vue-next'
 import ResultsTable from '@/components/detail/ResultsTable.vue'
 import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
 import Button from '@/components/ui/button/Button.vue'
 import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { fetchDEFieldList } from '@/utils/deApi.js'
-import { fetchRowsAt, loadRemainingRows, columnsFor, filterRows, ROWS_PAGE, LOAD_ALL_LIMIT } from '@/utils/deRows.js'
-import { downloadWorkbook } from '@/utils/exportDoc.js'
-import { exportBaseName } from '@/utils/exportName.js'
+import { fetchRowsAt, loadRemainingRows, reloadRows, columnsFor, filterRows, ROWS_PAGE, LOAD_ALL_LIMIT } from '@/utils/deRows.js'
 import { showToast } from '@/composables/useToast.js'
 
 const props = defineProps({
@@ -37,7 +36,8 @@ const shownColumns = computed(() => columns.value.filter((c) => !hidden.value.ha
 const shownRows = computed(() => filterRows(rows.value, shownColumns.value, filter.value))
 const knownTotal = computed(() => total.value ?? rows.value.length)
 const more = computed(() => !done.value && (total.value == null || rows.value.length < total.value))
-const busy = computed(() => loading.value || all.value.running)
+const refreshing = ref(false)
+const busy = computed(() => loading.value || all.value.running || refreshing.value)
 
 function fail(e) {
   const info = searchError(e, 'read the rows')
@@ -97,13 +97,24 @@ function toggleColumn(c) {
   hidden.value = next
 }
 
-async function downloadExcel() {
+// Refresh (feedback #139): read the same number of rows again; the old rows stay on
+// screen until the new ones arrive, so filters, sort and hidden columns are kept.
+async function refresh() {
+  if (busy.value) return
+  refreshing.value = true
+  error.value = ''
   try {
-    const cols = shownColumns.value
-    await downloadWorkbook([{ name: props.de.name || 'Rows', columns: cols, rows: shownRows.value.map((r) => cols.map((c) => r[c] ?? '')) }],
-      `${await exportBaseName(props.stack, `de-${props.de.name || 'rows'}`)}.xlsx`)
+    const r = await withReconnect(props.stack, () => reloadRows({
+      stack: props.stack, key: props.de.customerKey, want: Math.max(rows.value.length, ROWS_PAGE), columnNames: fieldNames.value,
+    }))
+    rows.value = r.rows
+    total.value = r.total
+    done.value = r.done
+    showToast(`Reloaded ${r.rows.length.toLocaleString()} row(s) from SFMC.`)
   } catch (e) {
-    showToast(`Export failed: ${e.message}`)
+    fail(e)
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -116,7 +127,7 @@ onUnmounted(() => { all.value.stop = true; document.removeEventListener('keydown
   <div class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="emit('close')">
     <div class="w-full max-w-6xl h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-xl" role="dialog" aria-modal="true" aria-labelledby="de-rows-title">
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border">
-        <h2 id="de-rows-title" class="text-sm font-semibold truncate">Rows of {{ de.name }}</h2>
+        <h2 id="de-rows-title" class="text-sm font-semibold truncate">Preview data: {{ de.name }}</h2>
         <span v-if="de.sourceType" class="text-[10px] font-semibold rounded-full px-1.5 py-px bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">{{ de.sourceType === 'shared' ? 'Shared' : 'Synchronized' }}</span>
         <span class="text-xs text-muted-foreground">Read from SFMC; no query is run.</span>
         <div class="flex-1" />
@@ -138,6 +149,9 @@ onUnmounted(() => { all.value.stop = true; document.removeEventListener('keydown
             <button class="underline" @click="all.stop = true">Stop</button>
           </template>
         </template>
+        <Button variant="outline" size="sm" class="h-7 text-[11px] gap-1" :disabled="busy" title="Read the rows again from SFMC" @click="refresh">
+          <Loader2 v-if="refreshing" class="h-3 w-3 animate-spin" /><RefreshCw v-else class="h-3 w-3" /> Refresh
+        </Button>
         <div class="flex-1" />
         <div class="relative">
           <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -157,13 +171,12 @@ onUnmounted(() => { all.value.stop = true; document.removeEventListener('keydown
             </div>
           </template>
         </div>
-        <Button variant="outline" size="sm" class="h-7 text-xs gap-1.5" :disabled="!shownColumns.length" @click="downloadExcel"><FileSpreadsheet class="h-3 w-3" /> Excel</Button>
       </div>
 
       <div v-if="error" class="px-4 pt-3"><SfmcErrorNotice :error="error" :retrying="busy" @retry="rows.length ? loadMore() : start()" /></div>
-      <p v-if="filter && rows.length" class="px-4 pt-2 text-xs text-muted-foreground">{{ shownRows.length.toLocaleString() }} of the {{ rows.length.toLocaleString() }} loaded rows match. Downloads use the rows and columns shown.</p>
+      <p v-if="filter && rows.length" class="px-4 pt-2 text-xs text-muted-foreground">{{ shownRows.length.toLocaleString() }} of the {{ rows.length.toLocaleString() }} loaded rows match. Downloads use the rows and columns shown, or only the ticked rows.</p>
       <div v-if="loading && !rows.length" class="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Reading rows…</div>
-      <ResultsTable v-else :rows="shownRows" :columns="shownColumns" :filename="de.name" file-prefix="de" :total-count="filter ? null : knownTotal" />
+      <ResultsTable v-else selectable :rows="shownRows" :columns="shownColumns" :filename="de.name" file-prefix="de" :total-count="filter ? null : knownTotal" />
     </div>
   </div>
 </template>

@@ -65,3 +65,23 @@ export function filterRows(rows, columns, text) {
   if (!t) return rows
   return rows.filter((r) => columns.some((c) => r[c] != null && String(r[c]).toLowerCase().includes(t)))
 }
+
+/**
+ * Refresh (feedback #139): reads the rows again from the start, as many as were loaded
+ * (at least one page), so the viewer can swap them in without losing its filters,
+ * sort and hidden columns. Returns { rows, total, done }.
+ */
+export async function reloadRows({ stack, key, want, columnNames = [], fetchPage = fetchDERows }) {
+  const first = await fetchRowsAt(stack, key, 0, ROWS_PAGE, columnNames, fetchPage)
+  let rows = first.rows
+  let total = first.total
+  let last = first.last
+  if (!last && want > rows.length) {
+    await loadRemainingRows({
+      stack, key, have: rows.length, columnNames, limit: Math.min(want, LOAD_ALL_LIMIT), fetchPage,
+      onRows: (page, t) => { rows = rows.concat(page); if (t != null) total = t },
+    })
+    if (total != null && rows.length >= total) last = true
+  }
+  return { rows, total, done: !!last }
+}

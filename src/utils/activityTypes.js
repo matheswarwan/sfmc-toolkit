@@ -9,6 +9,7 @@
 // good. Values are always text: nothing from SFMC is ever rendered as HTML.
 
 import { versionsKeyFor } from './activityVersions.js'
+import { startTarget } from './activityStart.js'
 
 export const ACTIVITY_TYPES = {
   33: 'SMS', 42: 'Send Email', 43: 'Import File', 45: 'Group Refresh', 53: 'File Transfer',
@@ -117,6 +118,8 @@ function build(details, typeId, stack, spec) {
     run: spec.run ? spec.run(d) : null,
     // Saved versions of a Query or Script activity (feedback #122).
     versionsKey: spec.versionsKey ? spec.versionsKey(d) : null,
+    // Run once for data extracts, imports, file transfers and scripts (feedback #135).
+    start: startTarget(typeId, d),
   }
 }
 

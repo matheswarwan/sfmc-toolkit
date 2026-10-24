@@ -27,7 +27,7 @@ describe('DE rows viewer (feedback #117)', () => {
     await flushPromises()
     expect(fetched[0]).toEqual({ key: 'SUBS', page: 1, size: 50 })
     expect(w.text()).toContain('50 of 75 rows loaded')
-    expect(w.findAll('th').map((t) => t.text())).toEqual(['SubscriberKey', 'EmailAddress'])
+    expect(w.findAll('th').map((t) => t.text()).filter(Boolean)).toEqual(['SubscriberKey', 'EmailAddress'])
     await button(w, 'Load 50 more').trigger('click')
     await flushPromises()
     expect(fetched[1]).toEqual({ key: 'SUBS', page: 2, size: 50 })
@@ -37,7 +37,7 @@ describe('DE rows viewer (feedback #117)', () => {
     expect(w.text()).toContain('of the 75 loaded rows match')
     await button(w, 'Columns').trigger('click')
     await w.findAll('input[type="checkbox"]')[1].setValue(false)
-    expect(w.findAll('th').map((t) => t.text())).toEqual(['SubscriberKey'])
+    expect(w.findAll('th').map((t) => t.text()).filter(Boolean)).toEqual(['SubscriberKey'])
   })
 
   it('loads all from where it is', async () => {
