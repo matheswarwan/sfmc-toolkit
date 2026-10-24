@@ -14,11 +14,20 @@ import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
 import { QUERY_STUDIO_2_SETTING } from '@/utils/queryStudio.js'
 import { NOTIFY_KEY } from '@/utils/watches.js'
+import { ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS } from '@/utils/activityVersions.js'
 
 const { currentTheme, themes, setTheme } = useTheme()
 
 // Same keys as SFMC Query Saver, read by the service worker and the run flow.
 const { value: emailSaver } = useStoredSetting('_emailSaverEnabled', true, (v) => v !== false)
+// Query and Script activity versions (feedback #122; background/activityCapture.js).
+const { value: activitySaver } = useStoredSetting(ACTIVITY_SAVER_SETTING, true, (v) => v !== false)
+const { value: activityMax } = useStoredSetting(ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS,
+  (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.floor(Number(v)) : DEFAULT_MAX_VERSIONS))
+function setActivityMax(e) {
+  const n = Math.round(Number(e.target.value))
+  activityMax.value = Number.isFinite(n) ? Math.min(500, Math.max(1, n)) : DEFAULT_MAX_VERSIONS
+}
 const { value: emailDebounce } = useStoredSetting('_emailSaveDebounce', 5,
   (v) => (typeof v === 'number' && v >= 0 ? v : 5))
 const { value: reuseQueryDE } = useStoredSetting('_reuseQueryDE', false, (v) => v === true)
@@ -146,6 +155,25 @@ function setDebounce(e) {
             class="w-16 h-8 rounded-md border border-border bg-background px-2" @change="setDebounce" />
           seconds
         </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-border bg-card p-4 space-y-4">
+      <h2 class="text-sm font-semibold">Automation Studio activities</h2>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Save Query and Script activity versions</div>
+          <p class="text-xs text-muted-foreground">Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept here (Automation > Saved Activities).</p>
+        </div>
+        <Switch v-model="activitySaver" aria-label="Save Query and Script activity versions" />
+      </div>
+      <div class="flex items-center gap-3" :class="{ 'opacity-50': !activitySaver }">
+        <label for="activity-max" class="flex-1">
+          <div class="text-sm font-medium">Versions kept per activity</div>
+          <p class="text-xs text-muted-foreground">The oldest versions go first when an activity has more.</p>
+        </label>
+        <input id="activity-max" type="number" min="1" max="500" :value="activityMax" :disabled="!activitySaver"
+          class="w-20 h-8 rounded-md border border-border bg-background px-2 text-sm" @change="setActivityMax" />
       </div>
     </section>
 

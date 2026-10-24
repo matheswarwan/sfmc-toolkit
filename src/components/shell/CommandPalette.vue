@@ -3,7 +3,7 @@
 // section (see utils/paletteSearch.js).
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, FileCode2, Mail, Settings, BookOpen, ArrowRight } from 'lucide-vue-next'
+import { Search, FileCode2, Mail, Settings, BookOpen, ArrowRight, History } from 'lucide-vue-next'
 import { NAV_ITEMS } from '@/app/nav.js'
 import { paletteEntries } from '@/utils/paletteSearch.js'
 
@@ -16,7 +16,7 @@ const SECTIONS = [
   { path: '/settings', name: 'Settings', group: 'App', icon: Settings },
   { path: '/features', name: 'Features', group: 'App', icon: BookOpen },
 ]
-const KIND_ICONS = { query: FileCode2, email: Mail, search: Search }
+const KIND_ICONS = { query: FileCode2, email: Mail, activity: History, search: Search }
 
 const query = ref('')
 const active = ref(0)
@@ -55,7 +55,7 @@ function onKey(e) {
       <div class="flex items-center gap-2 px-3 border-b border-border">
         <Search class="h-4 w-4 text-muted-foreground" />
         <input ref="input" v-model="query" class="flex-1 h-11 bg-transparent outline-none text-sm"
-          placeholder="Go to a section, find a saved query or email, or search SFMC…" role="combobox"
+          placeholder="Go to a section, find a saved query, email or activity, or search SFMC…" role="combobox"
           aria-controls="palette-list" :aria-activedescendant="`palette-${active}`" @keydown="onKey" />
         <kbd class="text-[10px] text-muted-foreground border border-border rounded px-1">Esc</kbd>
       </div>

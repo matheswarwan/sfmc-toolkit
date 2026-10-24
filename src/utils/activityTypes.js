@@ -8,6 +8,8 @@
 // Every field a type doesn't list itself ends up in `extra`, so nothing is hidden for
 // good. Values are always text: nothing from SFMC is ever rendered as HTML.
 
+import { versionsKeyFor } from './activityVersions.js'
+
 export const ACTIVITY_TYPES = {
   33: 'SMS', 42: 'Send Email', 43: 'Import File', 45: 'Group Refresh', 53: 'File Transfer',
   73: 'Data Extract', 84: 'Report', 300: 'SQL Query', 303: 'Filter', 423: 'Script',
@@ -113,6 +115,8 @@ function build(details, typeId, stack, spec) {
       .map(([label, r]) => [label, { name: r.name, id: r.id || null, key: r.key || null }])),
     // A SQL Query activity that can be run (feedback #37).
     run: spec.run ? spec.run(d) : null,
+    // Saved versions of a Query or Script activity (feedback #122).
+    versionsKey: spec.versionsKey ? spec.versionsKey(d) : null,
   }
 }
 
@@ -129,12 +133,14 @@ const SPECS = {
       queryDefinitionId: d.queryDefinitionId, sql: d.queryText || '', targetName: d.targetName || '',
       updateType: d.targetUpdateTypeName || UPDATE_TYPES[d.targetUpdateTypeId] || '',
     } : null),
+    versionsKey: (d) => versionsKeyFor(300, d),
   },
   423: {
     link: (d, s) => AS_LINK(s, 'ActivityModal', 423, d.ssjsActivityId),
     main: [['Description', 'description']],
     extra: [['Key', 'key'], ['Script activity ID', 'ssjsActivityId'], ['Created', 'createdDate'], ['Modified', 'modifiedDate']],
     code: { key: 'script', label: 'Script', lang: 'javascript' },
+    versionsKey: (d) => versionsKeyFor(423, d),
   },
   303: {
     link: (d, s) => AS_LINK(s, 'ActivityModal', 303, d.filterActivityId),

@@ -43,8 +43,15 @@ export function paletteEntries(text, sections, storage = {}) {
     .filter((v) => matches(v.name, v.subject, v.categoryName, v.assetId))
     .slice(0, MAX_RECORDS)
     .map((v) => ({ kind: 'email', label: v.name || `Email ${v.assetId}`, hint: 'Email', to: { path: `/emails/${encodeURIComponent(v.id)}` } }))
+  // Query and Script activities with saved versions (feedback #122).
+  const activities = records
+    .filter(([k, v]) => /^activity_(query|script)_/.test(k) && Array.isArray(v?.versions) && v.versions.length)
+    .map(([, v]) => v)
+    .filter((v) => matches(v.name, v.key, v.activityId, v.versions[0]?.content))
+    .slice(0, MAX_RECORDS)
+    .map((v) => ({ kind: 'activity', label: v.name || v.activityId, hint: v.kind === 'script' ? 'Saved Script' : 'Saved SQL Query', to: { path: `/saved-activities/${v.id}` } }))
   const actions = SEARCH_ACTIONS.map((a) => ({
     kind: 'search', label: `Search ${a.label} for "${text.trim()}"`, hint: 'SFMC', to: { path: a.path, query: { q: text.trim() } },
   }))
-  return [...out, ...queries, ...emails, ...actions]
+  return [...out, ...queries, ...emails, ...activities, ...actions]
 }

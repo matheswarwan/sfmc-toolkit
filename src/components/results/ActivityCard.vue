@@ -5,7 +5,7 @@
 // activity can be run in Run Query or started in SFMC.
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ExternalLink, Play, Loader2 } from 'lucide-vue-next'
+import { ExternalLink, Play, Loader2, History } from 'lucide-vue-next'
 import { openInSfmc } from '@/utils/sfmcLinks.js'
 import CodeView from './CodeView.vue'
 import DERowCount from './DERowCount.vue'
@@ -33,6 +33,16 @@ const deRef = (label) => d.value.deRefs?.[label] || null
 function openDEInToolkit(ref) {
   router.push({ path: '/data-extensions', query: { q: ref.name } })
 }
+
+// Saved versions of this Query or Script activity, when there are any (feedback #122).
+const versionCount = ref(0)
+watch(() => d.value.versionsKey, (key) => {
+  versionCount.value = 0
+  if (!key) return
+  try {
+    globalThis.chrome?.storage?.local?.get(key, (data) => { versionCount.value = data?.[key]?.versions?.length || 0 })
+  } catch { /* extension context gone */ }
+}, { immediate: true })
 
 // ── Run this query (SQL Query activities) ─────────────────
 const runMenu = ref(false)
@@ -95,6 +105,10 @@ async function runInSFMC() {
       <span class="text-[10px] font-semibold uppercase tracking-wide text-primary">{{ d.typeLabel }}</span>
       <h3 class="flex-1 min-w-0 truncate text-sm font-semibold">{{ d.title }}</h3>
       <slot name="actions" />
+      <RouterLink v-if="versionCount" :to="`/saved-activities/${d.versionsKey}`"
+        class="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0" title="Versions saved by Marketing Cloud Toolkit">
+        <History class="h-3 w-3" /> Versions ({{ versionCount }})
+      </RouterLink>
       <div v-if="d.run" class="relative shrink-0">
         <button class="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60" :disabled="running"
           :aria-expanded="runMenu" aria-haspopup="menu" @click="runMenu = !runMenu">

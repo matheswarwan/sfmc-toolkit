@@ -1,5 +1,6 @@
 // Backup files: everything SFMC Query Saver or Marketing Cloud Toolkit keeps (saved queries with
-// their run history, captured email versions, workspaces, settings) as one JSON file.
+// their run history, captured email versions, Query and Script activity versions,
+// workspaces, settings) as one JSON file.
 // Query Saver exports this format so its data can move into the Toolkit.
 //
 // { format: 'sfmc-query-saver-backup', version: 1, app, appVersion, exportedAt, items }
@@ -12,15 +13,17 @@ export const BACKUP_VERSION = 1
 export const BACKUP_SETTINGS = [
   '_emailSaverEnabled', '_emailSaveDebounce', '_reuseQueryDE', 'cardSize',
   'sfmcqs_theme', 'sfmcqs_settings', 'lintDisabledRules',
+  '_activitySaverEnabled', '_activityMaxVersions',
 ]
 
-const RECORD_RE = /^(sql|email|workspace)_/
+const RECORD_RE = /^(sql|email|workspace|activity)_/
 
 export function recordKind(key, value) {
   if (!RECORD_RE.test(key) || !value || typeof value !== 'object') return null
   if (key.startsWith('sql_') && typeof value.queryText === 'string') return 'queries'
   if (key.startsWith('email_') && value.assetId != null) return 'emails'
   if (key.startsWith('workspace_') && Array.isArray(value.panels)) return 'workspaces'
+  if (/^activity_(query|script)_/.test(key) && Array.isArray(value.versions)) return 'activities'
   return null
 }
 
@@ -62,10 +65,10 @@ function mergeVersions(current, incoming) {
  * combined).
  *
  * @returns {{ writes: object, added: object, merged: object, skipped: object }}
- *   counts per kind: queries, emails, workspaces, settings
+ *   counts per kind: queries, emails, activities, workspaces, settings
  */
 export function planImport(items, existing) {
-  const zero = () => ({ queries: 0, emails: 0, workspaces: 0, settings: 0 })
+  const zero = () => ({ queries: 0, emails: 0, activities: 0, workspaces: 0, settings: 0 })
   const added = zero()
   const merged = zero()
   const skipped = zero()
@@ -76,11 +79,11 @@ export function planImport(items, existing) {
     if (kind) {
       const cur = existing[key]
       if (!cur) { writes[key] = value; added[kind]++; continue }
-      if (kind === 'emails') {
+      if (kind === 'emails' || kind === 'activities') {
         const versions = mergeVersions(cur.versions, value.versions)
         if (versions.length > (cur.versions?.length || 0)) {
           writes[key] = { ...cur, versions }
-          merged.emails++
+          merged[kind]++
           continue
         }
       }
@@ -103,11 +106,13 @@ export function describeImport({ added, merged, skipped }) {
   const n = (count, one, many) => `${count} ${count === 1 ? one : many}`
   if (added.queries) parts.push(n(added.queries, 'query', 'queries'))
   if (added.emails) parts.push(n(added.emails, 'email', 'emails'))
+  if (added.activities) parts.push(n(added.activities, 'activity history', 'activity histories'))
   if (added.workspaces) parts.push(n(added.workspaces, 'workspace', 'workspaces'))
   if (added.settings) parts.push(n(added.settings, 'setting', 'settings'))
   let text = parts.length ? `Imported ${parts.join(', ')}.` : 'Nothing new to import.'
   if (merged.emails) text += ` Added missing versions to ${n(merged.emails, 'email', 'emails')}.`
-  const already = skipped.queries + skipped.emails + skipped.workspaces
+  if (merged.activities) text += ` Added missing versions to ${n(merged.activities, 'activity', 'activities')}.`
+  const already = skipped.queries + skipped.emails + skipped.activities + skipped.workspaces
   if (already) text += ` ${already} already here, kept as they are.`
   return text
 }

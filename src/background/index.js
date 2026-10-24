@@ -37,6 +37,7 @@ import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
 import { getDashboardSummary } from './dashboard.js'
+import { captureActivity, activitySaveCompleted } from './activityCapture.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
@@ -78,6 +79,11 @@ chrome.webRequest?.onBeforeRequest.addListener(
   captureQueryStudio, { urls: QUERY_STUDIO_CREATE_URLS }, ['requestBody'])
 chrome.webRequest?.onBeforeRequest.addListener(
   captureEmail, { urls: ['https://*.marketingcloudapps.com/fuelapi/asset/v1/content/assets/*'] }, ['requestBody'])
+// Query and Script activities saved in Automation Studio (feedback #122).
+chrome.webRequest?.onBeforeRequest.addListener(
+  captureActivity, { urls: ['https://*.marketingcloudapps.com/AutomationStudioFuel3/*'] }, ['requestBody'])
+chrome.webRequest?.onCompleted?.addListener(activitySaveCompleted, { urls: ['https://*.marketingcloudapps.com/AutomationStudioFuel3/*'] })
+chrome.webRequest?.onErrorOccurred?.addListener(activitySaveCompleted, { urls: ['https://*.marketingcloudapps.com/AutomationStudioFuel3/*'] })
 
 const isSfmcUrl = (u) => /^https:\/\/[^/]*\.(exacttarget|marketingcloudapps|marketingcloud|salesforce-marketingcloud)\.com\//.test(u || '')
 const isLoggedInUrl = (u) => !u.includes('/login') && !u.includes('mc.login.') && !u.includes('sso')

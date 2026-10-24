@@ -244,6 +244,17 @@ export const FEATURE_GROUPS = [
     ],
   },
   {
+    id: 'saved-activities',
+    title: 'Saved Activities',
+    intro: 'Automation > Saved Activities. Turn saving on or off, and set how many versions to keep, in Settings.',
+    items: [
+      { title: 'Query and Script versions', since: '2.0.12', how: 'Automatic', detail: 'Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept, with the name, target data extension and update type.' },
+      { title: 'Compare, copy, run', since: '2.0.12', how: 'Click an activity', detail: 'Pick a version to see its SQL or script, Changes to see it next to the version before, Copy, or Open in Run Query.' },
+      { title: 'Restore a version', since: '2.0.12', how: 'Restore this version, then confirm', detail: 'Writes the SQL or script of that version back to the activity in Automation Studio. Nothing is run.' },
+      { title: 'Versions on activity cards', since: '2.0.12', detail: 'Query and Script cards in Automations and Activities link to their saved versions.' },
+    ],
+  },
+  {
     id: 'data-extensions',
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',

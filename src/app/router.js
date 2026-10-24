@@ -14,6 +14,7 @@ const PAGES = {
   '/contacts': () => import('../views/contacts/ContactsPage.vue'),
   '/automations': () => import('../views/automation/AutomationsPage.vue'),
   '/activities': () => import('../views/automation/ActivitiesPage.vue'),
+  '/saved-activities': () => import('../views/automation/SavedActivitiesPage.vue'),
   '/templates': () => import('../views/automation/TemplatesPage.vue'),
   '/automation-overview': () => import('../views/automation/AutomationOverviewPage.vue'),
   '/journey-overview': () => import('../views/journey/JourneyOverviewPage.vue'),
@@ -38,6 +39,11 @@ export const routes = [
     path: '/journeys/:id',
     component: () => import('../views/journey/JourneyDetailPage.vue'),
     meta: { title: 'Journeys', group: 'Journey' },
+  },
+  {
+    path: '/saved-activities/:id',
+    component: () => import('../views/automation/SavedActivitiesPage.vue'),
+    meta: { title: 'Saved Activities', group: 'Automation' },
   },
   {
     path: '/emails/:id',
