@@ -3,6 +3,8 @@
 // service worker captured (feedback #122; background/activityCapture.js). The list at
 // /saved-activities, one activity at /saved-activities/<record key>: its versions, the
 // code, the changes against the version before, Copy, Open in Run Query and Restore.
+// Below the list, "Not seeing your saves?" shows the last Automation Studio requests
+// that write (feedback #129), kept by the service worker in chrome.storage.session.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -14,6 +16,7 @@ import { showToast } from '@/composables/useToast.js'
 import { sfmcFetch, logInfo } from '@/utils/sfmcApi.js'
 import {
   ACTIVITY_SAVER_SETTING, activityKindLabel, isActivityKey, searchRecords, sideBySideDiff, activityUrl, restoreBody,
+  ACTIVITY_LOG_KEY, logText, isBadActivityKey,
 } from '@/utils/activityVersions.js'
 
 const route = useRoute()
@@ -27,8 +30,11 @@ const search = ref('')
 function loadData() {
   return new Promise((resolve) => {
     chrome.storage.local.get(null, (raw) => {
+      // Records made from a non-id path word such as .../scripts/validate (feedback #130).
+      const bad = Object.keys(raw || {}).filter(isBadActivityKey)
+      if (bad.length) chrome.storage.local.remove(bad)
       records.value = Object.entries(raw || {})
-        .filter(([k, v]) => isActivityKey(k) && Array.isArray(v?.versions) && v.versions.length)
+        .filter(([k, v]) => isActivityKey(k) && !isBadActivityKey(k) && Array.isArray(v?.versions) && v.versions.length)
         .map(([, v]) => v)
       loaded.value = true
       resolve()
@@ -41,8 +47,30 @@ function onStorageChange(changes, area) {
   clearTimeout(reloadTimer)
   reloadTimer = setTimeout(loadData, 300)
 }
-onMounted(() => { loadData(); chrome.storage.onChanged.addListener(onStorageChange) })
-onUnmounted(() => chrome.storage.onChanged.removeListener(onStorageChange))
+// ── Recent Automation Studio requests (feedback #129) ─────────
+const requestLog = ref([])
+function loadLog() {
+  try { chrome.storage.session.get(ACTIVITY_LOG_KEY, (r) => { requestLog.value = r?.[ACTIVITY_LOG_KEY] || [] }) } catch { requestLog.value = [] }
+}
+function onSessionChange(changes, area) {
+  if (area === 'session' && changes[ACTIVITY_LOG_KEY]) requestLog.value = changes[ACTIVITY_LOG_KEY].newValue || []
+}
+async function copyLog() {
+  const head = `Marketing Cloud Toolkit ${chrome.runtime.getManifest?.().version || ''}: recent Automation Studio requests (query values and body values left out)\n`
+  try { await navigator.clipboard.writeText(head + logText(requestLog.value)); showToast('Copied.') } catch { showToast('Could not copy.') }
+}
+function clearLog() {
+  try { chrome.storage.session.remove(ACTIVITY_LOG_KEY) } catch { /* nothing to clear */ }
+  requestLog.value = []
+}
+const timeOf = (at) => new Date(at).toLocaleTimeString()
+
+onMounted(() => {
+  loadData(); loadLog()
+  chrome.storage.onChanged.addListener(onStorageChange)
+  chrome.storage.onChanged.addListener(onSessionChange)
+})
+onUnmounted(() => { chrome.storage.onChanged.removeListener(onStorageChange); chrome.storage.onChanged.removeListener(onSessionChange) })
 
 const shown = computed(() => searchRecords(records.value, search.value))
 
@@ -153,6 +181,36 @@ const automationStudioUrl = (stack) => `https://mc.${stack}.exacttarget.com/clou
             </RouterLink>
           </li>
         </ul>
+
+        <details class="mt-6 rounded-lg border border-border bg-card text-xs">
+          <summary class="cursor-pointer px-4 py-2 font-medium">Not seeing your saves? Recent Automation Studio requests ({{ requestLog.length }})</summary>
+          <div class="px-4 pb-3 space-y-2">
+            <p v-if="!saverEnabled" class="text-amber-700 dark:text-amber-400">Saving versions is turned off in Settings, so saves are not kept (they are still listed here).</p>
+            <p class="text-muted-foreground">
+              The last 25 requests that write from Automation Studio while this browser is open. Save a query or script in
+              Automation Studio, then come back: if the save is listed but not matched, click Copy and send it with Feedback.
+              Query values and body contents are never kept, only the URL path, method, status and the names of the body's fields.
+            </p>
+            <div class="flex gap-2">
+              <button class="inline-flex items-center gap-1 h-7 px-2 rounded border border-border hover:bg-accent disabled:opacity-50" :disabled="!requestLog.length" @click="copyLog"><Copy class="h-3.5 w-3.5" /> Copy</button>
+              <button class="inline-flex items-center gap-1 h-7 px-2 rounded border border-border hover:bg-accent disabled:opacity-50" :disabled="!requestLog.length" @click="clearLog"><Trash2 class="h-3.5 w-3.5" /> Clear</button>
+            </div>
+            <p v-if="!requestLog.length" class="text-muted-foreground">Nothing yet. Save an activity in Automation Studio with this browser.</p>
+            <table v-else class="w-full">
+              <thead><tr class="text-left text-muted-foreground border-b border-border"><th class="py-1 pr-2">Time</th><th class="py-1 pr-2">Method</th><th class="py-1 pr-2">Status</th><th class="py-1 pr-2">URL</th><th class="py-1 pr-2">Matched</th><th class="py-1">Body fields</th></tr></thead>
+              <tbody>
+                <tr v-for="e in requestLog" :key="e.requestId || e.at" class="border-b border-border/50 align-top">
+                  <td class="py-1 pr-2 whitespace-nowrap tabular-nums">{{ timeOf(e.at) }}</td>
+                  <td class="py-1 pr-2">{{ e.method }}</td>
+                  <td class="py-1 pr-2">{{ e.status ?? '...' }}</td>
+                  <td class="py-1 pr-2 break-all font-mono text-[11px]">{{ e.url }}</td>
+                  <td class="py-1 pr-2">{{ e.matched ? `${activityKindLabel(e.matched.kind)}` : 'No' }}</td>
+                  <td class="py-1 break-all text-muted-foreground">{{ e.hasBody ? (e.keys ? e.keys.join(', ') : 'not JSON') : 'none readable' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
       </div>
     </template>
 

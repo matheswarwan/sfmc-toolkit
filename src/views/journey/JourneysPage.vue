@@ -64,14 +64,16 @@ const view = (j) => router.push({ path: `/journeys/${encodeURIComponent(j.id)}`,
 
 // Tick journeys to watch several at once (feedback #59).
 const picked = ref(new Set())
-const allPicked = computed(() => items.value.length > 0 && items.value.every((j) => picked.value.has(j.id)))
+const filtered = ref(null) // rows left by the table's column filters, null when none (#126)
+const pickable = computed(() => filtered.value || items.value)
+const allPicked = computed(() => pickable.value.length > 0 && pickable.value.every((j) => picked.value.has(j.id)))
 function togglePick(id) {
   const next = new Set(picked.value)
   next.has(id) ? next.delete(id) : next.add(id)
   picked.value = next
 }
 function togglePickAll() {
-  picked.value = allPicked.value ? new Set() : new Set(items.value.map((j) => j.id))
+  picked.value = allPicked.value ? new Set() : new Set(pickable.value.map((j) => j.id))
 }
 
 const columns = [
@@ -79,8 +81,8 @@ const columns = [
   { key: 'name', label: 'Name', hideable: false },
   { key: 'status', label: 'Status' },
   { key: 'version', label: 'Version' },
-  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap' },
-  { key: 'lastPublishedDate', label: 'Last published', class: 'whitespace-nowrap' },
+  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap', type: 'date' },
+  { key: 'lastPublishedDate', label: 'Last published', class: 'whitespace-nowrap', type: 'date' },
   { key: 'description', label: 'Description' },
   { key: 'actions', label: '', hideable: false, class: 'text-right' },
 ]
@@ -113,7 +115,7 @@ const columns = [
           <p class="text-xs text-muted-foreground flex-1">{{ total.toLocaleString() }} found{{ searched.query ? ` for "${searched.query}"` : '' }}{{ searched.status ? `, status ${searched.status}` : '' }}.</p>
           <WatchButton v-if="items.length" bulk type="journey" :stack="stack" :items="items.filter((j) => picked.has(j.id))" />
         </div>
-        <DataTable :columns="columns" :rows="items" row-key="id" storage-key="journeys" empty-text="No journeys found.">
+        <DataTable :columns="columns" :rows="items" row-key="id" storage-key="journeys" empty-text="No journeys found." @shown="filtered = $event">
           <template #head-pick>
             <input type="checkbox" :checked="allPicked" aria-label="Select every journey shown" @change="togglePickAll" />
           </template>

@@ -3,7 +3,9 @@
 // Contact Builder's storage calls (utils/storageApi.js): the total per day, totals
 // by business unit, and every data extension with its rows and size, largest
 // first. When those calls fail, row counts can be read instead (RowCountStorage).
-// Kept per stack and BU while the tab is open (utils/pageCache.js).
+// Kept per stack and BU while the tab is open (utils/pageCache.js). The storage
+// calls answer only in the parent (Enterprise) BU (feedback #125): from a known
+// child BU the page says so without calling, with Try anyway.
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref } from 'vue'
 import { Loader2, RefreshCw, Download, FileSpreadsheet, Search } from 'lucide-vue-next'
@@ -11,8 +13,8 @@ import Button from '@/components/ui/button/Button.vue'
 import StackedBars from '@/components/results/StackedBars.vue'
 import RowCountStorage from '@/components/storage/RowCountStorage.vue'
 import { useStack, whenStack } from '@/composables/useStack.js'
-import { fetchCurrentBU } from '@/utils/sfmcApi.js'
-import { fetchStorageDetails, fetchStorageHistory, byBusinessUnit, formatGB, storageDetailsCsv } from '@/utils/storageApi.js'
+import { fetchCurrentBUDetails } from '@/utils/sfmcApi.js'
+import { fetchStorageDetails, fetchStorageHistory, byBusinessUnit, formatGB, storageDetailsCsv, storageFailureNotice } from '@/utils/storageApi.js'
 import { pageCacheKey, readPageCache, writePageCache } from '@/utils/pageCache.js'
 import { downloadWorkbook } from '@/utils/exportDoc.js'
 import { exportBaseName } from '@/utils/exportName.js'
@@ -24,7 +26,8 @@ const { stack } = useStack()
 const items = ref(null)
 const history = ref([])
 const loading = ref(false)
-const error = ref('')
+const error = ref(null) // { notice, detail, childBU } from storageFailureNotice
+let bu = null
 const historyError = ref('')
 const days = ref(30)
 const filter = ref('')
@@ -34,20 +37,26 @@ const savedAt = ref(0)
 let cacheKey = ''
 
 async function currentKey() {
-  const bu = await fetchCurrentBU(stack.value).catch(() => null)
+  bu = await fetchCurrentBUDetails(stack.value).catch(() => null)
   return pageCacheKey('de-storage', stack.value, bu?.accountId)
 }
 const save = () => { if (cacheKey) savedAt.value = writePageCache(cacheKey, { items: items.value, history: history.value, historyError: historyError.value, days: days.value }).savedAt }
 
-async function load() {
-  if (!stack.value) { error.value = 'Not connected to Marketing Cloud.'; return }
+async function load({ force = false } = {}) {
+  if (!stack.value) { error.value = { notice: 'Not connected to Marketing Cloud.', detail: '' }; return }
   loading.value = true
-  error.value = ''
+  error.value = null
   historyError.value = ''
   cacheKey = await currentKey()
+  if (bu?.isChild === true && !force) {
+    items.value = null
+    error.value = storageFailureNotice('', bu)
+    loading.value = false
+    return
+  }
   const [d, h] = await Promise.allSettled([fetchStorageDetails(stack.value), fetchStorageHistory(stack.value, days.value)])
   if (d.status === 'fulfilled') items.value = d.value.items
-  else { items.value = null; error.value = `Could not read data extension storage: ${d.reason?.message}` }
+  else { items.value = null; error.value = storageFailureNotice(d.reason, bu) }
   if (h.status === 'fulfilled') history.value = h.value
   else { history.value = []; historyError.value = `Could not read the storage history: ${h.reason?.message}` }
   loading.value = false
@@ -108,13 +117,18 @@ whenStack(async () => {
       <span v-if="savedAt && !loading" class="text-xs text-muted-foreground">Read {{ formatDateTime(new Date(savedAt).toISOString()) }}</span>
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="!items?.length" @click="exportCsv"><Download class="h-3.5 w-3.5 mr-1" /> CSV</Button>
       <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="!items?.length" @click="exportExcel"><FileSpreadsheet class="h-3.5 w-3.5 mr-1" /> Excel</Button>
-      <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load">
+      <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="loading" @click="load()">
         <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /><RefreshCw v-else class="h-3.5 w-3.5 mr-1" /> Refresh
       </Button>
     </div>
     <ProgressBar v-if="loading && !items" indeterminate label="Reading storage from SFMC" class="max-w-md" />
     <template v-if="error">
-      <p class="text-red-600 text-xs" role="alert">{{ error }}. Open Contact Builder once in SFMC, then Refresh, or read row counts below.</p>
+      <div class="rounded-md border px-3 py-2 text-xs space-y-1" role="alert"
+        :class="error.childBU === false ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300' : 'border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200'">
+        <p>{{ error.notice }}</p>
+        <p v-if="error.childBU === true"><button class="underline" :disabled="loading" @click="load({ force: true })">Try anyway</button></p>
+        <details v-if="error.detail"><summary class="cursor-pointer">Error from SFMC</summary><pre class="mt-1 whitespace-pre-wrap break-all">{{ error.detail }}</pre></details>
+      </div>
       <section class="rounded-lg border border-border bg-card p-3"><RowCountStorage /></section>
     </template>
 

@@ -23,22 +23,86 @@ const KINDS = {
 export const activityKindLabel = (kind) => KINDS[kind]?.label || 'Activity'
 export const recordKey = (kind, id) => `activity_${kind}_${String(id).toLowerCase()}`
 export const isActivityKey = (key) => /^activity_(query|script)_/.test(key || '')
+/** A stored record key whose id is not an activity id (feedback #130), to be removed. */
+export const isBadActivityKey = (key) => isActivityKey(key) && !looksLikeActivityId(String(key).replace(/^activity_(query|script)_/, ''))
 
 const ID = '[0-9a-zA-Z-]{6,}'
+// Path words that follow /scripts/ or /queries/ but are not ids (feedback #130: POST
+// .../scripts/validate was stored as a script named "validate").
+const VERBS = new Set(['validate', 'validation', 'run', 'start', 'stop', 'pause', 'perform', 'actions', 'action', 'search',
+  'copy', 'preview', 'test', 'execute', 'status', 'create', 'update', 'delete', 'list', 'query', 'queries', 'script', 'scripts'])
+/** Whether a path segment looks like an activity id: a GUID, or has a digit and is not a known verb. */
+export function looksLikeActivityId(id) {
+  const s = String(id || '')
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return true
+  return s.length >= 6 && /\d/.test(s) && /^[0-9a-zA-Z-]+$/.test(s) && !VERBS.has(s.toLowerCase())
+}
 // Automation Studio calls its REST API under AutomationStudioFuel3/fuelapi. The exact
-// paths its editor saves to are not confirmed, so any queries/<id> or scripts/<id>
-// path under AutomationStudioFuel3 counts (automation/v1/..., legacy/v1/..., with or
-// without "fuelapi"), as long as the method writes.
-const SAVE_RE = new RegExp(`^https://[^/]+\\.([^./]+)\\.marketingcloudapps\\.com/AutomationStudioFuel3/(?:[^?#]*/)?(queries|scripts)/(${ID})/?(?:[?#].*)?$`, 'i')
+// paths its editor saves to are not confirmed (feedback #129: a script save was not
+// caught), so any query or script segment followed by an id under AutomationStudioFuel3
+// counts, on marketingcloudapps.com or exacttarget.com hosts, as long as the method
+// writes. The diagnostic log below records what Automation Studio really sends.
+const QUERY_SEGMENTS = ['queries', 'query', 'queryactivities', 'querydefinitions', 'querydefinition']
+const SCRIPT_SEGMENTS = ['scripts', 'script', 'ssjs', 'ssjsactivities', 'ssjsactivity', 'scriptactivities']
+const SAVE_RE = new RegExp(`^https://[^/]+\\.([^./]+)\\.(?:marketingcloudapps|exacttarget)\\.com/(?:[^?#]*/)?AutomationStudioFuel3/(?:[^?#]*/)?(${[...QUERY_SEGMENTS, ...SCRIPT_SEGMENTS].join('|')})/(${ID})/?(?:[?#].*)?$`, 'i')
 const WRITE_METHODS = new Set(['PATCH', 'PUT', 'POST'])
 
 /** { kind, id, stack } for an Automation Studio save of a query or script, else null. */
 export function matchActivitySave(url, method) {
   if (!WRITE_METHODS.has(String(method || '').toUpperCase())) return null
   const m = String(url || '').match(SAVE_RE)
-  if (!m) return null
-  const kind = m[2].toLowerCase() === 'queries' ? 'query' : 'script'
+  if (!m || !looksLikeActivityId(m[3])) return null
+  const kind = QUERY_SEGMENTS.includes(m[2].toLowerCase()) ? 'query' : 'script'
   return { kind, id: m[3], stack: m[1].toLowerCase() }
+}
+
+// ── Diagnostic log (feedback #129) ───────────────────────────
+// The last requests that write from Automation Studio (and other SFMC paths that
+// mention automations, queries or scripts), so a user can tell us the real save URL
+// without a HAR. Kept in chrome.storage.session: method, URL without query values,
+// status, whether it matched, and the top-level keys of a JSON body (never values).
+export const ACTIVITY_LOG_KEY = 'toolkit_activityRequestLog'
+export const ACTIVITY_LOG_MAX = 25
+const LOG_HOST = /^https:\/\/[^/]+\.(?:marketingcloudapps|exacttarget)\.com\//i
+const LOG_PATH = /automationstudio|automation|script|ssjs|quer/i
+
+/** Whether a request belongs in the diagnostic log: it writes, on an SFMC host, on a relevant path. */
+export function isLoggedActivityRequest(url, method) {
+  const m = String(method || '').toUpperCase()
+  if (!m || m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false
+  const u = String(url || '')
+  if (!LOG_HOST.test(u)) return false
+  return LOG_PATH.test(u.split(/[?#]/)[0])
+}
+
+/** The URL with every query value removed (names kept), so no token is ever logged. */
+export function logSafeUrl(url) {
+  const u = String(url || '').split('#')[0]
+  const i = u.indexOf('?')
+  if (i < 0) return u
+  const names = u.slice(i + 1).split('&').filter(Boolean).map((p) => decodeURIComponentSafe(p.split('=')[0]))
+  return `${u.slice(0, i)}?${names.map((n) => `${n}=…`).join('&')}`
+}
+function decodeURIComponentSafe(s) { try { return decodeURIComponent(s) } catch { return s } }
+
+/** Top-level keys of a JSON body (at most 40), or null when there is none. */
+export function bodyKeys(body) {
+  if (!body || typeof body !== 'object') return null
+  return (Array.isArray(body) ? ['(array)'] : Object.keys(body)).slice(0, 40)
+}
+
+/** The log with `entry` added first, at most `max` entries. */
+export function addLogEntry(log, entry, max = ACTIVITY_LOG_MAX) {
+  return [entry, ...(Array.isArray(log) ? log : [])].slice(0, max)
+}
+
+/** The log as plain text for Copy. */
+export function logText(log) {
+  return (log || []).map((e) => [
+    new Date(e.at).toISOString(), e.method, e.status ?? '(no status yet)', e.url,
+    `matched=${e.matched ? `${e.matched.kind}:${e.matched.id}` : 'no'}`,
+    `body=${e.hasBody ? (e.keys ? `keys[${e.keys.join(',')}]` : 'not JSON') : 'none'}`,
+  ].join(' | ')).join('\n')
 }
 
 /** The JSON body of a webRequest requestBody (raw bytes or form fields), or null. */

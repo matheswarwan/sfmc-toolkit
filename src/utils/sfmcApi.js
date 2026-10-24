@@ -818,3 +818,22 @@ export async function fetchCurrentBU(stack) {
   // { name, accountId } for the BU badge; the raw response has more fields.
   return d?.name ? { name: d.name, accountId: d.accountId ?? d.id ?? d.memberId ?? null } : null
 }
+
+/**
+ * The current BU plus whether it is a child BU (feedback #125: DE storage works only
+ * from the parent). Which fields accounts/@current carries for the parent is not
+ * confirmed, so several likely ones are read; `isChild` is null when unknown.
+ */
+export async function fetchCurrentBUDetails(stack) {
+  const url = `https://mc.${stack}.exacttarget.com/cloud/fuelapi/platform-internal/v1/accounts/@current`
+  const d = await proxyFetch(url, 'GET', null)
+  if (!d || typeof d !== 'object') return null
+  const accountId = d.accountId ?? d.id ?? d.memberId ?? null
+  const parentId = d.parentId ?? d.parentAccountId ?? d.parentMid ?? d.parentMID ?? null
+  const enterpriseId = d.enterpriseId ?? d.enterpriseAccountId ?? d.eid ?? null
+  let isChild = null
+  if (parentId != null && Number(parentId) > 0) isChild = String(parentId) !== String(accountId)
+  else if (enterpriseId != null && accountId != null) isChild = String(enterpriseId) !== String(accountId)
+  else if (typeof d.accountType === 'string' && /enterprise/i.test(d.accountType)) isChild = false
+  return { name: d.name || '', accountId, parentId, enterpriseId, isChild }
+}

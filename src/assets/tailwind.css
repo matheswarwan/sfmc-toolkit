@@ -12,7 +12,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 242 76% 61%;
+    --primary: 207 100% 41%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
@@ -29,7 +29,7 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 242 76% 61%;
+    --ring: 207 100% 41%;
 
     --radius: 0.5rem;
   }
@@ -41,8 +41,8 @@
     --card-foreground: 210 40% 96%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 96%;
-    --primary: 242 76% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 207 90% 56%;
+    --primary-foreground: 222 47% 11%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 96%;
     --muted: 217 33% 17%;
@@ -53,9 +53,11 @@
     --destructive-foreground: 0 0% 100%;
     --border: 217 33% 25%;
     --input: 217 33% 25%;
-    --ring: 242 76% 65%;
+    --ring: 207 90% 56%;
   }
 
+  /* Unused (no theme offers it). Since feedback #127 the default primary is
+     Salesforce blue rgb(0, 112, 210) too, so this matches the default. */
   .theme-sfmc {
     --primary: 207 97% 42%;
     --primary-foreground: 0 0% 100%;

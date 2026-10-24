@@ -13,7 +13,7 @@ export const FEATURE_GROUPS = [
       { title: 'Descriptive file names', since: '2.0.4', detail: 'Downloads are named with the business unit, what they contain, and the date and time.' },
       { title: 'Storage by section', since: '2.0.4', how: 'Settings > Storage', detail: 'What takes the space, by section and business unit. Delete one part, or keep only the newest versions of each email.' },
       { title: 'App sessions started for you', how: 'Automatic (Settings > Connection)', detail: 'When the Toolkit opens and at least one SFMC app already has a session, the apps without one are started in the background, one at a time in a tab that closes itself (at most every 10 minutes). The connection menu shows each app as Ready or Starting, and Start missing does it now.' },
-      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder), Automation (Automations, Activities), Journey (Journeys, Journey Entry), Data (Data Extensions, Create DE, Where used, DE storage, Contacts) and Content (CloudPages, Saved Emails). Collapse the sidebar to icons with Collapse.' },
+      { title: 'Sections in the sidebar', detail: 'Queries (Saved queries, Run Query, Query Builder, Clean up SFMC), Data (Data Extensions, Create DE, Where used, DE storage, Contacts), Automation (Automation overview, Automations, Activities, Saved Activities, Templates), Journey (Journey overview, Journeys, Journey Entry) and Content (CloudPages, Saved Emails), in that order since 2.0.12. Collapse the sidebar to icons with Collapse.' },
       { title: 'Search everything', how: 'Ctrl+K (Cmd+K on a Mac), or Search in the top bar', detail: 'Jump to a section, open a saved query or a saved email, or start a search for data extensions, automations, activities, CloudPages or journey entry events.' },
       { title: 'Several tabs', detail: 'Each click on the toolbar icon opens a new tab, and Ctrl-click opens a section in a new tab. Two tabs never edit the same workspace or Query Builder query.' },
       { title: 'Results 50 at a time', detail: 'Every SFMC search (data extensions, automations, activities, journeys, journey entry events, CloudPages) shows the first 50 results; Load 50 more shows the next.' },
@@ -251,6 +251,8 @@ export const FEATURE_GROUPS = [
       { title: 'Running automations', since: '2.0.12', how: 'Open a running automation', detail: 'A moving bar shows "Running step X of Y" (or "Running" when SFMC does not say which step), and the running step is marked. It checks again every 5 seconds while the page is open and stops when the run ends. The Automations list and the Automation overview mark running automations too.' },
       { title: 'Icons', since: '2.0.12', detail: 'Statuses (running, scheduled, paused, stopped, error, complete) and activity types (Query, Script, Import, Extract, File Transfer, Send Email, Verification, Filter, Wait) have icons.' },
       { title: 'Progress bars', since: '2.0.12', detail: 'Long loads show a bar instead of text: Load all rows, row counts and folders, Where used steps, storage, overviews, Create DE, templates.' },
+      { title: 'Sort and filter tables', since: '2.0.12', how: 'Click a column header; Filters above the table', detail: 'Automations, Journeys, Data Extensions and CloudPages: click a header to sort ascending, again for descending, a third time to go back (remembered per table). Dates sort as dates, numbers as numbers. Filters adds a box per column; the table says how many of the loaded rows are shown, and Select all ticks only those. Both work on the rows loaded so far.' },
+      { title: 'Salesforce blue', since: '2.0.12', detail: 'Buttons, links and highlights use Salesforce blue, rgb(0, 112, 210), with a lighter blue in dark mode.' },
     ],
   },
   {
@@ -258,6 +260,7 @@ export const FEATURE_GROUPS = [
     title: 'Saved Activities',
     intro: 'Automation > Saved Activities. Turn saving on or off, and set how many versions to keep, in Settings.',
     items: [
+      { title: 'Not seeing your saves?', since: '2.0.12', how: 'Below the list on Saved Activities', detail: 'The last 25 requests that write from Automation Studio in this browser session, with method, URL (query values removed), status, whether it was recognised as a save and the names of the body fields (never their values). Copy them and send them with Feedback if a save was missed. Path words such as validate are no longer taken for an activity, and records made that way are removed.' },
       { title: 'Query and Script versions', since: '2.0.12', how: 'Automatic', detail: 'Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept, with the name, target data extension and update type.' },
       { title: 'Compare, copy, run', since: '2.0.12', how: 'Click an activity', detail: 'Pick a version to see its SQL or script, Changes to see it next to the version before, Copy, or Open in Run Query.' },
       { title: 'Restore a version', since: '2.0.12', how: 'Restore this version, then confirm', detail: 'Writes the SQL or script of that version back to the activity in Automation Studio. Nothing is run.' },
@@ -314,6 +317,7 @@ export const FEATURE_GROUPS = [
     items: [
       { title: 'Storage used', since: '2.0.10', detail: 'GB and rows used by data extensions, from the storage figures Contact Builder shows (SFMC samples them once a day), with the total per day over the last 30 or 90 days or year.' },
       { title: 'Largest data extensions', since: '2.0.10', detail: 'Every data extension with its folder, business unit, rows, GB, share of the total and retention, largest first (or most rows, or by name), 50 at a time. Totals by business unit. Filter by name, folder or business unit; download CSV or Excel.' },
+      { title: 'Parent business unit only', since: '2.0.12', detail: 'SFMC answers the storage figures only in the parent (Enterprise) business unit. From a child business unit the page says so (Try anyway still asks SFMC), with SFMC\'s error folded underneath, and offers row counts.' },
       { title: 'Row counts instead', since: '2.0.10', how: 'Shown when SFMC\'s storage figures cannot be read', detail: 'Lists every data extension in the business unit (up to 5,000, plus Shared and Synchronized ones) and reads each one\'s row count, 10 at a time with Stop, largest first, with totals per folder and CSV.' },
     ],
   },

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const sfmcFetch = vi.fn()
 vi.mock('../sfmcApi.js', () => ({ sfmcFetch: (...a) => sfmcFetch(...a) }))
-const { fetchStorageDetails, fetchStorageHistory, byBusinessUnit, mdY, formatGB, storageDetailsCsv } = await import('../storageApi.js')
+const { fetchStorageDetails, fetchStorageHistory, byBusinessUnit, mdY, formatGB, storageDetailsCsv, storageFailureNotice, PARENT_BU_ONLY } = await import('../storageApi.js')
 
 beforeEach(() => sfmcFetch.mockReset())
 
@@ -37,5 +37,26 @@ describe('SFMC error pages (fetchProxy errorText)', () => {
     expect(errorText('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0"><html><head><title>Not Authorized</title></head><body><h1>403</h1></body></html>')).toBe('Not Authorized')
     expect(errorText('<html><body><h1><span>403</span> Forbidden</h1></body></html>')).toBe('403 Forbidden')
     expect(errorText('{"message":"x"}')).toBe('{"message":"x"}')
+  })
+})
+
+describe('storage from a child BU (feedback #125)', () => {
+  it('tells a child BU to switch to the parent and keeps the raw error', () => {
+    const r = storageFailureNotice(new Error('403 Forbidden'), { name: 'Acme Child', isChild: true })
+    expect(r.childBU).toBe(true)
+    expect(r.notice).toMatch(/"Acme Child", a child business unit/)
+    expect(r.notice).toContain(PARENT_BU_ONLY)
+    expect(r.detail).toBe('403 Forbidden')
+  })
+  it('in the parent BU, points at Contact Builder instead', () => {
+    const r = storageFailureNotice(new Error('500'), { name: 'Acme', isChild: false })
+    expect(r.childBU).toBe(false)
+    expect(r.notice).not.toMatch(/child/)
+  })
+  it('when the BU is unknown, names both causes', () => {
+    const r = storageFailureNotice('boom', null)
+    expect(r.childBU).toBeNull()
+    expect(r.notice).toMatch(/parent \(Enterprise\) business unit/)
+    expect(r.detail).toBe('boom')
   })
 })

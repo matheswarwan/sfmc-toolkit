@@ -19,7 +19,7 @@ describe('paletteEntries', () => {
     const r = paletteEntries('orders', sections, storage)
     expect(r.filter((e) => e.kind === 'query')).toEqual([{ kind: 'query', label: 'Join', hint: 'Query Builder', to: { path: '/queries/builder', query: { id: 'sql_2' } } }])
     expect(r.find((e) => e.kind === 'email').to).toEqual({ path: '/emails/email_7' })
-    expect(r.filter((e) => e.kind === 'search').map((e) => e.to.path)).toEqual(['/data-extensions', '/automations', '/activities', '/cloudpages', '/journeys', '/journey-entry'])
+    expect(r.filter((e) => e.kind === 'search').map((e) => e.to.path)).toEqual(['/data-extensions', '/automations', '/activities', '/journeys', '/journey-entry', '/cloudpages'])
     expect(r.find((e) => e.kind === 'search').to.query).toEqual({ q: 'orders' })
   })
 

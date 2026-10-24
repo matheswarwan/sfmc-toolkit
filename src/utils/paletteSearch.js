@@ -5,9 +5,9 @@ export const SEARCH_ACTIONS = [
   { path: '/data-extensions', label: 'Data Extensions' },
   { path: '/automations', label: 'Automations' },
   { path: '/activities', label: 'Query activities' },
-  { path: '/cloudpages', label: 'CloudPages' },
   { path: '/journeys', label: 'Journeys' },
   { path: '/journey-entry', label: 'Journey entry events' },
+  { path: '/cloudpages', label: 'CloudPages' },
 ]
 
 const MAX_RECORDS = 8

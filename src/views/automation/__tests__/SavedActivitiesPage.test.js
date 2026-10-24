@@ -7,21 +7,22 @@ vi.mock('@/utils/sfmcApi.js', () => ({
   logInfo: () => {},
   sfmcFetch: vi.fn(async (url, method, body) => {
     calls.push([method, url, body])
-    return method === 'GET' ? { queryDefinitionId: 'Q1', name: 'Daily', queryText: 'SELECT now', targetName: 'T', modifiedDate: 'x' } : {}
+    return method === 'GET' ? { queryDefinitionId: 'Q1ABC123', name: 'Daily', queryText: 'SELECT now', targetName: 'T', modifiedDate: 'x' } : {}
   }),
 }))
 vi.mock('@/components/results/CodeView.vue', () => ({ default: { props: ['code', 'lang'], template: '<pre class="code">{{ code }}</pre>' } }))
 
-const KEY = 'activity_query_q1'
+const KEY = 'activity_query_q1abc123'
 const store = {
   [KEY]: {
-    id: KEY, kind: 'query', activityId: 'Q1', name: 'Daily load', stack: 's13', businessUnit: { name: 'Main BU' },
+    id: KEY, kind: 'query', activityId: 'Q1ABC123', name: 'Daily load', stack: 's13', businessUnit: { name: 'Main BU' },
     versions: [
       { versionId: 'v_3_s', savedAt: 3, source: 'saved', name: 'Daily load', content: 'SELECT a\nFROM t\nWHERE x = 2', targetName: 'T', stack: 's13' },
       { versionId: 'v_2_b', savedAt: 2, source: 'before-save', name: 'Daily load', content: 'SELECT a\nFROM t\nWHERE x = 1', targetName: 'T', stack: 's13' },
     ],
   },
-  activity_script_s1: { id: 'activity_script_s1', kind: 'script', activityId: 'S1', name: 'Cleanup script', stack: 's13', versions: [{ versionId: 'v_1_s', savedAt: 1, content: 'Platform.Load("core","1")' }] },
+  activity_script_s1abc123: { id: 'activity_script_s1abc123', kind: 'script', activityId: 'S1ABC123', name: 'Cleanup script', stack: 's13', versions: [{ versionId: 'v_1_s', savedAt: 1, content: 'Platform.Load("core","1")' }] },
+  activity_script_validate: { id: 'activity_script_validate', kind: 'script', activityId: 'validate', name: 'validate', stack: 's13', versions: [{ versionId: 'v_0_s', savedAt: 0, content: 'x' }] },
   email_1: { assetId: 1 },
 }
 globalThis.chrome = {
@@ -29,7 +30,7 @@ globalThis.chrome = {
     local: {
       get: (k, cb) => { const r = k === null ? store : { [k]: store[k] }; cb ? cb(r) : Promise.resolve(r) },
       set: (o, cb) => { Object.assign(store, o); cb?.() },
-      remove: (k, cb) => { delete store[k]; cb?.() },
+      remove: (k, cb) => { [].concat(k).forEach((x) => delete store[x]); cb?.() },
     },
     onChanged: { addListener() {}, removeListener() {} },
   },
@@ -61,6 +62,8 @@ describe('Saved Activities (feedback #122)', () => {
     expect(names[0]).toContain('Daily load')
     expect(names[0]).toContain('2 versions')
     expect(names[1]).toContain('Cleanup script')
+    expect(names).toHaveLength(2)
+    expect(store.activity_script_validate).toBeUndefined() // feedback #130
     await w.find('input[type="search"]').setValue('platform.load')
     expect(w.findAll('li')).toHaveLength(1)
     w.unmount()
@@ -78,9 +81,9 @@ describe('Saved Activities (feedback #122)', () => {
     expect(w.text()).toContain('Replace the SQL of "Daily load" in Automation Studio with v1?')
     await button(w, 'Restore').trigger('click')
     await flushPromises()
-    const url = 'https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/automation/v1/queries/Q1'
+    const url = 'https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/automation/v1/queries/Q1ABC123'
     expect(calls[0]).toEqual(['GET', url, undefined])
-    expect(calls[1]).toEqual(['PATCH', url, { queryDefinitionId: 'Q1', name: 'Daily load', queryText: 'SELECT a\nFROM t\nWHERE x = 1', targetName: 'T' }])
+    expect(calls[1]).toEqual(['PATCH', url, { queryDefinitionId: 'Q1ABC123', name: 'Daily load', queryText: 'SELECT a\nFROM t\nWHERE x = 1', targetName: 'T' }])
     expect(w.text()).toContain('Restored in Automation Studio.')
     await button(w, 'Open in Run Query').trigger('click')
     await flushPromises()

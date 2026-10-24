@@ -128,9 +128,9 @@ const columns = [
   { key: 'status', label: 'Status' },
   { key: 'id', label: 'Asset ID' },
   { key: 'categoryName', label: 'Category' },
-  { key: 'url', label: 'URL' },
-  { key: 'path', label: 'Folder path' },
-  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap' },
+  { key: 'url', label: 'URL', sortValue: (r) => urls[r.id]?.url || null },
+  { key: 'path', label: 'Folder path', sortValue: (r) => (paths[r.id]?.status === 'ok' ? paths[r.id].path : null) },
+  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap', type: 'date' },
 ]
 </script>
 

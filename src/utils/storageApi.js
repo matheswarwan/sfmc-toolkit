@@ -46,6 +46,22 @@ export async function fetchStorageHistory(stack, days = 30, now = new Date()) {
   })).filter((d) => d.key).sort((a, b) => a.key.localeCompare(b.key))
 }
 
+// Feedback #125: storageDetails and storageHistory answer only in the parent
+// (Enterprise) business unit; from a child BU they fail.
+export const PARENT_BU_ONLY = 'Data extension storage is only available from the parent (Enterprise) business unit. Switch to it in SFMC, then click Refresh.'
+
+/**
+ * What to tell the user when the storage calls fail: `{ notice, detail }`. In a
+ * child BU (or when the BU is unknown) the likely cause is the BU, so the notice
+ * says to switch; the raw error is kept for a folded details block.
+ */
+export function storageFailureNotice(error, bu) {
+  const detail = String(error?.message || error || '')
+  if (bu?.isChild === true) return { notice: `You are in ${bu.name ? `"${bu.name}", ` : ''}a child business unit. ${PARENT_BU_ONLY}`, detail, childBU: true }
+  if (bu?.isChild === false) return { notice: 'Could not read data extension storage. Open Contact Builder once in SFMC, then click Refresh, or read row counts below.', detail, childBU: false }
+  return { notice: 'Could not read data extension storage. It is only available from the parent (Enterprise) business unit: if you are in a child BU, switch to the parent in SFMC, then click Refresh. Otherwise open Contact Builder once in SFMC, then Refresh.', detail, childBU: null }
+}
+
 /** Totals by business unit, largest first. */
 export function byBusinessUnit(items) {
   const m = new Map()

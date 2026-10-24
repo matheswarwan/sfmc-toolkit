@@ -18,6 +18,7 @@ import { fetchCurrentBusinessUnit } from './businessUnit.js'
 import {
   ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS,
   matchActivitySave, decodeRequestBody, pickActivity, addVersions, makeVersion, recordKey, activityUrl,
+  ACTIVITY_LOG_KEY, ACTIVITY_LOG_MAX, isLoggedActivityRequest, logSafeUrl, bodyKeys, addLogEntry,
 } from '../utils/activityVersions.js'
 
 // One capture at a time per activity, so two quick saves keep their order.
@@ -118,4 +119,46 @@ async function tagActivityBusinessUnit(key, stack) {
   } catch (e) {
     console.warn('[Toolkit:SW] Could not tag the business unit:', e?.message)
   }
+}
+
+// ── Diagnostic log of Automation Studio writes (feedback #129) ──────────────
+// webRequest.onBeforeRequest / onCompleted / onErrorOccurred on SFMC hosts; only
+// requests that write on a path about automations, queries or scripts are kept
+// (utils/activityVersions.js isLoggedActivityRequest). Never body values.
+let logWrite = Promise.resolve()
+const logged = new Set() // requestIds in the log, waiting for a status
+
+function updateLog(change) {
+  logWrite = logWrite.then(async () => {
+    const log = (await storageGet('session', ACTIVITY_LOG_KEY))[ACTIVITY_LOG_KEY] || []
+    await storageSet('session', { [ACTIVITY_LOG_KEY]: change(log) })
+  }).catch((e) => console.warn('[Toolkit:SW] Could not update the Automation Studio request log:', e?.message))
+  return logWrite
+}
+
+export function logActivityRequest(details) {
+  if (!details || details.tabId === -1) return // the extension's own requests
+  if (!isLoggedActivityRequest(details.url, details.method)) return
+  const body = decodeRequestBody(details.requestBody)
+  const hasBody = !!(details.requestBody?.raw?.length || details.requestBody?.formData)
+  const hit = matchActivitySave(details.url, details.method)
+  logged.add(details.requestId)
+  if (logged.size > ACTIVITY_LOG_MAX * 4) logged.delete(logged.values().next().value)
+  return updateLog((log) => addLogEntry(log, {
+    requestId: details.requestId,
+    at: details.timeStamp || Date.now(),
+    method: String(details.method || '').toUpperCase(),
+    url: logSafeUrl(details.url),
+    status: null,
+    matched: hit ? { kind: hit.kind, id: hit.id } : null,
+    hasBody,
+    keys: bodyKeys(body),
+  }))
+}
+
+export function logActivityRequestDone(details) {
+  if (!details || !logged.has(details.requestId)) return
+  logged.delete(details.requestId)
+  const status = details.error ? `failed: ${details.error}` : details.statusCode
+  return updateLog((log) => log.map((e) => (e.requestId === details.requestId ? { ...e, status } : e)))
 }

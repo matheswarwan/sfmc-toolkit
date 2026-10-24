@@ -71,7 +71,9 @@ const shown = computed(() => (hideSystem.value ? results.value.filter((d) => !is
 const canLoadMore = computed(() => searched.value !== null && merged.value.hasMore)
 // Exports cover the ticked rows when there are any, else everything shown.
 const exportList = computed(() => (picked.value.size ? shown.value.filter((d) => picked.value.has(d.id)) : shown.value))
-const allPicked = computed(() => shown.value.length > 0 && shown.value.every((d) => picked.value.has(d.id)))
+const filtered = ref(null) // rows left by the table's column filters, null when none (#126)
+const pickable = computed(() => filtered.value || shown.value)
+const allPicked = computed(() => pickable.value.length > 0 && pickable.value.every((d) => picked.value.has(d.id)))
 
 async function loadLocalPage(id) {
   const r = await searchLocalDEs(stack.value, searched.value, localPage.value + 1)
@@ -135,7 +137,7 @@ function togglePick(id) {
   picked.value = next
 }
 function togglePickAll() {
-  picked.value = allPicked.value ? new Set() : new Set(shown.value.map((d) => d.id))
+  picked.value = allPicked.value ? new Set() : new Set(pickable.value.map((d) => d.id))
 }
 
 function refresh() {
@@ -320,10 +322,10 @@ const columns = [
   { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
   { key: 'customerKey', label: 'Customer key' },
-  { key: 'path', label: 'Folder' },
-  { key: 'rows', label: 'Rows', class: 'text-right whitespace-nowrap' },
-  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap' },
-  { key: 'createdDate', label: 'Created', class: 'whitespace-nowrap' },
+  { key: 'path', label: 'Folder', sortValue: (r) => (paths[r.id]?.status === 'ok' ? paths[r.id].path || '(root)' : null) },
+  { key: 'rows', label: 'Rows', class: 'text-right whitespace-nowrap', sortValue: (r) => (counts[r.id]?.status === 'ok' ? counts[r.id].count : null) },
+  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap', type: 'date' },
+  { key: 'createdDate', label: 'Created', class: 'whitespace-nowrap', type: 'date' },
   { key: 'id', label: 'ID' },
   { key: 'actions', label: '', hideable: false, class: 'text-right' },
 ]
@@ -381,7 +383,7 @@ const columns = [
           <span v-else-if="sharedError" class="ml-1 text-amber-700 dark:text-amber-400">Shared and Synchronized data extensions could not be loaded ({{ sharedError }}).</span>
           <template v-if="picked.size"> {{ picked.size }} ticked for download. <button class="text-primary hover:underline" @click="picked = new Set()">Clear</button></template>
         </p>
-        <DataTable :columns="columns" :rows="shown" row-key="id" storage-key="data-extensions" :expanded="expanded" empty-text="No data extensions found.">
+        <DataTable :columns="columns" :rows="shown" row-key="id" storage-key="data-extensions" :expanded="expanded" empty-text="No data extensions found." @shown="filtered = $event">
           <template #head-pick>
             <input type="checkbox" :checked="allPicked" :indeterminate="picked.size > 0 && !allPicked" aria-label="Tick every data extension shown" @change="togglePickAll" />
           </template>

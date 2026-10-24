@@ -19,6 +19,7 @@ import { showToast } from '@/composables/useToast.js'
 import { searchAutomations, loadMoreAutomations } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
 import { automationsDoc } from '@/utils/automationDoc.js'
+import { automationStatusName } from '@/utils/watches.js'
 
 const router = useRouter()
 const { stack } = useStack()
@@ -64,14 +65,16 @@ async function loadMore() {
 
 // ── Download one, several or all shown (feedback #40) ───
 const picked = ref(new Set())
-const allPicked = computed(() => entries.value.length > 0 && entries.value.every((a) => picked.value.has(a.id)))
+const filtered = ref(null) // rows left by the table's column filters, null when none (#126)
+const pickable = computed(() => filtered.value || entries.value)
+const allPicked = computed(() => pickable.value.length > 0 && pickable.value.every((a) => picked.value.has(a.id)))
 function togglePick(id) {
   const next = new Set(picked.value)
   next.has(id) ? next.delete(id) : next.add(id)
   picked.value = next
 }
 function togglePickAll() {
-  picked.value = allPicked.value ? new Set() : new Set(entries.value.map((a) => a.id))
+  picked.value = allPicked.value ? new Set() : new Set(pickable.value.map((a) => a.id))
 }
 const docProgress = ref(null) // { done, total } while the export loads
 async function buildDoc() {
@@ -89,10 +92,10 @@ useRouteSearch('/automations', (q) => { query.value = q; whenStack(search) })
 const columns = [
   { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
-  { key: 'status', label: 'Status' },
-  { key: 'lastRunStatus', label: 'Last run' },
-  { key: 'lastRunTime', label: 'Last run at', class: 'whitespace-nowrap' },
-  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap' },
+  { key: 'status', label: 'Status', sortValue: (r) => automationStatusName(r.status) },
+  { key: 'lastRunStatus', label: 'Last run', sortValue: (r) => automationStatusName(r.lastRunStatus) },
+  { key: 'lastRunTime', label: 'Last run at', class: 'whitespace-nowrap', type: 'date' },
+  { key: 'modifiedDate', label: 'Modified', class: 'whitespace-nowrap', type: 'date' },
   { key: 'actions', label: '', hideable: false, class: 'text-right' },
 ]
 </script>
@@ -123,7 +126,7 @@ const columns = [
           <DownloadMenu v-if="entries.length" :get-doc="buildDoc" :file-name="picked.size === 1 ? entries.find((a) => picked.has(a.id))?.name || 'automation' : `automations-${searched || 'all'}`"
             :label="picked.size ? `Download ${picked.size}` : `Download all ${entries.length}`" />
         </div>
-        <DataTable :columns="columns" :rows="entries" row-key="id" storage-key="automations" empty-text="No automations found.">
+        <DataTable :columns="columns" :rows="entries" row-key="id" storage-key="automations" empty-text="No automations found." @shown="filtered = $event">
           <template #head-pick>
             <input type="checkbox" :checked="allPicked" aria-label="Select every automation shown" @change="togglePickAll" />
           </template>
