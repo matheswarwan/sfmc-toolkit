@@ -248,6 +248,7 @@ export const FEATURE_GROUPS = [
     title: 'Data Extensions',
     intro: 'Data > Data Extensions.',
     items: [
+      { title: 'View rows', since: '2.0.12', how: 'View rows on a data extension, or above its fields', detail: 'Reads the rows straight from SFMC (no query activity, no results data extension): 50 at a time, or Load all up to 50,000 with Stop. Filter the loaded rows, hide columns, and download CSV, Excel or Markdown, or copy for AI. Shared data extensions may only be readable from the business unit that owns them.' },
       { title: 'Find data extensions', detail: 'Search by name, or any part of it ("120" finds BS_Klaviyo_120D_Snapshot; names with spaces or dashes too) or list all, newest first, 50 at a time (Load 50 more for the next). SFMC on a row opens the data extension in Contact Builder. Data extensions under Shared Items and Synchronized Data Extensions are added as soon as they are found, tagged, in date order. Hide system DEs (such as QueryStudioResults) with one tick.' },
       { title: 'Download chosen data extensions', how: 'Tick rows, then Download or Excel', detail: 'With rows ticked, Download (Markdown, Word, HTML) and Excel cover only those data extensions, with their fields. With none ticked they cover everything shown.' },
       { title: 'Row counts', since: '2.0.4', how: 'Get count on a row, or Get all counts', detail: 'How many rows each data extension holds; also in Download and Excel.' },

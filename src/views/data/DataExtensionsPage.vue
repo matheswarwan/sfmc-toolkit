@@ -4,11 +4,12 @@
 // query, export to Excel or a document.
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink } from 'lucide-vue-next'
+import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink, Rows3 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
 import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import DERowsViewer from '@/components/data/DERowsViewer.vue'
 import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
@@ -27,6 +28,9 @@ const { stack } = useStack()
 const usage = useUsage()
 const whereUsed = (de) => usage.start(stack.value, { kind: 'de', de })
 const whereFieldUsed = (de, field) => usage.start(stack.value, { kind: 'field', de, field })
+
+// The DE whose rows are open in DERowsViewer (feedback #117).
+const rowsDE = ref(null)
 
 const query = ref('')
 const searched = ref(null) // the query of the results shown, null before any search
@@ -404,6 +408,9 @@ const columns = [
           <template #cell-actions="{ row }">
             <a :href="deContactBuilderUrl(stack, row)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3"
               :title="row.sourceType ? 'Open in Contact Builder (from the business unit that owns it)' : 'Open in Contact Builder'">SFMC <ExternalLink class="h-3 w-3" /></a>
+            <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Read this data extension's rows (no query is run)" @click="rowsDE = row">
+              <Rows3 class="h-3.5 w-3.5" /> View rows
+            </button>
             <button class="inline-flex items-center gap-1 text-primary hover:underline whitespace-nowrap mr-3" title="Query activities and automations that use this data extension" @click="whereUsed(row)">
               <Network class="h-3.5 w-3.5" /> Where used
             </button>
@@ -417,6 +424,7 @@ const columns = [
             <div v-else-if="fields[row.id]?.status === 'ok'">
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="font-semibold">{{ fields[row.id].list.length }} {{ fields[row.id].list.length === 1 ? 'field' : 'fields' }}</span>
+                <button class="inline-flex items-center gap-1 text-primary hover:underline" @click="rowsDE = row"><Rows3 class="h-3.5 w-3.5" /> View rows</button>
                 <button class="text-primary hover:underline" @click="tickAll(row)">
                   {{ fields[row.id].list.length && fields[row.id].list.every((f) => isTicked(row, f.name)) ? 'Untick all' : 'Tick all for a query' }}
                 </button>
@@ -457,6 +465,8 @@ const columns = [
       </div>
       <pre class="max-h-40 overflow-auto rounded-md bg-slate-900 text-slate-100 p-2 text-[11px]">{{ selectedSql }}</pre>
     </div>
+
+    <DERowsViewer v-if="rowsDE" :key="rowsDE.id" :stack="stack" :de="rowsDE" @close="rowsDE = null" />
 
     <!-- Excel export -->
     <div v-if="exportOpen" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">

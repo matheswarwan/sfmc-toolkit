@@ -36,6 +36,7 @@ function close() {
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
         <li><strong class="block">Create DE</strong><span class="text-muted-foreground">Data > Create DE: paste or drop a sample (CSV, TSV, JSON, Parquet, Excel) or start empty, check the guessed fields, pick the folder and retention, and create the data extension.</span></li>
+        <li><strong class="block">View a data extension's rows</strong><span class="text-muted-foreground">Data Extensions: View rows reads the rows straight from SFMC, no query needed. Load more or all (up to 50,000), filter, hide columns, and download CSV, Excel or Markdown.</span></li>
         <li><strong class="block">Save as query activity</strong><span class="text-muted-foreground">From Run Query, create a named Query Activity in the folder you pick, writing to a new or existing data extension. Nothing is run or scheduled.</span></li>
         <li><strong class="block">See where results went</strong><span class="text-muted-foreground">After a run, the results data extension and Query Activity are named, with links.</span></li>
         <li><strong class="block">Query Builder</strong><span class="text-muted-foreground">Drag data extensions to reorder or swap them, and the search finds every data extension.</span></li>

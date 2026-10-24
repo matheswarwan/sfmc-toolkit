@@ -19,6 +19,8 @@ const props = defineProps({
   canLoadMore: { type: Boolean, default: false },
   loadingMore: { type: Boolean, default: false },
   loadAllLimit: { type: Number, default: 50000 },
+  // File names start with this (Run Query: query-<name>; DE rows: de-<name>).
+  filePrefix: { type: String, default: 'query' },
 })
 const emit = defineEmits(['load-more', 'load-all'])
 
@@ -40,7 +42,7 @@ async function saveBlob(content, type, ext) {
   const url  = URL.createObjectURL(blob)
   const a    = document.createElement('a')
   a.href     = url
-  a.download = `${await exportBaseName(stack.value, `query-${props.filename || 'results'}`)}.${ext}`
+  a.download = `${await exportBaseName(stack.value, `${props.filePrefix}-${props.filename || 'results'}`)}.${ext}`
   a.click()
   URL.revokeObjectURL(url)
 }
