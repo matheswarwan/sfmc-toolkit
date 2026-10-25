@@ -62,7 +62,9 @@ function completeJoinConditions(join) {
   return (join?.conditions || []).filter((c) => c && c.leftField && c.rightField)
 }
 
-function conditionExpr(c, leftAlias, rightAlias) {
+function conditionExpr(c, leftAlias, rightAlias, aliasById) {
+  // A condition may name a third, earlier table (drawn on the canvas).
+  if (c.leftDeId && aliasById?.get(c.leftDeId)) leftAlias = aliasById.get(c.leftDeId)
   return `${qualifyColumn(leftAlias, c.leftField)} ${c.operator || '='} ${qualifyColumn(rightAlias, c.rightField)}`
 }
 
@@ -77,14 +79,14 @@ function connectorFor(c, defaultComb) {
  * `(a AND b) OR c` by precedence) is expressible.
  * Returns null when there is no complete condition (never invents SubscriberKey).
  */
-export function buildOnExpression(join, leftAlias, rightAlias) {
+export function buildOnExpression(join, leftAlias, rightAlias, aliasById) {
   if (join?.rawOn && join.onClause && join.onClause.trim()) return join.onClause.trim()
   const conditions = completeJoinConditions(join)
   if (conditions.length) {
     const defaultComb = join.combinator === 'OR' ? 'OR' : 'AND'
     return conditions
-      .map((c, i) => (i === 0 ? conditionExpr(c, leftAlias, rightAlias)
-        : `${connectorFor(c, defaultComb)} ${conditionExpr(c, leftAlias, rightAlias)}`))
+      .map((c, i) => (i === 0 ? conditionExpr(c, leftAlias, rightAlias, aliasById)
+        : `${connectorFor(c, defaultComb)} ${conditionExpr(c, leftAlias, rightAlias, aliasById)}`))
       .join(' ')
   }
   if (join?.onClause && join.onClause.trim()) return join.onClause.trim()
@@ -95,14 +97,14 @@ export function buildOnExpression(join, leftAlias, rightAlias) {
  * Build the ON block for a join, placing each additional condition on its own
  * indented line for readability. Returns null when no complete condition.
  */
-export function buildOnBlock(join, leftAlias, rightAlias) {
+export function buildOnBlock(join, leftAlias, rightAlias, aliasById) {
   if (join?.rawOn && join.onClause && join.onClause.trim()) return join.onClause.trim()
   const conditions = completeJoinConditions(join)
   if (conditions.length) {
     const defaultComb = join.combinator === 'OR' ? 'OR' : 'AND'
     return conditions
-      .map((c, i) => (i === 0 ? conditionExpr(c, leftAlias, rightAlias)
-        : `\n    ${connectorFor(c, defaultComb)} ${conditionExpr(c, leftAlias, rightAlias)}`))
+      .map((c, i) => (i === 0 ? conditionExpr(c, leftAlias, rightAlias, aliasById)
+        : `\n    ${connectorFor(c, defaultComb)} ${conditionExpr(c, leftAlias, rightAlias, aliasById)}`))
       .join('')
   }
   if (join?.onClause && join.onClause.trim()) return join.onClause.trim()
@@ -269,7 +271,7 @@ export function buildSqlFromSelections(selectedDEs, joins = [], where = null, op
     const leftAlias =
       (join?.leftDeId && aliasById.get(join.leftDeId)) || aliasOf(selectedDEs[i - 1], i - 1)
     const rightAlias = aliasOf(de, i)
-    const onExpr = buildOnBlock(join || {}, leftAlias, rightAlias)
+    const onExpr = buildOnBlock(join || {}, leftAlias, rightAlias, aliasById)
     const tableExpr = `${formatDEForSql(de.name, de.sourceType)} AS ${rightAlias}`
     if (onExpr) {
       lines.push(`${joinType} ${tableExpr} ON ${onExpr}`)

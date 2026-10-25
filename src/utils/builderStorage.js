@@ -18,16 +18,17 @@ export function defaultQueryOptions() {
 }
 
 export function buildBuilderState({
-  selectedDEs, joins, where, visualMode, graphNodes, graphEdges, queryOptions,
+  selectedDEs, joins, where, visualMode, layout, queryOptions,
 } = {}) {
   return {
+    // 2: the visual canvas draws selectedDEs/joins, with card positions in `layout`.
+    version: 2,
     selectedDEs: plainClone(selectedDEs) || [],
     joins: plainClone(joins) || [],
     where: plainClone(where) || { combinator: 'AND', conditions: [] },
     queryOptions: plainClone(queryOptions) || defaultQueryOptions(),
     visualMode: !!visualMode,
-    graphNodes: plainClone(graphNodes) || [],
-    graphEdges: plainClone(graphEdges) || [],
+    layout: plainClone(layout) || {},
   }
 }
 

@@ -4,12 +4,13 @@ import { LayoutGrid, List, Check, Loader2, PanelRight, PanelBottom, EyeOff, Code
 import DEBrowser from './DEBrowser.vue'
 import SelectedDEsPanel from './SelectedDEsPanel.vue'
 import SqlOutput from './SqlOutput.vue'
-import JoinCanvas from './JoinCanvas.vue'
+import BuilderCanvas from './canvas/BuilderCanvas.vue'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
 import { useStack } from '@/composables/useStack.js'
 import { saveBuilderRecord, defaultQueryOptions } from '@/utils/builderStorage.js'
-import { resolveGraphTables, fieldOptionsFromTables } from '@/utils/sqlBuilder.js'
+import { resolveSelectionTables, fieldOptionsFromTables } from '@/utils/sqlBuilder.js'
+import { graphToModel } from '@/utils/builderOrder.js'
 
 const props = defineProps({
   // A saved Query Builder record to open, or null for a new query.
@@ -24,16 +25,14 @@ const joins = ref([])
 const where = ref({ combinator: 'AND', conditions: [] })
 const queryOptions = ref(defaultQueryOptions())
 const generatedSql = ref('')
-const graphNodes = ref([])
-const graphEdges = ref([])
+// Card positions on the visual canvas, by DE id (the canvas draws the List model).
+const layout = ref({})
 const recordId = ref(null)
 const restoreNotice = ref('')
 
 // Visual-mode "Filters & options" drawer.
 const showVisualExtras = ref(false)
-const visualFieldOptions = computed(() =>
-  fieldOptionsFromTables(resolveGraphTables(graphNodes.value, graphEdges.value))
-)
+const visualFieldOptions = computed(() => fieldOptionsFromTables(resolveSelectionTables(selectedDEs.value)))
 
 // Autosave state
 const AUTOSAVE_IDLE_MS = 3000
@@ -43,7 +42,7 @@ let restoring = false
 let autosaveTimer = null
 
 const selectedPanelRef = ref(null)
-const joinCanvasRef = ref(null)
+const canvasRef = ref(null)
 
 // SQL panel docking, remembered per mode: list defaults right, visual defaults bottom.
 // The panel starts hidden (feedback #61): Generate SQL opens it, Hide SQL closes it.
@@ -141,8 +140,15 @@ function loadRecord(id) {
       restoreNotice.value = 'This saved query has no data extensions to restore.'
     }
     visualMode.value = !!bs.visualMode
-    graphNodes.value = bs.graphNodes || []
-    graphEdges.value = bs.graphEdges || []
+    layout.value = bs.layout && typeof bs.layout === 'object' ? { ...bs.layout } : {}
+    // Records from before the shared model kept the visual joins in a graph of their own.
+    if (!bs.layout && (bs.graphNodes?.length || bs.graphEdges?.length)) {
+      const m = graphToModel(bs.selectedDEs || [], bs.graphNodes || [], bs.graphEdges || [])
+      layout.value = m.layout
+      if (bs.visualMode) applyBuilderState({ ...bs, selectedDEs: m.selectedDEs, joins: m.joins })
+      else applyBuilderState(bs)
+      return
+    }
     applyBuilderState(bs)
   })
 }
@@ -179,8 +185,7 @@ async function doAutosave() {
         where: where.value,
         queryOptions: queryOptions.value,
         visualMode: visualMode.value,
-        graphNodes: graphNodes.value,
-        graphEdges: graphEdges.value,
+        layout: layout.value,
       },
     })
     if (id !== recordId.value) emit('saved', id)
@@ -195,7 +200,7 @@ async function doAutosave() {
 
 // Debounced autosave: fires after AUTOSAVE_IDLE_MS of no changes.
 watch(
-  [selectedDEs, joins, where, queryOptions, generatedSql, visualMode, graphNodes, graphEdges],
+  [selectedDEs, joins, where, queryOptions, generatedSql, visualMode, layout],
   () => {
     if (restoring) return
     if (!selectedDEs.value.length && !recordId.value) return
@@ -220,18 +225,17 @@ function onManualSave(id) {
   recordId.value = id
 }
 
-async function onSelectDe(node) {
-  await selectedPanelRef.value?.addDe(node)
-  if (visualMode.value) {
-    const de = selectedDEs.value.find((d) => d.id === node.id)
-    if (de) joinCanvasRef.value?.addNode(de)
-  }
+function onSelectDe(node) {
+  return selectedPanelRef.value?.addDe(node)
 }
 
-// A DE was dropped directly onto the canvas — the canvas already placed the
-// node; mirror it into the list panel so both views stay in sync.
-function onCanvasDropDe(node) {
-  selectedPanelRef.value?.addDe(node)
+// "filter" on a canvas field: a new WHERE row for it, with the drawer open.
+function onCanvasFilter({ alias, field }) {
+  where.value = {
+    ...where.value,
+    conditions: [...(where.value.conditions || []), { alias, field, operator: '=', value: '', raw: false }],
+  }
+  showVisualExtras.value = true
 }
 </script>
 
@@ -300,6 +304,7 @@ function onCanvasDropDe(node) {
             v-model:selected="selectedDEs"
             v-model:where="where"
             v-model:queryOptions="queryOptions"
+            :joins="joins"
             @update:joins="joins = $event"
           />
 
@@ -329,15 +334,18 @@ function onCanvasDropDe(node) {
                 </div>
               </div>
             </div>
-            <JoinCanvas
-              ref="joinCanvasRef"
+            <BuilderCanvas
+              ref="canvasRef"
               class="flex-1 min-h-0"
-              :stack="stack"
-              :nodes="graphNodes"
-              :edges="graphEdges"
-              @update:nodes="graphNodes = $event"
-              @update:edges="graphEdges = $event"
-              @add-de="onCanvasDropDe"
+              :selected-d-es="selectedDEs"
+              :joins="joins"
+              :layout="layout"
+              :where="where"
+              @update:selected-d-es="selectedDEs = $event"
+              @update:joins="joins = $event"
+              @update:layout="layout = $event"
+              @add-de="onSelectDe"
+              @add-filter="onCanvasFilter"
             />
           </template>
         </div>
@@ -356,7 +364,7 @@ function onCanvasDropDe(node) {
           <SqlOutput
             v-model:sql="generatedSql"
             :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
-            :visual-mode="visualMode" :graph-nodes="graphNodes" :graph-edges="graphEdges"
+            :visual-mode="visualMode" :layout="layout"
             :record-id="recordId" @saved="onManualSave"
           />
         </div>
@@ -372,7 +380,7 @@ function onCanvasDropDe(node) {
         <SqlOutput
           v-model:sql="generatedSql"
           :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
-          :visual-mode="visualMode" :graph-nodes="graphNodes" :graph-edges="graphEdges"
+          :visual-mode="visualMode" :layout="layout"
           :record-id="recordId" @saved="onManualSave"
         />
       </div>

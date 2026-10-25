@@ -15,6 +15,8 @@ const props = defineProps({
   selected: { type: Array, default: () => [] },
   where: { type: Object, default: () => ({ combinator: 'AND', conditions: [] }) },
   queryOptions: { type: Object, default: () => defaultQueryOptions() },
+  // The joins, when the parent changes them (the visual canvas shares this model).
+  joins: { type: Array, default: null },
 })
 
 const emit = defineEmits([
@@ -51,6 +53,11 @@ const allFieldOptions = computed(() =>
     }))
   })
 )
+
+// Joins changed outside (the canvas): adopt them. Our own emits come back as the same array.
+watch(() => props.joins, (v) => {
+  if (Array.isArray(v) && v !== joins.value) joins.value = v
+})
 
 // Keep one join entry between each adjacent DE pair.
 // A pair that was joined the other way round keeps its conditions, turned around
@@ -283,6 +290,19 @@ function updateJoinCondition(joinIndex, condIndex, key, value) {
   joins.value[joinIndex].conditions[condIndex][key] = value
   emitJoins()
 }
+// Which earlier table a join reads from (the visual canvas can join C to A).
+function updateJoinLeft(index, deId) {
+  const join = joins.value[index]
+  if (join.leftDeId === deId) return
+  join.leftDeId = deId
+  join.conditions = []
+  emitJoins()
+  autoSuggestJoinsForDe(deId)
+}
+function aliasForId(deId) {
+  const i = selectedList.value.findIndex((d) => d.id === deId)
+  return i < 0 ? '?' : aliasOf(selectedList.value[i], i)
+}
 function fieldsForDe(deId) {
   return selectedList.value.find((d) => d.id === deId)?.fields || []
 }
@@ -371,8 +391,20 @@ function toggleSection(name) {
                 >
                   <option>INNER JOIN</option>
                   <option>LEFT JOIN</option>
+                  <option>RIGHT JOIN</option>
+                  <option>FULL OUTER JOIN</option>
                 </select>
-                <span class="text-[10px] text-muted-foreground">→ {{ selectedList[idx + 1].name }}</span>
+                <span class="text-[10px] text-muted-foreground truncate">{{ selectedList[idx + 1].name }} on</span>
+                <select
+                  v-if="idx > 0"
+                  class="text-[10px] border rounded px-1 py-0.5 bg-background min-w-0"
+                  title="The earlier table this one joins to"
+                  :value="joins[idx].leftDeId"
+                  @change="updateJoinLeft(idx, $event.target.value)"
+                >
+                  <option v-for="(e, ei) in selectedList.slice(0, idx + 1)" :key="e.id" :value="e.id">{{ aliasOf(e, ei) }} · {{ e.name }}</option>
+                </select>
+                <span v-else class="text-[10px] text-muted-foreground truncate">{{ aliasOf(selectedList[0], 0) }}</span>
               </div>
 
               <!-- Condition rows -->
@@ -386,8 +418,8 @@ function toggleSection(name) {
                   :value="cond.leftField"
                   @change="updateJoinCondition(idx, cIdx, 'leftField', $event.target.value)"
                 >
-                  <option value="" disabled>{{ aliasOf(selectedList[idx], idx) }}.field…</option>
-                  <option v-for="f in fieldsForDe(joins[idx].leftDeId)" :key="f.name" :value="f.name">{{ f.name }}</option>
+                  <option value="" disabled>{{ aliasForId(cond.leftDeId || joins[idx].leftDeId) }}.field…</option>
+                  <option v-for="f in fieldsForDe(cond.leftDeId || joins[idx].leftDeId)" :key="f.name" :value="f.name">{{ cond.leftDeId ? aliasForId(cond.leftDeId) + '.' : '' }}{{ f.name }}</option>
                 </select>
                 <select
                   class="text-[10px] border rounded px-0.5 py-0.5 bg-background"
