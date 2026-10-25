@@ -56,7 +56,7 @@ export async function deleteCreated(stack, created) {
  * object ({ kind, name, status: 'creating' | 'done' | 'failed', id?, error?, note? }).
  * Returns { created: [...], failed: entry | null }, so a partial run can be cleaned up.
  */
-export async function createFromPlan(stack, plan, progress = () => {}) {
+export async function createFromPlan(stack, plan, progress = () => {}, where = {}) {
   const created = []
   const step = async (kind, name, fn) => {
     progress({ kind, name, status: 'creating' })
@@ -81,8 +81,9 @@ export async function createFromPlan(stack, plan, progress = () => {}) {
       return { created, failed: entry }
     }
     progress({ kind: 'check', name: 'Checking the queries with SFMC', status: 'done', note: problems.skipped ? 'Skipped: this business unit has no Query activity to check through.' : '' })
-    const deFolder = await getDERootFolderId(stack)
-    const queryFolder = await getQueryRootFolderId(stack).catch(() => null)
+    // Folders the user picked (feedback #152), else the root folders.
+    const deFolder = where.deFolderId != null ? Number.parseInt(where.deFolderId, 10) : await getDERootFolderId(stack)
+    const queryFolder = where.queryFolderId ?? await getQueryRootFolderId(stack).catch(() => null)
     const deByRef = {}
     for (const de of plan.des) {
       deByRef[de.ref] = await step('de', de.name, async () => {
@@ -107,10 +108,10 @@ export async function createFromPlan(stack, plan, progress = () => {}) {
     const a = plan.automation
     await step('automation', a.name, async () => {
       const r = await createAutomation(stack, {
-        name: a.name, description: a.description,
+        name: a.name, description: a.description, categoryId: where.automationFolderId, notifyEmail: where.notifyEmail,
         steps: a.steps.map((s) => ({ name: s.name, activities: s.queries.map((ref) => ({ name: queryByRef[ref].name, id: queryByRef[ref].id })) })),
       })
-      return { id: r?.id ?? null }
+      return { id: r?.id ?? null, note: r?.notificationsFailed ? 'SFMC did not take the email notifications; set them in Automation Studio (the automation > Notifications).' : '' }
     })
     return { created, failed: null }
   } catch (e) {

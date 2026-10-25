@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight } from 'lucide-vue-next'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import CodeView from '@/components/results/CodeView.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
-import { fetchRunHistory, fetchAutomationHealth } from '@/utils/automationApi.js'
+import { fetchRunHistory, fetchAutomationHealth, fetchWorkerInstance } from '@/utils/automationApi.js'
 import { formatDateTime } from '@/utils/format.js'
 
 const props = defineProps({
@@ -57,6 +57,14 @@ function toggleRaw(i) {
   next.has(i) ? next.delete(i) : next.add(i)
   expanded.value = next
 }
+// A failed step's worker instance (feedback #157): SFMC's run record often says only
+// "Error has occurred"; the worker may say why.
+const workers = ref({}) // workerUrl -> { busy, message, raw, error }
+async function loadWorker(url) {
+  workers.value = { ...workers.value, [url]: { busy: true } }
+  try { workers.value = { ...workers.value, [url]: await fetchWorkerInstance(props.stack, url) } }
+  catch (e) { workers.value = { ...workers.value, [url]: { error: e.message } } }
+}
 const duration = (ms) => (ms == null ? '—' : ms < 60000 ? `${Math.round(ms / 1000)} s` : `${Math.floor(ms / 60000)} min ${Math.round((ms % 60000) / 1000)} s`)
 const label = (k) => String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
 </script>
@@ -92,8 +100,22 @@ const label = (k) => String(k).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^
                 <td class="py-1.5 pr-3 whitespace-nowrap">{{ formatDateTime(r.end) }}</td>
                 <td class="py-1.5 pr-3 whitespace-nowrap">{{ duration(r.durationMs) }}</td>
                 <td class="py-1.5 pr-3"><StatusBadge v-if="r.status" :status="String(r.status)" automation /><span v-else>—</span></td>
-                <td class="py-1.5 pr-3 break-words">{{ r.message || '' }}</td>
-                <td class="py-1.5 text-right"><button class="text-primary hover:underline" @click="toggleRaw(i)">{{ expanded.has(i) ? 'Hide' : 'Details' }}</button></td>
+                <td class="py-1.5 pr-3 break-words">
+                  <template v-if="r.errors?.length">
+                    <div v-for="(e, k) in r.errors" :key="k" class="text-red-700 dark:text-red-400">
+                      {{ e.step != null ? `Step ${e.step}, ` : '' }}{{ e.activity }}: {{ e.message }}
+                      <button v-if="e.workerUrl && !workers[e.workerUrl]" class="ml-1 text-primary hover:underline" @click="loadWorker(e.workerUrl)">Why?</button>
+                      <span v-if="workers[e.workerUrl]?.busy" class="text-muted-foreground"> reading...</span>
+                      <span v-else-if="workers[e.workerUrl]?.error" class="block text-muted-foreground">Could not read the step: {{ workers[e.workerUrl].error }}</span>
+                      <template v-else-if="workers[e.workerUrl]">
+                        <span class="block text-foreground">{{ workers[e.workerUrl].message || 'The step record has no more detail (see its JSON).' }}</span>
+                        <details class="text-muted-foreground"><summary class="cursor-pointer text-primary">Step JSON</summary><CodeView :code="JSON.stringify(workers[e.workerUrl].raw, null, 2)" lang="javascript" /></details>
+                      </template>
+                    </div>
+                  </template>
+                  <template v-else>{{ r.message || '' }}</template>
+                </td>
+                <td class="py-1.5 text-right whitespace-nowrap"><button class="text-primary hover:underline" @click="toggleRaw(i)">{{ expanded.has(i) ? 'Hide JSON' : 'See full JSON' }}</button></td>
               </tr>
               <tr v-if="expanded.has(i)"><td colspan="6" class="pb-2"><CodeView :code="JSON.stringify(r.raw, null, 2)" lang="javascript" /></td></tr>
             </template>

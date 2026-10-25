@@ -131,6 +131,31 @@ const pick = (o, names) => {
   return null
 }
 
+const WORKER_NAMES = { ImportDefinition: 'Import', QueryDefinition: 'SQL Query', DataExtractDefinition: 'Data Extract', FileTransferDefinition: 'File Transfer', SsjsActivity: 'Script', EmailSendDefinition: 'Send Email', FilterDefinition: 'Filter', WaitActivity: 'Wait' }
+
+/**
+ * Failed steps of a run, from its processes (feedback #157): [{ step, activity,
+ * message, workerUrl }]. SFMC's run record often says only "Error has occurred";
+ * the worker instance (fetchWorkerInstance) may say more.
+ */
+export function runErrors(r) {
+  const out = []
+  for (const p of r?.processes || []) {
+    for (const w of p.workerCounts || []) {
+      const failed = /error|fail/i.test(String(w.status || '')) || w.error
+      if (!failed) continue
+      const e = w.error || {}
+      out.push({
+        step: p.sequence ?? null,
+        activity: WORKER_NAMES[w.name] || w.name || 'Activity',
+        message: e.translatedMsg || e.message || e.errorMessage || (typeof w.error === 'string' ? w.error : '') || String(w.status || 'Error'),
+        workerUrl: (p.workers || [])[0] || null,
+      })
+    }
+  }
+  return out
+}
+
 export function normalizeRun(r) {
   const start = pick(r, ['startTime', 'start', 'startedTime', 'startDate'])
   const end = pick(r, ['endTime', 'completedTime', 'end', 'endDate'])
@@ -141,7 +166,9 @@ export function normalizeRun(r) {
     end,
     durationMs: Number.isFinite(ms) && ms >= 0 ? ms : null,
     status: pick(r, ['status', 'statusName', 'runStatus', 'state']),
-    message: pick(r, ['statusMessage', 'message', 'errorMessage', 'details']),
+    message: pick(r, ['statusMessage', 'message', 'errorMessage', 'details'])
+      || runErrors(r).map((e) => `${e.step != null ? `Step ${e.step}, ` : ''}${e.activity}: ${e.message}`).join('; '),
+    errors: runErrors(r),
     raw: r,
   }
 }
@@ -160,6 +187,29 @@ export async function fetchRunHistory(stack, id, { days = 30, top = 50, now = ne
 export async function fetchLatestRun(stack, id, now = new Date()) {
   const { runs } = await fetchRunHistory(stack, id, { days: 1, top: 1, now })
   return runs[0]?.raw || null
+}
+
+/**
+ * A failed step's worker instance (its URL from the run record, on the tenant's REST
+ * host), read through Automation Studio's own host, where the extension has a session.
+ * Returns { message, raw }. The fields are not known; likely names are read.
+ */
+export async function fetchWorkerInstance(stack, workerUrl) {
+  const m = String(workerUrl || '').match(/\/legacy\/v1\/beta\/automations\/worker\/instance\/([^/?#]+)/)
+  if (!m) throw new Error('No worker instance in the run record.')
+  const raw = await sfmcFetch(`${AS(stack)}/legacy/v1/beta/automations/worker/instance/${m[1]}`, 'GET')
+  const texts = []
+  const look = (v, depth = 0) => {
+    if (!v || depth > 4) return
+    if (Array.isArray(v)) return v.forEach((x) => look(x, depth + 1))
+    if (typeof v !== 'object') return
+    for (const [k, x] of Object.entries(v)) {
+      if (typeof x === 'string' && /message|error|reason|description|status/i.test(k) && x.trim() && !/^(error|complete|completed)$/i.test(x.trim())) texts.push(x.trim())
+      else if (x && typeof x === 'object') look(x, depth + 1)
+    }
+  }
+  look(raw)
+  return { message: [...new Set(texts)].join(' | '), raw }
 }
 
 /** Automation Studio's health summary for one automation (shape not known; shown as is). */

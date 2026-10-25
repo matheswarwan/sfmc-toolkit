@@ -489,19 +489,42 @@ export async function createQueryActivity(stack, payload) {
  * Creates an automation with no schedule (Automation Templates). steps: [{ name,
  * activities: [{ name, id }] }], each activity a Query Activity. Not checked live.
  */
-export async function createAutomation(stack, { name, key, description, steps }) {
+/**
+ * `categoryId` puts it in an Automation Studio folder; `notifyEmail` asks for emails on
+ * completion and on errors (feedback #152; the notifications shape is not confirmed:
+ * when SFMC refuses it, the automation is created without them and
+ * `notificationsFailed` is set).
+ */
+export async function createAutomation(stack, { name, key, description, steps, categoryId, notifyEmail }) {
   _logInfo(`Creating automation "${name}" with ${steps.length} step(s), not scheduled`)
   const url = `${AS_BASE(stack)}/automation/v1/automations`
-  return proxyFetch(url, 'POST', {
+  const body = {
     name,
     ...(key ? { key } : {}),
     description: description || '',
+    ...(categoryId ? { categoryId: Number(categoryId) } : {}),
     steps: steps.map((s, i) => ({
       name: s.name,
       step: i + 1,
       activities: s.activities.map((a, j) => ({ name: a.name, objectTypeId: 300, activityObjectId: a.id, displayOrder: j + 1 })),
     })),
-  })
+  }
+  const email = String(notifyEmail || '').trim()
+  if (!email) return proxyFetch(url, 'POST', body)
+  const notifications = ['Complete', 'Error'].map((notificationType) => ({ email: [email], message: '', channelType: 'Account', notificationType }))
+  try {
+    return await proxyFetch(url, 'POST', { ...body, notifications })
+  } catch (err) {
+    if (!/notif/i.test(err.message)) throw err
+    _logInfo(`SFMC refused the email notifications (${err.message}); creating the automation without them`)
+    const r = await proxyFetch(url, 'POST', body)
+    return { ...r, notificationsFailed: true }
+  }
+}
+
+/** Automation Studio's automation folders ({ items }), as for Query Activity folders. Not checked live. */
+export async function listAutomationFolders(stack) {
+  return proxyFetch(`${MCA_AS(stack)}/automation/v1/folders/?$filter=categorytype%20eq%20automations`, 'GET', null)
 }
 
 /**

@@ -33,8 +33,15 @@ export function archiveFields(view) {
   })
 }
 
-// LinkName is part of _Click's key, so it cannot be null.
-const expr = (f) => (f.name === 'LinkName' ? `LEFT(ISNULL(LinkName, ''), 500)` : f.type === 'text' ? `LEFT(${f.name}, ${f.length})` : f.name)
+// LinkName is part of _Click's key, so it cannot be null. Dates in a key are cut to
+// whole seconds (feedback #152: _Click still hit "Violation of PRIMARY KEY constraint"
+// with one row per key; two events a few milliseconds apart are kept apart by
+// ROW_NUMBER but likely become the same key in the data extension's Date field).
+const expr = (f) => {
+  if (f.name === 'LinkName') return `LEFT(ISNULL(LinkName, ''), 500)`
+  if (f.type === 'date' && f.isPrimaryKey) return `CONVERT(DATETIME, CONVERT(CHAR(19), ${f.name}, 120), 120)`
+  return f.type === 'text' ? `LEFT(${f.name}, ${f.length})` : f.name
+}
 
 /**
  * Data views can hold more than one row for the same key (two clicks on the same
