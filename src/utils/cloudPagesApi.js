@@ -58,7 +58,10 @@ export function toCloudPage(item) {
     id: item.id,
     name: item.name || '',
     customerKey: item.customerKey || '',
-    status: item.status?.name || 'Unknown',
+    // Content Builder's asset status stays Draft for published pages; a publish
+    // date in meta.cloudPages is what marks one as published (feedback #158).
+    status: item.meta?.cloudPages?.publishDate ? 'Published' : (item.status?.name || 'Unknown'),
+    assetStatus: item.status?.name || '',
     categoryId: item.category?.id ?? null,
     categoryName: item.category?.name || '',
     createdDate: item.createdDate || null,
