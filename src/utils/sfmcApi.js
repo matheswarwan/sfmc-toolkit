@@ -201,6 +201,8 @@ export function buildDEFields(typedColumns) {
       isNullable: col.isNullable ?? true,
     }
     if (type === 0) field.length = col.length ?? DEFAULT_TEXT_LENGTH
+    // EmailAddress goes with length 254, as Contact Builder sends it (user's capture, 2026-10-25).
+    if (type === 4) field.length = 254
     if (type === 6) {
       // Decimal length is the precision (1-38). It used to default to Text's 500.
       const precision = Number.isInteger(col.length) && col.length >= 1 && col.length <= 38 ? col.length : 18

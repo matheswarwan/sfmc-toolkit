@@ -60,3 +60,58 @@ export function parseContacts(data) {
   const total = Number(data?.totalCount ?? data?.count)
   return { contacts, total: Number.isFinite(total) ? total : contacts.length }
 }
+
+/** Keys from pasted text or a file: one per line, or separated by commas, semicolons or tabs. Duplicates removed. */
+export function parseKeyList(text, max = 1000) {
+  const seen = new Set()
+  const keys = []
+  for (const raw of String(text || '').split(/[\r\n,;\t]+/)) {
+    const k = raw.trim().replace(/^"(.*)"$/, '$1').trim()
+    if (!k || seen.has(k)) continue
+    seen.add(k)
+    keys.push(k)
+  }
+  return { keys: keys.slice(0, max), skipped: Math.max(0, keys.length - max) }
+}
+
+/**
+ * Searches each key (Contact Builder answers one exact key per call), `limit` at a
+ * time. Returns [{ key, contacts, error }] in the keys' order.
+ */
+export async function searchContactKeys(stack, keys, { limit = 4, onProgress, search = searchContactKey } = {}) {
+  const out = new Array(keys.length)
+  let next = 0
+  let done = 0
+  async function worker() {
+    while (next < keys.length) {
+      const i = next++
+      try {
+        const r = await search(stack, keys[i])
+        out[i] = { key: keys[i], contacts: r.contacts, error: '' }
+      } catch (e) {
+        out[i] = { key: keys[i], contacts: [], error: e.message }
+      }
+      onProgress?.(++done, keys.length)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, keys.length) }, worker))
+  return out
+}
+
+/**
+ * The encoded id Contact Builder's contact screen uses (legacy/v1/beta/contact/<id>/address/,
+ * from the user's capture: base64 of "<contact ID>:<n>:0"), when the search response has it.
+ */
+export function contactDetailId(raw) {
+  for (const k of ['id', 'addressID', 'addressId', 'contactAddressID', 'encodedId']) {
+    const v = raw?.[k]
+    if (typeof v === 'string' && /^[A-Za-z0-9+/]+=*$/.test(v) && v.length >= 8) {
+      try { if (/^\d+:\d+:\d+$/.test(atob(v))) return v } catch { /* not base64 */ }
+    }
+  }
+  return null
+}
+
+export async function fetchContactDetails(stack, detailId) {
+  return sfmcFetch(`${CM(stack)}/legacy/v1/beta/contact/${encodeURIComponent(detailId)}/address/?_=${Date.now()}`, 'GET')
+}

@@ -33,3 +33,21 @@ describe('contacts (feedback #57)', () => {
     expect(r.contacts[0].values[0]).toEqual({ set: 'Email Addresses', name: 'Email Address', value: 'a@example.com' })
   })
 })
+
+import { parseKeyList, searchContactKeys, contactDetailId } from '../contactsApi.js'
+describe('many contact keys (feedback #151)', () => {
+  it('reads keys from pasted text or a file', () => {
+    expect(parseKeyList('a\r\nb, c;\t"d"\n\na')).toEqual({ keys: ['a', 'b', 'c', 'd'], skipped: 0 })
+    expect(parseKeyList('1\n2\n3', 2)).toEqual({ keys: ['1', '2'], skipped: 1 })
+  })
+  it('searches each key, a few at a time, keeping the order', async () => {
+    const seen = []
+    const search = async (_s, k) => { seen.push(k); if (k === 'bad') throw new Error('nope'); return { contacts: k === 'x' ? [] : [{ contactKey: k }] } }
+    const r = await searchContactKeys('s1', ['a', 'x', 'bad', 'b'], { search, limit: 2 })
+    expect(r.map((x) => [x.key, x.contacts.length, x.error])).toEqual([['a', 1, ''], ['x', 0, ''], ['bad', 0, 'nope'], ['b', 1, '']])
+  })
+  it('finds the encoded contact id', () => {
+    expect(contactDetailId({ id: 'MjgxMjYyMDo2MTow' })).toBe('MjgxMjYyMDo2MTow')
+    expect(contactDetailId({ id: 2812620 })).toBe(null)
+  })
+})

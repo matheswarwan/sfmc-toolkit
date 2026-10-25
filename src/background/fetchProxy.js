@@ -19,6 +19,7 @@ import { getCoreCsrf, getAppCsrf, rememberCsrf } from './csrf.js'
 import { getMcaToken, dropMcaToken } from './mcaToken.js'
 import { ensureSession, SfmcAuthError, LOGIN_REQUIRED, SESSION_UNAVAILABLE } from './sessions.js'
 import { forgetStack } from './stack.js'
+import { needsPageHeaders, pageHeadersFor, capturePageHeaders, dropPageHeaders } from './pageHeaders.js'
 
 /**
  * SFMC's own HTML error pages (IIS "403 Not Authorized") turned into their title,
@@ -72,6 +73,12 @@ async function send(url, method, body, headers) {
 
 async function authHeaders({ url, stack, family, app, mutating }) {
   const headers = {}
+  // Contact Builder's contacts calls take its page's own headers (pageHeaders.js).
+  if (family === 'mca' && stack && needsPageHeaders(url)) {
+    let ph = pageHeadersFor(stack)
+    if (!ph?.Authorization || (mutating && !ph['X-CSRF-Token'])) ph = (await capturePageHeaders(stack, { needCsrf: mutating })) || ph
+    if (ph?.Authorization) return { ...ph }
+  }
   if (family === 'core') {
     const csrf = mutating && getCoreCsrf(stack)
     if (csrf) headers['X-CSRF-Token'] = csrf
@@ -106,6 +113,8 @@ async function fetchWithSession({ url, method = 'GET', body = null, bootstrap = 
   let res = await send(url, method, body, headers)
 
   if (res.status === 403 && family === 'mca' && headers['X-CSRF-Token']) {
+    // A contacts call: the page's headers may be stale; read them again once.
+    if (needsPageHeaders(url) && headers['X-Requested-With']) dropPageHeaders(stack)
     headers = await authHeaders(target)
     res = await send(url, method, body, headers)
   }

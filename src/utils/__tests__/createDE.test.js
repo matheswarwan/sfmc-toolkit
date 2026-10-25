@@ -57,13 +57,15 @@ describe('Create DE rules (feedback #94)', () => {
       sendableCustomObjectField: 'SubKey', sendableSubscriberField: '_SubscriberKey',
       dataRetentionProperties: { isRowBasedRetention: false, isDeleteAtEndOfRetentionPeriod: true, isResetRetentionPeriodOnImport: true, dataRetentionPeriodLength: 6, dataRetentionPeriodUnitOfMeasure: 5 },
     })
+    // Contact Builder's own shape (user's capture, 2026-10-25).
     expect(body.fields.map((x) => [x.name, x.type, x.length, x.scale, x.isPrimaryKey, x.isNullable])).toEqual([
-      ['SubKey', 'Text', 254, undefined, true, false],
-      ['Notes', 'Text', 4000, undefined, false, true],
-      ['Amount', 'Decimal', 12, 2, false, true],
-      ['Email', 'EmailAddress', undefined, undefined, false, true],
-      ['Lang', 'Locale', undefined, undefined, false, true],
+      ['SubKey', 0, 254, 0, true, false],
+      ['Notes', 0, 4000, 0, false, true],
+      ['Amount', 6, 12, 2, false, true],
+      ['Email', 4, 254, 0, false, true],
+      ['Lang', 7, null, 0, false, true],
     ])
+    expect(body.fields[3].defaultValue).toBe(null)
     expect(body.fields[2].defaultValue).toBe('0')
     expect(buildCreateBody(settings(), [f()])).not.toHaveProperty('dataRetentionProperties')
     expect(buildCreateBody(settings(), [f()])).not.toHaveProperty('customerKey')
@@ -107,29 +109,31 @@ describe('SFMC length error (feedback #131)', () => {
   })
 })
 
-describe('field types as names, numeric retry (feedback #134)', () => {
+describe('numeric field types, type names on retry', () => {
   const email = f({ name: 'EmailAddress', type: 'EmailAddress', length: null })
-  it('builds the older numeric shape on request', () => {
-    expect(buildFields([email, f({ name: 'N', type: 'Number' })], { numeric: true }).map((x) => [x.type, x.scale, x.length]))
-      .toEqual([[4, 0, undefined], [1, 0, undefined]])
+  it('builds the type-name shape on request', () => {
+    expect(buildFields([email, f({ name: 'N', type: 'Number' })], { named: true }).map((x) => [x.type, x.scale, x.length]))
+      .toEqual([['EmailAddress', undefined, undefined], ['Number', undefined, undefined]])
+    expect(buildFields([email, f({ name: 'N', type: 'Number' })]).map((x) => [x.type, x.scale, x.length]))
+      .toEqual([[4, 0, 254], [1, 0, null]])
   })
   it('tells a type refusal from the length error', () => {
     expect(isTypeRefusal('SFMC API error 400: {"message":"Invalid field type EmailAddress"}')).toBe(true)
     expect(isTypeRefusal('SFMC API error 400: {"message":"Length is invalid for field EmailAddress because it does not have a data type of Text."}')).toBe(false)
     expect(isTypeRefusal('SFMC API error 400: name taken')).toBe(false)
   })
-  it('retries once with numeric types when SFMC refuses the type names', async () => {
+  it('retries once with type names when SFMC refuses the numeric types', async () => {
     const sent = []
     const api = {
       createDataExtension: async (s, body) => {
         sent.push(body.fields[0].type)
-        if (typeof body.fields[0].type === 'string') throw new Error('SFMC API error 400: {"message":"Unknown field type"}')
+        if (typeof body.fields[0].type === 'number') throw new Error('SFMC API error 400: {"message":"Unknown field type"}')
         return { id: 'D1', customerKey: 'K1' }
       },
       insertDERowsAsync: async () => {},
     }
     const out = await createDE('s13', settings(), [email], { api })
-    expect(sent).toEqual(['EmailAddress', 4])
+    expect(sent).toEqual([4, 'EmailAddress'])
     expect(out.de.id).toBe('D1')
   })
   it('does not retry other refusals', async () => {
@@ -146,6 +150,6 @@ describe('Current date default (feedback #133)', () => {
     expect(buildFields([d])[0].defaultValue).toBe(CURRENT_DATE_DEFAULT)
     expect(fieldProblem(d)).toBe('')
     expect(cellProblem('', d)).toBe('')
-    expect(buildFields([f({ name: 'T', currentDate: true })])[0].defaultValue).toBeUndefined()
+    expect(buildFields([f({ name: 'T', currentDate: true })])[0].defaultValue).toBe(null)
   })
 })

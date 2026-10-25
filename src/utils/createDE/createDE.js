@@ -3,17 +3,19 @@
 import { createDataExtension, insertDERowsAsync, DEFAULT_TEXT_LENGTH } from '../sfmcApi.js'
 import { isBoolText, isDateText, isEmailText, isIntText } from './sample.js'
 
-// SFMC field types. The body names them ('EmailAddress'), as SFMC's customobjects API
-// does when it returns fields (feedback #134: numeric types got "Length is invalid for
-// field EmailAddress" with no length sent). `num` is the older numeric form (as in
-// buildDEFields in sfmcApi.js), sent once more when SFMC refuses the type names.
+// SFMC field types. The body sends them as numbers, the way Contact Builder's own
+// Create screen does (the user's capture, 2026-10-25: EmailAddress is type 4 with
+// length 254, Number type 1 with length null, scale 0 on every field). 2.0.13 sent
+// names ('EmailAddress' with no length), which SFMC refused for EmailAddress
+// (feedbacks #131, #134). `fixedLength` is the length SFMC gives a type itself.
+// The names are sent once more only when SFMC refuses a type.
 export const FIELD_TYPES = [
   { id: 'Text', num: 0, length: true },
   { id: 'Number', num: 1 },
   { id: 'Decimal', num: 6, length: true, scale: true },
   { id: 'Date', num: 2 },
   { id: 'Boolean', num: 3 },
-  { id: 'EmailAddress', num: 4 },
+  { id: 'EmailAddress', num: 4, fixedLength: 254 },
   { id: 'Phone', num: 5 },
   { id: 'Locale', num: 7 },
 ]
@@ -141,26 +143,33 @@ export function isFormValid(check) {
 }
 
 /**
- * The fields array SFMC gets. Types go as names, with `scale` only on Decimal and
- * `length` only on Text and Decimal; `{ numeric: true }` gives the older shape
- * (numeric types, scale 0 on every field), as buildDEFields in sfmcApi.js sends.
+ * The fields array SFMC gets, in Contact Builder's own shape: numeric type, `length`
+ * (Text's length, EmailAddress 254, Decimal's precision, else null), `scale` (Decimal's
+ * places, else 0) and `defaultValue` (null when none). `{ named: true }` sends type
+ * names with length only on Text and Decimal (2.0.13's shape), for the one retry.
  */
-export function buildFields(fields, { numeric = false } = {}) {
+export function buildFields(fields, { named = false } = {}) {
   return fields.map((f, i) => {
     const t = TYPE[f.type] || TYPE.Text
     const field = {
       name: String(f.name).trim(),
       ordinal: i,
-      type: numeric ? t.num : t.id,
+      type: named ? t.id : t.num,
       isPrimaryKey: !!f.isPrimaryKey,
       isTemplateField: false, isHidden: false, isReadOnly: false, isOverridable: false, isInheritable: false,
       updatable: true, retrievable: true, isActive: true, mustOverride: false,
       isNullable: f.isPrimaryKey ? false : !!f.isNullable,
     }
-    // Text with an empty length gets SFMC's maximum; other types must omit length.
-    if (t.num === 0) field.length = f.length !== '' && f.length != null ? Number(f.length) : DEFAULT_TEXT_LENGTH
-    if (numeric) field.scale = 0
-    if (t.num === 6) { field.length = Number(f.length); field.scale = Number(f.scale) }
+    // Text with an empty length gets SFMC's maximum.
+    const textLength = f.length !== '' && f.length != null ? Number(f.length) : DEFAULT_TEXT_LENGTH
+    if (named) {
+      if (t.num === 0) field.length = textLength
+      if (t.num === 6) { field.length = Number(f.length); field.scale = Number(f.scale) }
+    } else {
+      field.length = t.num === 0 ? textLength : t.num === 6 ? Number(f.length) : (t.fixedLength ?? null)
+      field.scale = t.num === 6 ? Number(f.scale) : 0
+      field.defaultValue = null
+    }
     const d = usesCurrentDate(f) ? CURRENT_DATE_DEFAULT : String(f.defaultValue ?? '').trim()
     if (d) field.defaultValue = d
     return field
@@ -178,7 +187,7 @@ export function retentionBody(r) {
   }
 }
 
-/** An SFMC refusal about a field's type that the numeric types might fix. */
+/** An SFMC refusal about a field's type that the type names might fix. */
 export function isTypeRefusal(message) {
   const m = String(message || '')
   return /\btype\b/i.test(m) && !lengthErrorField(m)
@@ -194,7 +203,7 @@ export function lengthErrorField(message) {
 }
 
 /** The body for Contact Builder's customobjects POST. */
-export function buildCreateBody(settings, fields, { numeric = false } = {}) {
+export function buildCreateBody(settings, fields, { named = false } = {}) {
   const body = {
     importActivity: {},
     name: String(settings.name).trim(),
@@ -207,7 +216,7 @@ export function buildCreateBody(settings, fields, { numeric = false } = {}) {
     isFieldModificationAllowed: true,
     isTestable: !!settings.isTestable,
     isSendable: !!settings.isSendable,
-    fields: buildFields(fields, { numeric }),
+    fields: buildFields(fields, { named }),
   }
   const key = String(settings.key ?? '').trim()
   if (key) body.customerKey = key
@@ -250,10 +259,9 @@ export async function createDE(stack, settings, fields, { rows = null, columnInd
   try {
     created = await api.createDataExtension(stack, buildCreateBody(settings, fields))
   } catch (e) {
-    // Field types as names are not confirmed live (feedback #134); when SFMC refuses
-    // a type, try once more with the numeric types.
+    // When SFMC refuses a type, try once more with the type names.
     if (!isTypeRefusal(e?.message)) throw e
-    created = await api.createDataExtension(stack, buildCreateBody(settings, fields, { numeric: true }))
+    created = await api.createDataExtension(stack, buildCreateBody(settings, fields, { named: true }))
   }
   const de = { id: created?.id, key: created?.customerKey || String(settings.key ?? '').trim(), name: String(settings.name).trim() }
   const out = { de, loaded: 0, skipped: 0, loadError: '' }

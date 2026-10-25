@@ -21,6 +21,7 @@ import {
   captureContext, getSession, forgetStack, onForgetStack,
 } from './stack.js'
 import { restoreCsrfTokens, sniffCsrf, getCoreCsrf } from './csrf.js'
+import { restorePageHeaders, sniffPageHeaders } from './pageHeaders.js'
 import {
   getMcaToken, isMcaTokenReady, mintBackoff, dropMcaToken, handleCapturedToken, setOnMintFailure,
 } from './mcaToken.js'
@@ -42,6 +43,7 @@ import { captureActivity, activitySaveCompleted, logActivityRequest, logActivity
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
 restoreCsrfTokens()
+restorePageHeaders()
 loadEmailSaverPrefs()
 watchForUpdates()
 updateBadge()
@@ -73,6 +75,9 @@ chrome.webRequest?.onBeforeRequest.addListener(
   noteRequestStack, { urls: ['https://*.exacttarget.com/*', 'https://*.marketingcloudapps.com/*'] })
 chrome.webRequest?.onBeforeSendHeaders.addListener(
   sniffCsrf, { urls: ['https://*.exacttarget.com/*'] }, ['requestHeaders', 'extraHeaders'])
+// Contact Builder's own headers for the contacts calls (pageHeaders.js).
+chrome.webRequest?.onBeforeSendHeaders.addListener(
+  sniffPageHeaders, { urls: ['https://*.marketingcloudapps.com/contactsmeta/*'] }, ['requestHeaders', 'extraHeaders'])
 // Query Studio 2's host is an optional permission; Chrome only delivers its
 // requests once the user has granted it (Settings > Running queries).
 chrome.webRequest?.onBeforeRequest.addListener(
