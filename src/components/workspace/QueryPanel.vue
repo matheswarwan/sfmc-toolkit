@@ -4,8 +4,11 @@ import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } f
 import {
   Pencil, Check, X, Play, ShieldCheck, ChevronDown, LogIn, History,
   FolderOpen, RefreshCw, Search, Share2, Copy, ExternalLink, Maximize2, Minimize2, AlignLeft,
-  Table2, FileOutput,
+  Table2, FileOutput, Blocks, Share, Wand2, Users,
 } from 'lucide-vue-next'
+import { importSqlToBuilder } from '../../utils/builderImport.js'
+import { builderToDiagramforce, openInDiagramforce } from '../../utils/diagramforce.js'
+import { useRouter } from 'vue-router'
 import QueryEditor from '../detail/QueryEditor.vue'
 import ValidationPanel from '../detail/ValidationPanel.vue'
 import RunStepper from '../detail/RunStepper.vue'
@@ -17,6 +20,8 @@ import QueryActivityTreeNode from './QueryActivityTreeNode.vue'
 import InsertFieldsMenu from './InsertFieldsMenu.vue'
 import SchemaPanel from './SchemaPanel.vue'
 import SaveAsActivityDialog from './SaveAsActivityDialog.vue'
+import SaveResultsDialog from './SaveResultsDialog.vue'
+import SharedSnippetsDialog from './SharedSnippetsDialog.vue'
 import { openInSfmc } from '../../utils/sfmcLinks.js'
 import { useQueryPanel } from '../../composables/useQueryPanel.js'
 
@@ -31,6 +36,17 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'duplicate', 'title-change', 'expand'])
+const router = useRouter()
+
+// Open in Diagramforce: lineage of this query (tables looked up as for Open in Query Builder).
+function queryToDiagramforce() {
+  const diagram = importSqlToBuilder(queryText.value, props.stack).then((r) => {
+    if (r.error) throw new Error(r.error)
+    return builderToDiagramforce({ ...r.state, layout: {} }, { mode: 'lineage', title: queryName.value || 'Query' })
+  })
+  diagram.catch((e) => { formatNote.value = `Diagramforce: ${e.message}` })
+  openInDiagramforce(diagram)
+}
 
 const {
   queryName, isEditingName, editableName, saveStatus, isRunning,
@@ -63,6 +79,14 @@ const panelTitle = computed(() => queryName.value || `Panel ${props.panelIndex +
 const editorRef = ref(null)
 const formatNote = ref('')
 let formatNoteTimer = null
+function fixAllQuery() {
+  const r = editorRef.value?.fixAll?.() || { applied: [] }
+  clearTimeout(formatNoteTimer)
+  formatNote.value = r.applied.length
+    ? `Fixed ${r.applied.length}: ${[...new Set(r.applied.map((a) => a.label))].join('; ')}`
+    : 'Nothing to fix automatically.'
+  formatNoteTimer = setTimeout(() => { formatNote.value = '' }, 6000)
+}
 function onFormatResult(r) {
   clearTimeout(formatNoteTimer)
   formatNote.value = r.ok ? '' : (r.error || '')
@@ -82,10 +106,30 @@ function runFromKey(selection) {
 
 // Save as query activity (feedback #88).
 const showSaveAs = ref(false)
+const showSaveResults = ref(false)
+const showSnippets = ref(false)
+const snippetSql = ref('')
+function openSnippets() {
+  snippetSql.value = editorRef.value?.selectedText?.() || queryText.value
+  showSnippets.value = true
+}
+function insertSnippet(sql) {
+  showSnippets.value = false
+  if (!editorRef.value?.insertText?.(sql)) onEditorChange(queryText.value ? `${queryText.value}\n${sql}` : sql)
+}
 
 // The results DE and query activity of the run on screen (feedback #91).
 const currentRun = computed(() => (Array.isArray(runs.value) ? runs.value : Object.values(runs.value || {})).find((r) => r.runId === currentRunId.value) || null)
 const deSearchLink = computed(() => currentRun.value?.deName ? `/data-extensions?q=${encodeURIComponent(currentRun.value.deName)}` : null)
+
+// Results from a run whose SQL has been edited since (SQL Studio's "edited since this
+// run"): greyed with a note, so stale rows are not exported by mistake. A run of a
+// selection still counts as current while the selection is unchanged in the editor.
+const squash = (t) => String(t || '').replace(/\s+/g, ' ').trim()
+const staleResults = computed(() => {
+  const ran = squash(currentRun.value?.queryText)
+  return !!ran && !squash(queryText.value).includes(ran)
+})
 
 // Schema search beside the editor (feedback #72), open or closed for every panel.
 const SCHEMA_KEY = 'toolkit_schemaPanel'
@@ -117,6 +161,10 @@ function openSchema() {
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || isRunning" title="Open an existing Query Activity from Automation Studio" @click="openQueryPicker"><FolderOpen class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Share query" @click="shareQuery"><Share2 class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Format SQL (Shift+Alt+F)" @click="formatQuery"><AlignLeft class="h-3 w-3" /></Button>
+      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || activeTab !== 'editor'" title="Shared snippets: SQL your team keeps in this business unit" @click="openSnippets"><Users class="h-3 w-3" /></Button>
+      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Fix all: apply every one-click fix the SQL checks offer" @click="fixAllQuery"><Wand2 class="h-3 w-3" /></Button>
+      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Open in Query Builder: draw this query as tables and joins" @click="router.push({ path: '/queries/builder', query: { sql: queryText } })"><Blocks class="h-3 w-3" /></Button>
+      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Open in Diagramforce: the query's lineage (source fields to output columns) as a diagram on diagramforce.com" @click="queryToDiagramforce"><Share class="h-3 w-3" /></Button>
       <InsertFieldsMenu :editor="editorRef" :disabled="activeTab !== 'editor' || isRunning" />
       <Button :variant="showSchema ? 'default' : 'outline'" size="sm" class="h-6 text-[10px] px-1" :disabled="activeTab !== 'editor'" :title="`Schema search: data extensions and their fields (${isMac ? 'Cmd' : 'Ctrl'}+Shift+S)`" :aria-pressed="showSchema" @click="setSchema(!showSchema)"><Table2 class="h-3 w-3" /></Button>
       <Button variant="ghost" size="icon" class="h-6 w-6" :title="isExpanded ? 'Minimize panel' : 'Expand panel'" @click="$emit('expand')">
@@ -130,6 +178,8 @@ function openSchema() {
       <Button v-if="showClose" variant="ghost" size="icon" class="h-6 w-6" title="Close panel" @click="$emit('close')"><X class="h-3 w-3" /></Button>
     </div>
 
+    <SharedSnippetsDialog :open="showSnippets" :stack="stack" :current-sql="snippetSql" @insert="insertSnippet" @close="showSnippets = false" />
+    <SaveResultsDialog :open="showSaveResults" :stack="stack" :rows="resultRows" :total-count="totalRowCount" :sql="currentRun?.queryText || queryText" :default-name="queryName" :resolve-fields="resolveTargetFields" @close="showSaveResults = false" />
     <SaveAsActivityDialog :open="showSaveAs" :stack="stack" :sql="queryText" :default-name="queryName" :resolve-fields="resolveTargetFields" :clean-sql="cleanQueryText" @close="showSaveAs = false" />
 
     <!-- Query Activity picker ("Open from AS") -->
@@ -301,12 +351,15 @@ function openSchema() {
       <div class="h-1 bg-border cursor-ns-resize shrink-0" @mousedown="onResizeStart($event)" />
       <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
         <ValidationPanel v-if="resultsMode === 'validating' || resultsMode === 'validation'" :results="validationResults" :isRunning="resultsMode === 'validating'" />
-        <RunStepper v-else-if="showRunStepper" :stepStatuses="stepStatuses" :stepErrors="stepErrors" :stepDetails="stepDetails" :elapsedSeconds="elapsedSeconds" :completedSummary="null" @retry="runQuery" @login="openSfmcLogin" @prompt="answerPrompt" />
+        <RunStepper v-else-if="showRunStepper" :stepStatuses="stepStatuses" :stepErrors="stepErrors" :stepDetails="stepDetails" :elapsedSeconds="elapsedSeconds" :completedSummary="null" :sql="queryText" @retry="runQuery" @login="openSfmcLogin" @prompt="answerPrompt" />
         <template v-else-if="resultsMode === 'results'">
-          <button class="px-2 py-1 text-[10px] font-semibold border-b flex items-center justify-between" @click="isResultsOpen = !isResultsOpen">
-            <span>{{ completedSummary }}</span>
-            <ChevronDown class="h-3 w-3" :class="{ 'rotate-180': isResultsOpen }" />
-          </button>
+          <div class="flex items-center border-b">
+            <button class="flex-1 px-2 py-1 text-[10px] font-semibold flex items-center justify-between" @click="isResultsOpen = !isResultsOpen">
+              <span>{{ completedSummary }}</span>
+              <ChevronDown class="h-3 w-3" :class="{ 'rotate-180': isResultsOpen }" />
+            </button>
+            <button class="shrink-0 px-2 py-1 text-[10px] text-primary hover:underline disabled:opacity-50" :disabled="!resultRows.length || !canInteract" title="Copy these rows into an existing or a new data extension" @click="showSaveResults = true">Save to data extension</button>
+          </div>
           <div v-if="currentRun && (currentRun.deName || currentRun.activityName)" class="px-2 py-1 border-b text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5">
             <span v-if="currentRun.deName">Results DE: <b class="text-foreground select-all">{{ currentRun.deName }}</b>
               <a v-if="currentRun.deId" :href="currentRun.deUrl" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline" @click="openInSfmc($event, currentRun.deUrl)">SFMC</a>
@@ -316,7 +369,10 @@ function openSchema() {
               <a v-if="currentRun.activityId" :href="currentRun.activityUrl" target="_blank" rel="noopener" class="ml-1 text-primary hover:underline" @click="openInSfmc($event, currentRun.activityUrl)">SFMC</a>
             </span>
           </div>
-          <div v-show="isResultsOpen" class="flex-1 overflow-auto min-h-0">
+          <div v-if="staleResults" class="px-2 py-1 border-b text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40">
+            The SQL was edited after this run, so these results may not match it. Run again to refresh them.
+          </div>
+          <div v-show="isResultsOpen" class="flex-1 overflow-auto min-h-0" :class="staleResults ? 'opacity-60' : ''">
             <ResultsTable :rows="resultRows" :columns="resultColumns" :filename="panelTitle" :sql="queryText" :totalCount="totalRowCount"
               :can-load-more="!!createdDeKey" :loading-more="isFetchingMore" :load-all-limit="LOAD_ALL_LIMIT"
               @load-more="fetchMoreRows" @load-all="fetchAllRows" />

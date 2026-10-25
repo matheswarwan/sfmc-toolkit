@@ -395,7 +395,7 @@ export const FIELD_VALUES = {
 const TRACKING_VIEWS = ['_SENT', '_OPEN', '_CLICK', '_BOUNCE', '_COMPLAINT', '_UNSUBSCRIBE', '_FTAF']
 const SUBSCRIBER_VIEWS = ['_SUBSCRIBERS', '_LISTSUBSCRIBERS', '_BUSINESSUNITUNSUBSCRIBES', ...TRACKING_VIEWS]
 
-const JOIN_RULES = [
+export const JOIN_RULES = [
   // [left views, right views, [[leftField, rightField], ...]]
   [['_JOURNEY'], ['_JOURNEYACTIVITY'], [['VersionID', 'VersionID']]],
   [['_JOURNEYACTIVITY'], ['_JOB', ...TRACKING_VIEWS], [['JourneyActivityObjectID', 'TriggererSendDefinitionObjectID']]],
@@ -405,6 +405,8 @@ const JOIN_RULES = [
   [['_ENTERPRISEATTRIBUTE'], ['_SUBSCRIBERS', ...TRACKING_VIEWS, '_LISTSUBSCRIBERS'], [['_SubscriberID', 'SubscriberID']]],
   [SUBSCRIBER_VIEWS, SUBSCRIBER_VIEWS, [['SubscriberKey', 'SubscriberKey']]],
   [['_SMSMESSAGETRACKING'], ['_SMSSUBSCRIPTIONLOG', '_UNDELIVERABLESMS'], [['MobileNumber', 'MobileNumber']]],
+  // A device ID is unique only within one MobilePush app.
+  [['_PUSHADDRESS'], ['_PUSHTAG'], [['_DeviceID', '_DeviceID'], ['_APID', '_APID']]],
 ]
 
 /**

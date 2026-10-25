@@ -5,7 +5,7 @@
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import {
-  Loader2, KeyRound, Type, Hash, Calendar, Mail, Phone, ToggleLeft, Globe, X, Search, Crown, Filter,
+  Loader2, KeyRound, Type, Hash, Calendar, Mail, Phone, ToggleLeft, Globe, X, Search, Crown, Filter, Pencil,
 } from 'lucide-vue-next'
 import { visibleRows, fieldHandle, headerHandle, ROW_H, HEADER_H } from '@/utils/builderCanvas.js'
 
@@ -27,6 +27,12 @@ const view = computed(() => visibleRows(de.value, joined.value, { showAll: showA
 const loading = computed(() => !de.value.fields?.length && !de.value.fieldsLoaded)
 const isFrom = computed(() => props.data.index === 0)
 const filtered = computed(() => new Set(props.data.filtered || []))
+const isSub = computed(() => de.value.sourceType === 'subquery')
+const sourceLabel = computed(() => {
+  if (isSub.value) return 'Subquery'
+  if (de.value.missing) return 'Not found'
+  return de.value.isDataView || de.value.sourceType === 'dataview' ? 'Data view' : (de.value.sourceType || 'DE')
+})
 
 // Rows moved without the card changing size: tell Vue Flow where the handles are now.
 watch(() => view.value.rows.map((r) => r.index).join(','), () => nextTick(() => updateNodeInternals([props.id])))
@@ -54,7 +60,7 @@ function toggleSearch() {
 <template>
   <div
     class="de-node w-[240px] rounded-lg border bg-card text-card-foreground shadow-md"
-    :class="isFrom ? 'border-primary' : 'border-border'"
+    :class="[isFrom ? 'border-primary' : 'border-border', isSub ? 'border-dashed' : '', de.missing ? 'opacity-80' : '']"
   >
     <Handle :id="headerHandle('l')" type="source" :position="Position.Left" class="de-handle de-handle-hdr" :style="{ top: HEADER_H / 2 + 'px' }" />
     <Handle :id="headerHandle('r')" type="source" :position="Position.Right" class="de-handle de-handle-hdr" :style="{ top: HEADER_H / 2 + 'px' }" />
@@ -65,9 +71,10 @@ function toggleSearch() {
       <div class="min-w-0 flex-1">
         <div class="text-xs font-bold truncate" :title="de.name">{{ de.name }}</div>
         <div class="text-[9px] text-muted-foreground truncate">
-          <template v-if="isFrom">FROM · </template>{{ de.isDataView || de.sourceType === 'dataview' ? 'Data view' : (de.sourceType || 'DE') }} · {{ tickCount }} of {{ (de.fields || []).length }} out
+          <template v-if="isFrom">FROM · </template>{{ sourceLabel }} · {{ tickCount }} of {{ (de.fields || []).length }} out
         </div>
       </div>
+      <button v-if="isSub" class="nodrag p-0.5 rounded text-muted-foreground hover:text-foreground" title="Edit the subquery's SQL" @click="canvas.editSubquery(id)"><Pencil class="h-3 w-3" /></button>
       <button class="nodrag p-0.5 rounded text-muted-foreground hover:text-foreground" title="Search fields" @click="toggleSearch"><Search class="h-3 w-3" /></button>
       <button v-if="!isFrom" class="nodrag p-0.5 rounded text-muted-foreground hover:text-foreground" title="Make this the FROM table" @click="canvas.makeFrom(id)"><Crown class="h-3 w-3" /></button>
       <button class="nodrag p-0.5 rounded text-muted-foreground hover:text-destructive" title="Remove from the query" @click="canvas.remove(id)"><X class="h-3.5 w-3.5" /></button>

@@ -4,6 +4,7 @@ import { X, Loader2, Plus, ChevronDown, ChevronRight, Lock, GripVertical, ArrowU
 import Button from '../ui/button/Button.vue'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
+import OutputColumns from './OutputColumns.vue'
 import { fetchDEFieldsCached } from '../../utils/sfmcApi.js'
 import { DATA_VIEW_FIELDS, DATA_VIEWS } from '../../utils/dataViews.js'
 import { suggestJoinConditions, aliasFor, aliasOf } from '../../utils/sqlBuilder.js'
@@ -108,8 +109,9 @@ async function addDe(node) {
     name: node.name,
     sourceType: node.sourceType,
     isDataView: node.isDataView || node.sourceType === 'dataview',
-    alias: `t${selectedList.value.length + 1}`,
-    fields: [],
+    alias: node.sourceType === 'subquery' ? node.name : `t${selectedList.value.length + 1}`,
+    ...(node.subquery !== undefined ? { subquery: node.subquery } : {}),
+    fields: node.fields || [],
     selectedFields: null, // null => SELECT *
     fieldsLoaded: false,
   }
@@ -216,13 +218,15 @@ function updateAlias(index, rawValue) {
   next[index] = { ...de, alias: newAlias }
   selectedList.value = next
   // Keep WHERE conditions pointing at the renamed table.
-  const conds = props.where?.conditions || []
-  if (conds.some((c) => c.alias === oldAlias)) {
-    emit('update:where', {
-      combinator: props.where?.combinator || 'AND',
-      conditions: conds.map((c) => (c.alias === oldAlias ? { ...c, alias: newAlias } : { ...c })),
-    })
-  }
+  // (nested groups too)
+  const renameIn = (g) => ({
+    combinator: g?.combinator || 'AND',
+    conditions: (g?.conditions || []).map((c) => (c.conditions ? renameIn(c) : c.alias === oldAlias ? { ...c, alias: newAlias } : { ...c })),
+  })
+  emit('update:where', renameIn(props.where))
+  const o = props.queryOptions || {}
+  const ren = (list) => (list || []).map((g) => (g.alias === oldAlias ? { ...g, alias: newAlias } : g))
+  emit('update:queryOptions', { ...o, groupBy: ren(o.groupBy), orderBy: ren(o.orderBy) })
 }
 
 // ── Fields ────────────────────────────────────────────────
@@ -498,6 +502,17 @@ function toggleSection(name) {
           <div v-if="!selectedList.length" class="text-[11px] text-muted-foreground text-center py-4">
             Add DEs first
           </div>
+          <details v-if="selectedList.length" class="rounded-lg border border-border px-2 py-1">
+            <summary class="text-[11px] font-bold cursor-pointer">Output columns: order and names</summary>
+            <div class="pt-1.5">
+              <OutputColumns
+                :selected-d-es="selectedList"
+                :query-options="queryOptions"
+                @update:selected-d-es="selectedList = $event"
+                @update:query-options="emit('update:queryOptions', $event)"
+              />
+            </div>
+          </details>
           <div v-for="(de, idx) in selectedList" :key="de.id" class="rounded-lg border border-border">
             <button
               class="w-full flex items-center justify-between px-2 py-1.5 hover:bg-muted/50"

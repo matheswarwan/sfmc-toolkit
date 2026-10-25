@@ -12,7 +12,7 @@ import {
   deleteDE, deleteQueryActivity, getOrCreateDEFolder, getOrCreateQAFolder,
   getAnyQueryActivityId, validateQueryText, listQueryActivities, listQAFolders,
   DEFAULT_TEXT_LENGTH, fetchCurrentBU,
-  parseRetentionDays,
+  parseRetentionDays, sfmcCallCount,
 } from '../utils/sfmcApi.js'
 
 export function useQueryPanel(options) {
@@ -526,6 +526,7 @@ export function useQueryPanel(options) {
     trackEvent('run_start', { from_step: fromStep })
     resultsMode.value      = 'running'
     completedSummary.value = null
+    const callsAtStart     = sfmcCallCount()
     stepStatuses.value     = Array(5).fill('pending')
     stepErrors.value       = Array(5).fill(null)
     stepDetails.value      = Array(5).fill(null)
@@ -728,7 +729,7 @@ export function useQueryPanel(options) {
       const m = Math.floor(totalSec / 60)
       const s = totalSec % 60
       completedSummary.value =
-        `Completed in ${m > 0 ? `${m}m ` : ''}${s}s · ${(totalRowCount.value ?? resultRows.value.length).toLocaleString()} rows`
+        `Completed in ${m > 0 ? `${m}m ` : ''}${s}s · ${(totalRowCount.value ?? resultRows.value.length).toLocaleString()} rows · ${sfmcCallCount() - callsAtStart} SFMC calls`
       trackEvent('run_complete', { duration_s: totalSec, row_count: totalRowCount.value ?? resultRows.value.length })
       isRunDetailsOpen.value = false
       isResultsOpen.value    = true

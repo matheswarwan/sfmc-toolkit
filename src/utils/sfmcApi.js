@@ -86,7 +86,13 @@ export function sfmcFetch(url, method, body = null) {
  * directly (no tab injection) using cookies for exacttarget.com or a minted
  * Bearer token for marketingcloudapps.com (src/background/fetchProxy.js).
  */
+// Calls made from this page, so a run can say how many it used (SQL Studio shows this
+// for rate-limit-conscious users). Includes calls by other panels running at the same time.
+let _callCount = 0
+export function sfmcCallCount() { return _callCount }
+
 function proxyFetch(url, method, body) {
+  _callCount++
   const ts = Date.now()
   _log({ ts, type: 'req', method, url, body })
   return new Promise((resolve, reject) => {
@@ -538,6 +544,12 @@ export async function createDataExtension(stack, body) {
 export async function insertDERowsAsync(stack, key, items) {
   _logInfo(`Adding ${items.length} row(s) to data extension "${key}"`)
   return proxyFetch(`${AS_BASE(stack)}/data/v1/async/dataextensions/key:${encodeURIComponent(key)}/rows`, 'POST', { items })
+}
+
+/** Adds or updates rows by primary key (async upsert: PUT on the same endpoint). */
+export async function upsertDERowsAsync(stack, key, items) {
+  _logInfo(`Adding or updating ${items.length} row(s) in data extension "${key}"`)
+  return proxyFetch(`${AS_BASE(stack)}/data/v1/async/dataextensions/key:${encodeURIComponent(key)}/rows`, 'PUT', { items })
 }
 
 export async function deleteAutomation(stack, id) {

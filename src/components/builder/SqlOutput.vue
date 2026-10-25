@@ -1,12 +1,10 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { showToast } from '@/composables/useToast.js'
 import { ref, watch, computed } from 'vue'
 import QueryEditor from '../detail/QueryEditor.vue'
 import Button from '../ui/button/Button.vue'
 import { buildSqlFromSelections } from '../../utils/sqlBuilder.js'
-import { saveBuilderRecord } from '../../utils/builderStorage.js'
-import { Copy, ExternalLink, Save } from 'lucide-vue-next'
+import { Copy, ExternalLink, Save, Wand2 } from 'lucide-vue-next'
 
 const router = useRouter()
 const props = defineProps({
@@ -16,18 +14,27 @@ const props = defineProps({
   where: { type: Object, default: () => ({ combinator: 'AND', conditions: [] }) },
   queryOptions: { type: Object, default: () => ({}) },
   layout: { type: Object, default: () => ({}) },
+  // UNION / EXCEPT / INTERSECT: the other SELECTs, before and after this one (with their operators).
+  sqlBefore: { type: String, default: '' },
+  sqlAfter: { type: String, default: '' },
   visualMode: { type: Boolean, default: false },
   recordId: { type: String, default: null },
 })
 
-const emit = defineEmits(['update:sql', 'saved'])
+const emit = defineEmits(['update:sql', 'save', 'apply-sql'])
 
 const localSql = ref(props.sql)
+// The SQL the builder last generated; when the editor differs, the user edited it
+// and can draw their version (Apply to builder).
+const generated = ref('')
+const edited = computed(() => localSql.value.trim() !== generated.value.trim())
 const copied = ref(false)
 
 // List and Visual draw the same model, so one generator serves both.
-watch(() => [props.selectedDEs, props.joins, props.where, props.queryOptions], () => {
-  localSql.value = buildSqlFromSelections(props.selectedDEs, props.joins, props.where, props.queryOptions)
+watch(() => [props.selectedDEs, props.joins, props.where, props.queryOptions, props.sqlBefore, props.sqlAfter], () => {
+  const own = buildSqlFromSelections(props.selectedDEs, props.joins, props.where, props.queryOptions)
+  localSql.value = [props.sqlBefore, own, props.sqlAfter].filter((x) => x && x.trim()).join('\n')
+  generated.value = localSql.value
   emit('update:sql', localSql.value)
 }, { deep: true, immediate: true })
 
@@ -42,22 +49,9 @@ async function copySql() {
   setTimeout(() => { copied.value = false }, 1500)
 }
 
-async function saveToQuerySaver() {
-  const id = await saveBuilderRecord({
-    id: props.recordId,
-    sql: localSql.value,
-    state: {
-      selectedDEs: props.selectedDEs,
-      joins: props.joins,
-      where: props.where,
-      queryOptions: props.queryOptions,
-      visualMode: props.visualMode,
-      layout: props.layout,
-    },
-  })
-  const wasUpdate = !!props.recordId
-  emit('saved', id)
-  showToast(wasUpdate ? 'Query updated in Saved queries.' : 'Saved to Saved queries.')
+// Save goes through the builder, which knows every SELECT of a UNION.
+function saveToQuerySaver() {
+  emit('save')
 }
 
 function openInWorkspace() {
@@ -70,6 +64,9 @@ function openInWorkspace() {
     <div class="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
       <span class="text-xs font-bold text-muted-foreground uppercase">Generated SQL</span>
       <div class="flex gap-1">
+        <Button v-if="edited" size="sm" class="h-7 text-[10px]" title="Redraw the builder from this SQL (your edits otherwise vanish on the next change)" @click="emit('apply-sql', localSql)">
+          <Wand2 class="h-3 w-3 mr-1" /> Apply to builder
+        </Button>
         <Button variant="outline" size="sm" class="h-7 text-[10px]" @click="copySql">
           <Copy class="h-3 w-3 mr-1" />{{ copied ? 'Copied!' : 'Copy' }}
         </Button>

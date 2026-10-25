@@ -1,13 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
-import { Copy, Check, ExternalLink, X, Share2, Loader2 } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, X, Share2, Loader2, Blocks } from 'lucide-vue-next'
 
 const props = defineProps({
   card: { type: Object, required: true },
 })
 
-const emit = defineEmits(['close', 'open-editor'])
+const emit = defineEmits(['close', 'open-editor', 'open-builder'])
 
 const copied = ref(false)
 
@@ -111,6 +111,15 @@ async function shareQuery() {
             >
               <component :is="copied ? Check : Copy" class="h-3.5 w-3.5" />
               {{ copied ? 'Copied' : 'Copy SQL' }}
+            </button>
+            <button
+              v-if="card.source !== 'builder' && (card.queryText || '').trim()"
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors"
+              title="Draw this query as tables and joins in the Query Builder"
+              @click="emit('open-builder', card)"
+            >
+              <Blocks class="h-3.5 w-3.5" />
+              Open in Query Builder
             </button>
             <button
               class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"

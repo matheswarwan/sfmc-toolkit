@@ -11,7 +11,7 @@ import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
-import { Network, Maximize2, Map as MapIcon, X, Plus, Code2, Wand2 } from 'lucide-vue-next'
+import { Network, Maximize2, Map as MapIcon, X, Plus, Code2, Wand2, Braces } from 'lucide-vue-next'
 import DENode from './DENode.vue'
 import JoinEdge from './JoinEdge.vue'
 import {
@@ -26,7 +26,7 @@ const props = defineProps({
   layout: { type: Object, default: () => ({}) },
   where: { type: Object, default: () => ({ combinator: 'AND', conditions: [] }) },
 })
-const emit = defineEmits(['update:selectedDEs', 'update:joins', 'update:layout', 'add-de', 'add-filter'])
+const emit = defineEmits(['update:selectedDEs', 'update:joins', 'update:layout', 'add-de', 'add-filter', 'edit-subquery'])
 
 const flowId = `qb-canvas-${Math.random().toString(36).slice(2, 8)}`
 const { fitView, project, vueFlowRef, findNode } = useVueFlow(flowId)
@@ -70,7 +70,8 @@ const dropPositions = new Map()
 watch(() => props.selectedDEs.map((d) => d.id).join('|'), () => {
   const missing = props.selectedDEs.filter((d) => !props.layout[d.id])
   if (!missing.length) return
-  if (missing.length > 1 && missing.length === props.selectedDEs.length) return runAutoLayout()
+  // Laid out once the joins have arrived and the cards have their real sizes.
+  if (missing.length > 1 && missing.length === props.selectedDEs.length) return setTimeout(runAutoLayout, 80)
   const next = { ...props.layout }
   for (const d of missing) {
     next[d.id] = dropPositions.get(d.id) || nextPosition(next)
@@ -157,7 +158,7 @@ function openJoin(rightDeId, e) {
   openJoinId.value = rightDeId
 }
 function onEdgeClick({ edge, event }) { if (edge?.data?.rightDeId) openJoin(edge.data.rightDeId, event) }
-provide('builderCanvas', { toggleField, remove, makeFrom, addFilter, openJoin, openJoinId })
+provide('builderCanvas', { toggleField, remove, makeFrom, addFilter, openJoin, openJoinId, editSubquery: (id) => emit('edit-subquery', id) })
 
 const editIdx = computed(() => props.joins.findIndex((j) => j.rightDeId === openJoinId.value))
 const editJoin = computed(() => (editIdx.value >= 0 ? props.joins[editIdx.value] : null))
@@ -252,6 +253,7 @@ function onDrop(e) {
         <button class="qb-tool" title="Arrange the cards along the joins" :disabled="!selectedDEs.length" @click="runAutoLayout"><Network class="h-3.5 w-3.5" /> Auto layout</button>
         <button class="qb-tool" title="Fit every card in view" @click="fit"><Maximize2 class="h-3.5 w-3.5" /> Fit</button>
         <button class="qb-tool" :class="showMap ? 'qb-tool-on' : ''" title="Show or hide the minimap" @click="showMap = !showMap"><MapIcon class="h-3.5 w-3.5" /> Map</button>
+        <button class="qb-tool" title="Add a subquery as a table (SELECT ... in parentheses in FROM)" @click="emit('edit-subquery', null)"><Braces class="h-3.5 w-3.5" /> Subquery</button>
         <slot name="tools" />
       </Panel>
     </VueFlow>

@@ -4,11 +4,12 @@ import { Codemirror } from 'vue-codemirror'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { keymap } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
-import { sfmcSqlExtensions, formatCommand, relintOnCatalogChange } from '@/editor/sqlExtensions.js'
+import { sfmcSqlExtensions, formatCommand, fixAllCommand, relintOnCatalogChange } from '@/editor/sqlExtensions.js'
 import { createSchemaCatalog } from '@/utils/schemaCatalog.js'
 import { planInsertAllFields, fieldRef, tableRef } from '@/utils/insertFields.js'
 import { bareTableName } from '@/utils/schemaCatalog.js'
 import { referencedTables } from '@/utils/sqlContext.js'
+import { planJoin } from '@/utils/joinInsert.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -127,7 +128,24 @@ function searchTables(prefix) {
   return catalog.searchTables(prefix)
 }
 
-defineExpose({ format, insertAllFields, tablesInQuery, searchTables, selectedText, insertText, fieldFor })
+/** Adds a JOIN for `table` ({ name }) with its `fields` to the SQL. Returns planJoin's result. */
+async function joinTable(table, fields) {
+  const v = view.value
+  if (!v) return { error: 'Editor not ready' }
+  const plan = await planJoin(v.state.doc.toString(), table, fields, (name) => catalog.fieldsFor(name))
+  if (plan.error) return plan
+  v.dispatch({ changes: { from: plan.at, to: plan.at, insert: plan.insert } })
+  v.focus()
+  return plan
+}
+
+/** Applies every one-click lint fix. Returns { applied: [{ code, label }] }. */
+function fixAll() {
+  if (!view.value) return { applied: [] }
+  return fixAllCommand(view.value, catalog)
+}
+
+defineExpose({ joinTable, fixAll, format, insertAllFields, tablesInQuery, searchTables, selectedText, insertText, fieldFor })
 </script>
 
 <template>

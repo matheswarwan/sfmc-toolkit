@@ -4,11 +4,13 @@
 // Nothing is run or scheduled.
 import { computed, ref, watch } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
-import { Loader2, X, Database, ExternalLink } from 'lucide-vue-next'
+import { Loader2, X, Database, ExternalLink, AlertTriangle, Info, XCircle } from 'lucide-vue-next'
 import Button from '../ui/button/Button.vue'
 import Input from '../ui/input/Input.vue'
 import DEFolderPicker from '../data/DEFolderPicker.vue'
 import { searchDEsAllSources } from '../../utils/sfmcApi.js'
+import { fetchDEFieldList } from '../../utils/deApi.js'
+import { checkTarget } from '../../utils/targetChecks.js'
 import {
   UPDATE_TYPE_OPTIONS, loadQAFolders, checkSaveForm, saveAsQueryActivity,
 } from '../../utils/saveAsActivity.js'
@@ -85,10 +87,32 @@ watch(() => props.open, (o) => {
 const qaFolderPath = computed(() => qaFolders.value.find((f) => f.id === form.value.qaFolderId)?.path || '')
 const updateLabel = computed(() => UPDATE_TYPE_OPTIONS.find((o) => o.id === Number(form.value.updateType))?.label || '')
 
+// Checks against the target (required fields, key, types, lengths, data action),
+// shown on the review step. They never block: the user may know better.
+const checks = ref([])
+const checking = ref(false)
+async function runChecks() {
+  checks.value = []
+  checking.value = true
+  try {
+    const out = (await props.resolveFields(props.sql))?.fields || []
+    const existing = form.value.targetMode === 'existing'
+    const targetFields = existing ? await fetchDEFieldList(props.stack, form.value.existingDE.id) : out
+    checks.value = checkTarget({
+      sql: props.sql, outFields: out, targetFields, updateType: Number(form.value.updateType),
+      targetName: existing ? form.value.existingDE.name : form.value.deName, newTarget: !existing,
+    })
+  } catch (e) {
+    checks.value = [{ level: 'info', text: `The target could not be checked (${e.message}).` }]
+  } finally {
+    checking.value = false
+  }
+}
+
 function review() {
   error.value = checkSaveForm({ ...form.value, updateType: Number(form.value.updateType) })
   if (!props.sql.trim()) error.value = 'The editor is empty.'
-  if (!error.value) step.value = 'confirm'
+  if (!error.value) { step.value = 'confirm'; runChecks() }
 }
 
 async function create() {
@@ -179,6 +203,18 @@ const deUrl = computed(() => result.value && `https://mc.${props.stack}.marketin
               <li v-else>Writes to the existing data extension <b>{{ form.existingDE?.name }}</b></li>
               <li>Query activity <b>{{ form.activityName.trim() }}</b> in <b>{{ qaFolderPath }}</b>, data action <b>{{ updateLabel }}</b></li>
             </ul>
+            <div class="space-y-1">
+              <div class="font-semibold">Checks against the target</div>
+              <div v-if="checking" class="flex items-center gap-1 text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Checking...</div>
+              <div v-else-if="!checks.length" class="text-green-700 dark:text-green-400">No problems found.</div>
+              <div v-for="(c, i) in checks" :key="i" class="flex items-start gap-1.5 rounded border px-2 py-1"
+                :class="c.level === 'error' ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300' : c.level === 'warning' ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200' : 'border-border text-muted-foreground'">
+                <XCircle v-if="c.level === 'error'" class="h-3.5 w-3.5 shrink-0 mt-px" />
+                <AlertTriangle v-else-if="c.level === 'warning'" class="h-3.5 w-3.5 shrink-0 mt-px" />
+                <Info v-else class="h-3.5 w-3.5 shrink-0 mt-px" />
+                <span>{{ c.text }}</span>
+              </div>
+            </div>
           </template>
 
           <template v-else-if="step === 'done' && result">
@@ -200,7 +236,7 @@ const deUrl = computed(() => result.value && `https://mc.${props.stack}.marketin
           <template v-else-if="step === 'confirm' || step === 'saving'">
             <Button variant="outline" size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="step = 'form'">Back</Button>
             <Button size="sm" class="h-8 text-xs" :disabled="step === 'saving'" @click="create">
-              <Loader2 v-if="step === 'saving'" class="h-3.5 w-3.5 mr-1 animate-spin" /> Create in SFMC
+              <Loader2 v-if="step === 'saving'" class="h-3.5 w-3.5 mr-1 animate-spin" /> {{ checks.some((c) => c.level === 'error') ? 'Create anyway' : 'Create in SFMC' }}
             </Button>
           </template>
           <Button v-else size="sm" class="h-8 text-xs" @click="emit('close')">Done</Button>

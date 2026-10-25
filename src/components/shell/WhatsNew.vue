@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.13'
+const VERSION = '2.0.14'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,6 +35,10 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
+        <li><strong class="block">A visual Query Builder</strong><span class="text-muted-foreground">Tables as cards you join by dragging from field to field, like Diagramforce. Paste SQL to see it as a diagram (From SQL, or Open in Query Builder from Run Query), with subqueries, UNION tabs, AND/OR groups and HAVING. Open any query in Diagramforce as a data model or lineage.</span></li>
+        <li><strong class="block">Run Query helps more</strong><span class="text-muted-foreground">Failed runs explain the error and the fix; Fix all applies every one-click fix; stale results are greyed; save results to a data extension; shared team snippets; Join from the schema search.</span></li>
+        <li><strong class="block">Checks before saving a query activity</strong><span class="text-muted-foreground">Required fields, dropped columns, types, lengths, primary keys and duplicate keys are checked against the target first.</span></li>
+        <li><strong class="block">20 new SQL checks</strong><span class="text-muted-foreground">Syntax from other databases (LIMIT, NOW(), IFNULL), window functions, aliases not in FROM, ORDER BY without TOP, double-quoted text, a LEFT JOIN undone by WHERE, and more. Settings > Lint rules can copy the rules for an AI assistant.</span></li>
         <li><strong class="block">Create DE</strong><span class="text-muted-foreground">Data > Create DE: paste or drop a sample (CSV, TSV, JSON, Parquet, Excel) or start empty, check the guessed fields, pick the folder and retention, and create the data extension.</span></li>
         <li><strong class="block">Preview data</strong><span class="text-muted-foreground">Data Extensions: Preview data reads the rows straight from SFMC, no query needed. Load more or all (up to 50,000), Refresh, sort and filter by column, hide columns, tick rows to copy or download only those (CSV, Excel, Markdown).</span></li>
         <li><strong class="block">Run once</strong><span class="text-muted-foreground">Activities: start a Data Extract (and, not yet checked against SFMC, an Import, File Transfer or Script) from its card, after a confirm.</span></li>

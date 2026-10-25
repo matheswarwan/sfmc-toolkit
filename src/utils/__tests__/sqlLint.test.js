@@ -88,7 +88,7 @@ WHERE rn = 1`,
 /* joins the welcome DE */
 SELECT w.[Subscriber Key], w.[First Name] AS FirstName, a.Status
 FROM [Welcome Journey DE] w
-LEFT JOIN ENT._Subscribers a ON a.SubscriberKey = w.[Subscriber Key]
+INNER JOIN ENT._Subscribers a ON a.SubscriberKey = w.[Subscriber Key]
 WHERE a.Status = 'active'`,
     `SELECT b.SubscriberKey, COUNT(b.SubscriberKey) AS BounceCount, MAX(b.EventDate) AS LastBounce
 FROM _Bounce b
@@ -596,4 +596,98 @@ describe('QS041 FOR JSON / FOR XML', () => {
 describe('QS042 ORDER BY column number', () => {
   it('notes ORDER BY 1', () => hit('SELECT TOP 5 a, b FROM t ORDER BY 2 DESC, a', 'QS042', '2'))
   it('accepts names and expressions', () => none('SELECT TOP 5 a FROM t ORDER BY a, b + 1', 'QS042'))
+})
+
+import { fixAll } from '../sqlLint.js'
+describe('Fix all', () => {
+  it('applies every fix, linting again after each', () => {
+    const r = fixAll("SELECT a.x, COUNT(*) FROM _Subscribers a WHERE a.Status = N'active'")
+    expect(r.applied.length).toBeGreaterThan(0)
+    expect(r.sql).not.toContain("N'active'")
+  })
+  it('leaves fixes that change the result to the user', () => {
+    const r = fixAll('SELECT SubscriberKey FROM _Open')
+    expect(r.applied.map((a) => a.code)).not.toContain('QS027')
+  })
+})
+
+describe('MCE error list rules (QS045 to QS064)', () => {
+  const codes = (sql, opts) => lintSql(sql, opts).map((d) => d.code)
+  const has = (sql, code) => expect(codes(sql)).toContain(code)
+  const not = (sql, code) => expect(codes(sql)).not.toContain(code)
+
+  it('QS045 ORDER BY without TOP at the top level', () => {
+    has('SELECT a FROM x ORDER BY a', 'QS045')
+    not('SELECT TOP 10 a FROM x ORDER BY a', 'QS045')
+    const d = lintSql('SELECT a FROM x ORDER BY a').find((x) => x.code === 'QS045')
+    expect(applyFix('SELECT a FROM x ORDER BY a', d.fixes[0]).trim()).toBe('SELECT a FROM x')
+  })
+  it('QS046 comma join', () => { has('SELECT a.x FROM a, b WHERE a.id = b.id', 'QS046'); not('SELECT a.x FROM a JOIN b ON a.id = b.id', 'QS046') })
+  it('QS047 other dialects', () => {
+    has('SELECT a FROM x LIMIT 10', 'QS047')
+    has("SELECT a || 'b' AS c FROM x", 'QS047')
+    has('SELECT a FROM x WHERE d > CURRENT_DATE', 'QS047')
+    has("SELECT a FROM x WHERE a ILIKE 'b%'", 'QS047')
+  })
+  it('QS048 functions from other databases, with renames', () => {
+    has('SELECT NOW() AS n FROM x', 'QS048')
+    const sql = 'SELECT IFNULL(a, 0) AS n FROM x'
+    expect(applyFix(sql, lintSql(sql).find((d) => d.code === 'QS048').fixes[0])).toBe('SELECT ISNULL(a, 0) AS n FROM x')
+    not('SELECT ISNULL(a, 0) AS n FROM x', 'QS048')
+  })
+  it('QS049 alias not in FROM', () => {
+    has('SELECT b.x FROM a', 'QS049')
+    not('SELECT a.x FROM [Tbl] a WHERE EXISTS (SELECT 1 FROM b WHERE b.id = a.id)', 'QS049')
+    not('SELECT x.y FROM ENT.[Shared] x', 'QS049')
+    not("SELECT s.value FROM x CROSS APPLY STRING_SPLIT(x.list, ',') s", 'QS049')
+  })
+  it('QS050 same alias twice', () => { has('SELECT a.x FROM t1 a JOIN t2 a ON a.id = a.id', 'QS050'); not('SELECT a.x FROM t1 a JOIN t1 b ON a.id = b.id', 'QS050') })
+  it('QS051 to QS053 window functions', () => {
+    has('SELECT a FROM x WHERE ROW_NUMBER() OVER (ORDER BY a) = 1', 'QS051')
+    has('SELECT COUNT(DISTINCT a) OVER (PARTITION BY b) AS c FROM x', 'QS052')
+    has('SELECT ROW_NUMBER() OVER (PARTITION BY a) AS rn FROM x', 'QS053')
+    has('SELECT ROW_NUMBER() OVER (ORDER BY a ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rn FROM x', 'QS053')
+    has('SELECT SUM(a) OVER (ROWS UNBOUNDED PRECEDING) AS s FROM x', 'QS053')
+    has("SELECT STRING_AGG(a, ',') OVER (PARTITION BY b) AS s FROM x", 'QS053')
+    has('SELECT SUM(a) OVER (ORDER BY d RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) AS s FROM x', 'QS053')
+    not('SELECT ROW_NUMBER() OVER (PARTITION BY a ORDER BY d DESC) AS rn FROM x', 'QS053')
+  })
+  it('QS054 aggregates in WHERE and nested', () => {
+    has('SELECT a FROM x WHERE COUNT(a) > 1', 'QS054')
+    has('SELECT MAX(COUNT(a)) AS m FROM x GROUP BY b', 'QS054')
+    not('SELECT a FROM x WHERE a IN (SELECT MAX(b) FROM y)', 'QS054')
+  })
+  it('QS055 to QS058', () => {
+    has('SELECT a FROM x WHERE a IN (SELECT b, c FROM y)', 'QS055')
+    has('SELECT a, COUNT(*) AS n FROM x GROUP BY 1', 'QS056')
+    has('SELECT TOP 5 a FROM x ORDER BY 2', 'QS057')
+    has("SELECT TOP 5 a FROM x ORDER BY 'a'", 'QS057')
+    has('SELECT DISTINCT TOP 5 a FROM x ORDER BY b', 'QS058')
+    not('SELECT DISTINCT TOP 5 a AS z FROM x ORDER BY z', 'QS058')
+  })
+  it('QS059 JSON literal', () => { has(`SELECT JSON_VALUE('{"a": 1,}', '$.a') AS v FROM x`, 'QS059'); not(`SELECT JSON_VALUE('{"a": 1}', '$.a') AS v FROM x`, 'QS059') })
+  it('QS060 trailing -- comment, fixed to /* */', () => {
+    const sql = 'SELECT a FROM x -- done'
+    const d = lintSql(sql).find((x) => x.code === 'QS060')
+    expect(applyFix(sql, d.fixes[0])).toBe('SELECT a FROM x /* done */')
+    not('-- note\nSELECT a FROM x', 'QS060')
+  })
+  it('QS061 run-time failures', () => {
+    const sql = 'SELECT CAST(a AS INT) AS n, CONVERT(DATE, b) AS d, DATEDIFF(SECOND, c, d) AS s, x / y AS r, x / NULLIF(y, 0) AS ok FROM t'
+    const d = lintSql(sql).filter((x) => x.code === 'QS061')
+    expect(d).toHaveLength(4)
+  })
+  it('QS062 double-quoted text', () => {
+    const sql = 'SELECT a FROM x WHERE b = "abc"'
+    expect(applyFix(sql, lintSql(sql).find((d) => d.code === 'QS062').fixes[0])).toBe("SELECT a FROM x WHERE b = 'abc'")
+    not('SELECT "col" FROM x', 'QS062')
+  })
+  it('QS063 LEFT JOIN undone by WHERE', () => {
+    has("SELECT a.x FROM a LEFT JOIN b ON b.id = a.id WHERE b.s = 'y'", 'QS063')
+    not('SELECT a.x FROM a LEFT JOIN b ON b.id = a.id WHERE b.id IS NULL', 'QS063')
+  })
+  it('QS064 push join', () => {
+    has('SELECT t._Value FROM _PushTag t JOIN _PushAddress p ON p._DeviceID = t._DeviceID', 'QS064')
+    not('SELECT t._Value FROM _PushTag t JOIN _PushAddress p ON p._DeviceID = t._DeviceID AND p._APID = t._APID', 'QS064')
+  })
 })

@@ -43,6 +43,15 @@ import { formatDEForSql } from './deCatalog.js'
  * @property {WhereCondition[]} conditions
  */
 
+/** A table in FROM/JOIN: the DE's name, or a subquery in parentheses. */
+export function tableSql(de) {
+  if (de?.sourceType === 'subquery' || de?.subquery !== undefined) {
+    const body = String(de.subquery || '').trim().split('\n').map((l) => '  ' + l).join('\n')
+    return `(\n${body}\n)`
+  }
+  return formatDEForSql(de.name, de.sourceType)
+}
+
 export function aliasFor(index) {
   return `t${index + 1}`
 }
@@ -136,6 +145,8 @@ function formatWhereValue(cond) {
 }
 
 function formatWhereCondition(cond) {
+  // A condition the builder cannot model, kept as written (from SQL import).
+  if (cond.expr) return cond.expr
   const field = qualifyColumn(cond.alias, cond.field)
   if (NO_VALUE_OPERATORS.has(cond.operator)) {
     return `${field} ${cond.operator}`
@@ -147,13 +158,22 @@ function formatWhereCondition(cond) {
  * Build a WHERE clause body (without the leading WHERE keyword).
  * @param {WhereGroup} where
  */
-export function buildWhereBody(where) {
-  const conditions = (where?.conditions || []).filter(
-    (c) => c && c.field && c.operator
-  )
-  if (!conditions.length) return ''
+export function buildWhereBody(where, indent = '  ') {
+  const parts = (where?.conditions || [])
+    .map((c) => {
+      if (!c) return ''
+      // A nested group (AND inside OR, or the other way round) in parentheses.
+      if (Array.isArray(c.conditions)) {
+        const inner = buildWhereBody(c, indent + '  ')
+        return inner ? `(${inner})` : ''
+      }
+      if (c.expr && String(c.expr).trim()) return String(c.expr).trim()
+      return c.field && c.operator ? formatWhereCondition(c) : ''
+    })
+    .filter(Boolean)
+  if (!parts.length) return ''
   const combinator = where.combinator === 'OR' ? 'OR' : 'AND'
-  return conditions.map(formatWhereCondition).join(`\n  ${combinator} `)
+  return parts.join(`\n${indent}${combinator} `)
 }
 
 /**
@@ -173,15 +193,28 @@ function outputFieldNames(de) {
  * column name that collides across DEs with its table alias (e.g. t1_JobID).
  */
 export function buildSelectColumns(selectedDEs) {
+  return selectColumnItems(selectedDEs).map((c) => c.sql)
+}
+
+/** Output column key, for `queryOptions.columnOrder`. */
+export const columnKey = (deId, field) => `c:${deId}:${field}`
+export const computedKey = (c, i) => `x:${c?.id || i}`
+
+/**
+ * The SELECT items for the ticked fields, as { key, sql, name }. A field's output
+ * name comes from the DE's `fieldAliases` (from SQL import or the Output list), else
+ * clashing names get the table alias (t1_JobID).
+ */
+export function selectColumnItems(selectedDEs) {
   const cols = []
   selectedDEs.forEach((de, i) => {
     const alias = aliasOf(de, i)
     const names = outputFieldNames(de)
     if (names === null) {
       // Fields not loaded yet — fall back to * for this DE only.
-      cols.push({ alias, star: true })
+      cols.push({ alias, star: true, deId: de.id })
     } else {
-      names.forEach((field) => cols.push({ alias, field }))
+      names.forEach((field) => cols.push({ alias, field, deId: de.id, as: de.fieldAliases?.[field] || '' }))
     }
   })
 
@@ -194,11 +227,29 @@ export function buildSelectColumns(selectedDEs) {
   })
 
   return cols.map((c) => {
-    if (c.star) return `${c.alias}.*`
+    if (c.star) return { key: `s:${c.deId}`, sql: `${c.alias}.*`, name: '*' }
     const base = qualifyColumn(c.alias, c.field)
+    const key = columnKey(c.deId, c.field)
+    if (c.as) return { key, sql: `${base} AS [${c.as}]`, name: c.as }
     const isDuplicate = counts[c.field.toLowerCase()] > 1
-    return isDuplicate ? `${base} AS [${c.alias}_${c.field}]` : base
+    return isDuplicate ? { key, sql: `${base} AS [${c.alias}_${c.field}]`, name: `${c.alias}_${c.field}` } : { key, sql: base, name: c.field }
   })
+}
+
+/** Orders items by `order` (keys); items not listed keep their place after the listed ones. */
+export function applyColumnOrder(items, order) {
+  if (!Array.isArray(order) || !order.length) return items
+  const rank = new Map(order.map((k, i) => [k, i]))
+  return items
+    .map((it, i) => ({ it, i, r: rank.has(it.key) ? rank.get(it.key) : order.length + i }))
+    .sort((a, b) => a.r - b.r)
+    .map((x) => x.it)
+}
+
+/** GROUP BY / ORDER BY item: a column, an output column name, or an expression. */
+function itemSql(g) {
+  if (g.expr) return g.expr
+  return qualifyColumn(g.alias, g.field)
 }
 
 /**
@@ -218,24 +269,40 @@ export function aliasOf(de, index) {
  * When GROUP BY is active, base columns become the grouped columns (so the
  * query stays valid) plus any computed columns.
  */
-function buildSelectList(selectedDEs, opts) {
+export function selectListItems(selectedDEs, opts = {}) {
   const groupBy = normalizeColumns(opts.groupBy)
-  const computed = (Array.isArray(opts.computedColumns) ? opts.computedColumns : [])
-    .filter((c) => c && (c.expression || '').trim())
-  const base = groupBy.length
-    ? groupBy.map((g) => qualifyColumn(g.alias, g.field))
-    : buildSelectColumns(selectedDEs)
-  const computedCols = computed.map((c) => {
-    const expr = c.expression.trim()
-    const alias = (c.alias || '').trim()
-    return alias ? `${expr} AS [${alias}]` : expr
-  })
-  const all = [...base, ...computedCols]
+  const computedAll = Array.isArray(opts.computedColumns) ? opts.computedColumns : []
+  let base
+  if (groupBy.length) {
+    // Grouped: the grouped columns (with the DE's alias for the name, if any).
+    const byAlias = new Map(selectedDEs.map((de, i) => [aliasOf(de, i).toLowerCase(), de]))
+    base = groupBy.filter((g) => !g.expr).map((g) => {
+      const de = byAlias.get(String(g.alias || '').toLowerCase())
+      const as = de?.fieldAliases?.[g.field]
+      const key = de ? columnKey(de.id, g.field) : `g:${g.alias}.${g.field}`
+      return { key, sql: as ? `${qualifyColumn(g.alias, g.field)} AS [${as}]` : qualifyColumn(g.alias, g.field), name: as || g.field }
+    })
+  } else {
+    base = selectColumnItems(selectedDEs)
+  }
+  const computedCols = computedAll
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => c && (c.expression || '').trim())
+    .map(({ c, i }) => {
+      const expr = c.expression.trim()
+      const alias = (c.alias || '').trim()
+      return { key: computedKey(c, i), sql: alias ? `${expr} AS [${alias}]` : expr, name: alias || expr }
+    })
+  return applyColumnOrder([...base, ...computedCols], opts.columnOrder)
+}
+
+function buildSelectList(selectedDEs, opts) {
+  const all = selectListItems(selectedDEs, opts).map((c) => c.sql)
   return all.length ? all : ['*']
 }
 
 function normalizeColumns(list) {
-  return (Array.isArray(list) ? list : []).filter((c) => c && c.field)
+  return (Array.isArray(list) ? list : []).filter((c) => c && (c.field || c.expr))
 }
 
 /**
@@ -262,7 +329,7 @@ export function buildSqlFromSelections(selectedDEs, joins = [], where = null, op
   const lines = [`SELECT${distinct}${top}`, fieldLines.join(',\n')]
 
   const first = selectedDEs[0]
-  lines.push(`FROM ${formatDEForSql(first.name, first.sourceType)} AS ${aliasOf(first, 0)}`)
+  lines.push(`FROM ${tableSql(first)} AS ${aliasOf(first, 0)}`)
 
   for (let i = 1; i < selectedDEs.length; i++) {
     const de = selectedDEs[i]
@@ -272,7 +339,7 @@ export function buildSqlFromSelections(selectedDEs, joins = [], where = null, op
       (join?.leftDeId && aliasById.get(join.leftDeId)) || aliasOf(selectedDEs[i - 1], i - 1)
     const rightAlias = aliasOf(de, i)
     const onExpr = buildOnBlock(join || {}, leftAlias, rightAlias, aliasById)
-    const tableExpr = `${formatDEForSql(de.name, de.sourceType)} AS ${rightAlias}`
+    const tableExpr = `${tableSql(de)} AS ${rightAlias}`
     if (onExpr) {
       lines.push(`${joinType} ${tableExpr} ON ${onExpr}`)
     } else {
@@ -285,12 +352,15 @@ export function buildSqlFromSelections(selectedDEs, joins = [], where = null, op
 
   const groupBy = normalizeColumns(opts.groupBy)
   if (groupBy.length) {
-    lines.push(`GROUP BY ${groupBy.map((g) => qualifyColumn(g.alias, g.field)).join(', ')}`)
+    lines.push(`GROUP BY ${groupBy.map(itemSql).join(', ')}`)
   }
+
+  const having = String(opts.having || '').trim()
+  if (having) lines.push(`HAVING ${having}`)
 
   const orderBy = normalizeColumns(opts.orderBy)
   if (orderBy.length) {
-    lines.push(`ORDER BY ${orderBy.map((o) => `${qualifyColumn(o.alias, o.field)} ${o.dir === 'DESC' ? 'DESC' : 'ASC'}`).join(', ')}`)
+    lines.push(`ORDER BY ${orderBy.map((o) => `${itemSql(o)} ${o.dir === 'DESC' ? 'DESC' : 'ASC'}`).join(', ')}`)
   }
 
   return lines.join('\n')

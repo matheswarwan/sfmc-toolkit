@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { Search, Loader2, KeyRound, X, ArrowLeft, ListPlus } from 'lucide-vue-next'
+import { Search, Loader2, KeyRound, X, ArrowLeft, ListPlus, GitMerge } from 'lucide-vue-next'
 import { DATA_VIEW_FIELDS } from '@/utils/dataViews.js'
 import { fetchDEFieldList, fieldTypeLabel } from '@/utils/deApi.js'
 
@@ -106,6 +106,13 @@ function insertName() {
   props.editor.insertText(name)
 }
 
+// Join to the query: a LEFT JOIN with the ON condition from the data view rules or a shared key.
+async function joinToQuery() {
+  if (!props.editor?.joinTable || !picked.value) return
+  const r = await props.editor.joinTable({ name: sqlTableName(picked.value) }, fields.value)
+  note.value = r.error || (r.matched ? `Joined as ${r.alias}.` : `Joined as ${r.alias}; set its ON condition.`)
+}
+
 async function insertAll() {
   if (!props.editor || !picked.value) return
   note.value = ''
@@ -162,6 +169,7 @@ defineExpose({ focus })
         <div class="flex flex-wrap gap-1 my-1.5">
           <button class="rounded border border-border px-1.5 py-0.5 hover:border-primary hover:text-primary" title="Write the table name at the cursor" @click="insertName">Insert name</button>
           <button class="rounded border border-border px-1.5 py-0.5 hover:border-primary hover:text-primary flex items-center gap-1" title="Write every field (see Insert all fields)" @click="insertAll"><ListPlus class="h-3 w-3" /> All fields</button>
+          <button class="rounded border border-border px-1.5 py-0.5 hover:border-primary hover:text-primary flex items-center gap-1" :disabled="loadingFields" title="Add a LEFT JOIN for this table to the query, with the ON condition from the data view rules or a shared key field" @click="joinToQuery"><GitMerge class="h-3 w-3" /> Join</button>
         </div>
         <p v-if="note" class="text-red-600 mb-1">{{ note }}</p>
         <input

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { explainRunError } from '@/utils/runErrors.js'
 import { AlertTriangle, Copy, Check, LogIn, RefreshCw } from 'lucide-vue-next'
 import Button from '@/components/ui/button/Button.vue'
 
@@ -11,6 +12,8 @@ const props = defineProps({
   stepDetails:      { type: Array, default: () => Array(5).fill(null) },
   elapsedSeconds:   { type: Number, default: 0 },
   completedSummary: { type: String, default: null },
+  // The SQL that ran, to explain errors that give no reason.
+  sql:              { type: String, default: '' },
 })
 
 const emit = defineEmits(['retry', 'login', 'prompt'])
@@ -151,6 +154,13 @@ function toggleWarnings(idx) {
             </template>
             <template v-else>
               <span class="text-[10px] text-red-700 dark:text-red-400 leading-snug wrap-break-word">{{ stepErrors[idx] }}</span>
+              <div v-if="explainRunError(stepErrors[idx], sql)" class="w-full text-left text-[10px] leading-snug text-foreground bg-card border border-border rounded p-1.5 space-y-0.5">
+                <div><b>Likely cause:</b> {{ explainRunError(stepErrors[idx], sql).cause }}</div>
+                <div v-if="explainRunError(stepErrors[idx], sql).fix"><b>Fix:</b> {{ explainRunError(stepErrors[idx], sql).fix }}</div>
+                <ul v-if="explainRunError(stepErrors[idx], sql).sqlHints.length" class="list-disc pl-4 text-muted-foreground">
+                  <li v-for="h in explainRunError(stepErrors[idx], sql).sqlHints" :key="h">{{ h }}</li>
+                </ul>
+              </div>
               <Button variant="outline" size="sm" class="h-6 text-[10px] border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" @click="emit('retry', idx)">
                 <RefreshCw class="h-3 w-3 mr-1" /> Retry
               </Button>

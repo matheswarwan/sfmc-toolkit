@@ -8,6 +8,7 @@ import { useTheme } from '@/composables/useTheme.js'
 import { useStoredSetting } from '@/composables/useStoredSetting.js'
 import { disabledRules, setRuleDisabled, onLintSettingsChange } from '@/editor/lintSettings.js'
 import { LINT_RULES } from '@/utils/sqlLint.js'
+import { sqlRulesForAi } from '@/utils/aiRules.js'
 import { buildBackup, backupFileName, parseBackup, planImport, describeImport } from '@/utils/backup.js'
 import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
@@ -77,6 +78,14 @@ const rules = computed(() => {
   const q = ruleSearch.value.trim().toLowerCase()
   return LINT_RULES.filter((r) => !q || `${r.code} ${r.title}`.toLowerCase().includes(q))
 })
+async function copyRulesForAi() {
+  try {
+    await navigator.clipboard.writeText(sqlRulesForAi())
+    showToast('SQL rules copied. Paste them into your AI assistant\'s chat or instructions.')
+  } catch {
+    showToast('Could not copy to the clipboard.')
+  }
+}
 function turnAllOn() { for (const code of [...offRules.value]) setRuleDisabled(code, false) }
 
 const showFeedback = ref(false)
@@ -214,6 +223,7 @@ function setDebounce(e) {
             <p class="text-xs text-muted-foreground">The editor checks queries as you type. Turn off any check you don't want; it is off in every panel and tab. {{ offRules.length }} off.</p>
           </div>
           <button v-if="offRules.length" class="h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="turnAllOn">Turn all on</button>
+          <button class="h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" title="Copy the SFMC SQL facts, these checks and the data view join keys as Markdown, for an AI assistant writing your queries" @click="copyRulesForAi">Copy rules for AI</button>
         </div>
         <input v-model="ruleSearch" type="search" placeholder="Find a check (code or words)" aria-label="Find a SQL check"
           class="mt-2 h-8 w-full rounded-md border border-border bg-background px-2 text-xs" />

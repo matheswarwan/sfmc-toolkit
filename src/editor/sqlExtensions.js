@@ -4,7 +4,7 @@ import { linter, lintGutter } from '@codemirror/lint'
 import { hoverTooltip, keymap, showTooltip, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 
-import { lintSql } from '../utils/sqlLint.js'
+import { lintSql, fixAll } from '../utils/sqlLint.js'
 import { disabledRules, setRuleDisabled, onLintSettingsChange } from './lintSettings.js'
 import { columnList, fieldRef } from '../utils/insertFields.js'
 import { SQL_FUNCTIONS, signatureAt, hoverDocAt } from '../utils/sqlDocs.js'
@@ -249,6 +249,14 @@ const signatureField = StateField.define({
   },
   provide: f => showTooltip.from(f),
 })
+
+/** Fix all: every one-click fix in one go (one undo step). Returns { applied }. */
+export function fixAllCommand(view, catalog) {
+  const doc = view.state.doc.toString()
+  const r = fixAll(doc, { tables: catalog.knownTables(), disabled: [...EDITOR_DISABLED, ...disabledRules()] })
+  if (r.applied.length && r.sql !== doc) view.dispatch({ changes: { from: 0, to: doc.length, insert: r.sql } })
+  return r
+}
 
 export function formatCommand(view) {
   const r = formatSql(view.state.doc.toString())

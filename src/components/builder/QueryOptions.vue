@@ -25,6 +25,8 @@ const opts = computed(() => ({
 
 function patch(part) {
   emit('update:modelValue', {
+    // Keeps having, columnOrder and anything else this form does not show.
+    ...(props.modelValue || {}),
     distinct: opts.value.distinct,
     top: opts.value.top,
     groupBy: opts.value.groupBy.map((g) => ({ ...g })),
@@ -49,6 +51,12 @@ function updateGroupBy(index, encoded) {
   const [alias, field] = encoded.split('::')
   patch({ groupBy: opts.value.groupBy.map((g, i) => (i === index ? { alias, field } : g)) })
 }
+function addGroupByExpr() { patch({ groupBy: [...opts.value.groupBy, { expr: '' }] }) }
+function addOrderByExpr() { patch({ orderBy: [...opts.value.orderBy, { expr: '', dir: 'ASC' }] }) }
+function updateItem(list, index, key, value) {
+  patch({ [list]: opts.value[list].map((g, i) => (i === index ? { ...g, [key]: value } : g)) })
+}
+function setHaving(v) { patch({ having: v }) }
 function removeGroupBy(index) {
   patch({ groupBy: opts.value.groupBy.filter((_, i) => i !== index) })
 }
@@ -74,7 +82,7 @@ function addComputed(template) {
   let prefill = ''
   if (template === 'COUNT(DISTINCT )') prefill = 'COUNT(DISTINCT )'
   else if (template) prefill = `${template}()`
-  patch({ computedColumns: [...opts.value.computedColumns, { expression: prefill, alias: '' }] })
+  patch({ computedColumns: [...opts.value.computedColumns, { id: `c${Date.now().toString(36)}`, expression: prefill, alias: '' }] })
 }
 function updateComputed(index, key, value) {
   patch({ computedColumns: opts.value.computedColumns.map((c, i) => (i === index ? { ...c, [key]: value } : c)) })
@@ -107,7 +115,14 @@ function removeComputed(index) {
     <div class="space-y-1">
       <div class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Group by</div>
       <div v-for="(g, i) in opts.groupBy" :key="'g' + i" class="flex items-center gap-1">
+        <input
+          v-if="g.expr !== undefined"
+          class="flex-1 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
+          :value="g.expr" placeholder="YEAR(t1.[OrderDate])"
+          @input="updateItem('groupBy', i, 'expr', $event.target.value)"
+        />
         <select
+          v-else
           class="flex-1 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
           :value="`${g.alias}::${g.field}`"
           @change="updateGroupBy(i, $event.target.value)"
@@ -119,6 +134,17 @@ function removeComputed(index) {
       <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" :disabled="!fieldOptions.length" @click="addGroupBy">
         <Plus class="h-2.5 w-2.5" /> Add group by
       </button>
+      <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" @click="addGroupByExpr">
+        <Plus class="h-2.5 w-2.5" /> Expression
+      </button>
+      <div v-if="opts.groupBy.length || modelValue?.having" class="flex items-center gap-1 pt-1">
+        <span class="text-[10px] font-semibold text-muted-foreground shrink-0">HAVING</span>
+        <input
+          class="flex-1 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
+          :value="modelValue?.having || ''" placeholder="COUNT(*) > 1"
+          @input="setHaving($event.target.value)"
+        />
+      </div>
       <p v-if="opts.groupBy.length" class="text-[9px] text-amber-600">
         With GROUP BY, only grouped columns + computed columns are selected.
       </p>
@@ -128,7 +154,14 @@ function removeComputed(index) {
     <div class="space-y-1">
       <div class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Order by</div>
       <div v-for="(o, i) in opts.orderBy" :key="'o' + i" class="flex items-center gap-1">
+        <input
+          v-if="o.expr !== undefined"
+          class="flex-1 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
+          :value="o.expr" placeholder="[OutputName] or an expression"
+          @input="updateItem('orderBy', i, 'expr', $event.target.value)"
+        />
         <select
+          v-else
           class="flex-1 min-w-0 text-[10px] font-mono border rounded px-1 py-0.5 bg-background"
           :value="`${o.alias}::${o.field}`"
           @change="updateOrderByField(i, $event.target.value)"
@@ -147,6 +180,9 @@ function removeComputed(index) {
       </div>
       <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" :disabled="!fieldOptions.length" @click="addOrderBy">
         <Plus class="h-2.5 w-2.5" /> Add order by
+      </button>
+      <button class="flex items-center gap-0.5 text-[10px] text-primary hover:underline" @click="addOrderByExpr">
+        <Plus class="h-2.5 w-2.5" /> Expression
       </button>
     </div>
 

@@ -18,7 +18,7 @@ export function defaultQueryOptions() {
 }
 
 export function buildBuilderState({
-  selectedDEs, joins, where, visualMode, layout, queryOptions,
+  selectedDEs, joins, where, visualMode, layout, queryOptions, branches, setOps, activeBranch,
 } = {}) {
   return {
     // 2: the visual canvas draws selectedDEs/joins, with card positions in `layout`.
@@ -29,6 +29,10 @@ export function buildBuilderState({
     queryOptions: plainClone(queryOptions) || defaultQueryOptions(),
     visualMode: !!visualMode,
     layout: plainClone(layout) || {},
+    // UNION / EXCEPT / INTERSECT: every SELECT's state, the operators and the open tab.
+    ...(Array.isArray(branches) && branches.length > 1
+      ? { branches: plainClone(branches), setOps: plainClone(setOps) || [], activeBranch: activeBranch || 0 }
+      : {}),
   }
 }
 

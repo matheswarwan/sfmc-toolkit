@@ -1,24 +1,31 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { LayoutGrid, List, Check, Loader2, PanelRight, PanelBottom, EyeOff, Code2, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { LayoutGrid, List, Check, Loader2, FileInput, X, Share, PanelRight, PanelBottom, EyeOff, Code2, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import DEBrowser from './DEBrowser.vue'
 import SelectedDEsPanel from './SelectedDEsPanel.vue'
 import SqlOutput from './SqlOutput.vue'
 import BuilderCanvas from './canvas/BuilderCanvas.vue'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
+import OutputColumns from './OutputColumns.vue'
 import { useStack } from '@/composables/useStack.js'
-import { saveBuilderRecord, defaultQueryOptions } from '@/utils/builderStorage.js'
-import { resolveSelectionTables, fieldOptionsFromTables } from '@/utils/sqlBuilder.js'
+import { saveBuilderRecord, defaultQueryOptions, plainClone } from '@/utils/builderStorage.js'
+import { resolveSelectionTables, fieldOptionsFromTables, buildSqlFromSelections } from '@/utils/sqlBuilder.js'
 import { graphToModel } from '@/utils/builderOrder.js'
+import { importSqlToBuilder } from '@/utils/builderImport.js'
+import { parseSqlForBuilder } from '@/utils/sqlToBuilder.js'
+import { builderToDiagramforce, openInDiagramforce } from '@/utils/diagramforce.js'
+import { showToast } from '@/composables/useToast.js'
 
 const props = defineProps({
   // A saved Query Builder record to open, or null for a new query.
   openId: { type: String, default: null },
+  // SQL to draw on open (Open in Query Builder from Run Query or Saved queries).
+  importSql: { type: String, default: '' },
 })
 const emit = defineEmits(['saved'])
 
-const { stack } = useStack()
+const { stack, state: stackState } = useStack()
 const visualMode = ref(false)
 const selectedDEs = ref([])
 const joins = ref([])
@@ -27,6 +34,64 @@ const queryOptions = ref(defaultQueryOptions())
 const generatedSql = ref('')
 // Card positions on the visual canvas, by DE id (the canvas draws the List model).
 const layout = ref({})
+
+// UNION / EXCEPT / INTERSECT: one builder state per SELECT, shown as tabs. The active
+// SELECT lives in the refs above; its slot in `branches` is refreshed when leaving it.
+const SET_OPS = ['UNION ALL', 'UNION', 'EXCEPT', 'INTERSECT']
+const branches = ref([]) // [] for a single SELECT
+const setOps = ref([]) // operator between branch i and i + 1
+const activeBranch = ref(0)
+const emptyState = () => ({ selectedDEs: [], joins: [], where: { combinator: 'AND', conditions: [] }, queryOptions: defaultQueryOptions(), layout: {} })
+const currentState = () => plainClone({ selectedDEs: selectedDEs.value, joins: joins.value, where: where.value, queryOptions: queryOptions.value, layout: layout.value })
+function allBranches() {
+  if (branches.value.length < 2) return [currentState()]
+  const b = [...branches.value]
+  b[activeBranch.value] = currentState()
+  return b
+}
+const branchSql = (st) => buildSqlFromSelections(st?.selectedDEs || [], st?.joins || [], st?.where, st?.queryOptions)
+const sqlBefore = computed(() => {
+  if (branches.value.length < 2) return ''
+  const out = []
+  for (let i = 0; i < activeBranch.value; i++) out.push(branchSql(branches.value[i]), setOps.value[i] || 'UNION ALL')
+  return out.join('\n')
+})
+const sqlAfter = computed(() => {
+  if (branches.value.length < 2) return ''
+  const out = []
+  for (let i = activeBranch.value + 1; i < branches.value.length; i++) out.push(setOps.value[i - 1] || 'UNION ALL', branchSql(branches.value[i]))
+  return out.join('\n')
+})
+async function loadBranch(st) {
+  restoring = true
+  layout.value = st?.layout || {}
+  await applyBuilderState(st || emptyState())
+}
+async function switchBranch(i) {
+  if (i === activeBranch.value) return
+  branches.value = allBranches()
+  activeBranch.value = i
+  await loadBranch(branches.value[i])
+}
+async function addBranch() {
+  const b = allBranches()
+  b.push(emptyState())
+  setOps.value = [...setOps.value, 'UNION ALL']
+  branches.value = b
+  activeBranch.value = b.length - 1
+  await loadBranch(b[b.length - 1])
+}
+async function removeBranch(i) {
+  const b = allBranches()
+  b.splice(i, 1)
+  const ops = [...setOps.value]
+  ops.splice(Math.max(0, i - 1), 1)
+  setOps.value = b.length > 1 ? ops : []
+  branches.value = b.length > 1 ? b : []
+  activeBranch.value = Math.min(activeBranch.value > i ? activeBranch.value - 1 : activeBranch.value, b.length - 1)
+  await loadBranch(b[activeBranch.value])
+}
+function setOp(i, v) { setOps.value = setOps.value.map((o, k) => (k === i ? v : o)) }
 const recordId = ref(null)
 const restoreNotice = ref('')
 
@@ -110,7 +175,94 @@ function endResize() {
 }
 
 // Restoring a saved record does not depend on the SFMC connection.
-onMounted(() => { if (props.openId) loadRecord(props.openId) })
+onMounted(() => {
+  if (props.openId) loadRecord(props.openId)
+  else if (props.importSql) {
+    // Tables are looked up in SFMC, so wait for the connection check (10 s at most).
+    if (stackState.value !== 'detecting') return runImport(props.importSql)
+    importBusy.value = true
+    const stop = watch(stackState, (v) => { if (v !== 'detecting') { stop(); clearTimeout(t); runImport(props.importSql) } })
+    const t = setTimeout(() => { stop(); runImport(props.importSql) }, 10000)
+  }
+})
+
+// ── Subqueries in FROM ─────────────────────────────────────
+// A card whose table is a SELECT in parentheses; its fields are the SELECT's columns.
+const subEdit = ref(null) // { id, alias, text, error }
+function openSubquery(id) {
+  const de = id && selectedDEs.value.find((d) => d.id === id)
+  subEdit.value = de
+    ? { id, alias: de.alias || de.name, text: de.subquery || '', error: '' }
+    : { id: null, alias: `sq${selectedDEs.value.filter((d) => d.sourceType === 'subquery').length + 1}`, text: '', error: '' }
+}
+function saveSubquery() {
+  const e = subEdit.value
+  const parsed = parseSqlForBuilder(e.text)
+  if (parsed.error) { e.error = parsed.error; return }
+  const names = parsed.columns.map((c) => c.as || c.field || '').filter(Boolean)
+  if (!names.length || parsed.columns.some((c) => c.star)) { e.error = 'Name every column of the subquery (no *), so the card can list them. Give expressions an alias with AS.'; return }
+  const alias = (e.alias || '').trim().replace(/\s+/g, '_') || 'sq'
+  const fields = names.map((name) => ({ name }))
+  if (e.id) {
+    selectedDEs.value = selectedDEs.value.map((d) => (d.id !== e.id ? d : {
+      ...d, subquery: e.text.trim(), alias, name: alias, fields,
+      selectedFields: Array.isArray(d.selectedFields) ? d.selectedFields.filter((n) => names.includes(n)) : null,
+    }))
+  } else {
+    const id = `sub:${alias.toLowerCase()}:${Date.now().toString(36)}`
+    selectedPanelRef.value?.addDe({ id, name: alias, sourceType: 'subquery', subquery: e.text.trim(), fields })
+  }
+  subEdit.value = null
+}
+
+// ── Open in Diagramforce ───────────────────────────────────
+const dfMenu = ref(false)
+function toDiagramforce(mode, allFields = false) {
+  dfMenu.value = false
+  const diagram = builderToDiagramforce(
+    { selectedDEs: selectedDEs.value, joins: joins.value, where: where.value, queryOptions: queryOptions.value, layout: layout.value },
+    { mode, allFields, title: selectedDEs.value.map((d) => d.name).slice(0, 3).join(' + ') || 'Query' },
+  )
+  if (!openInDiagramforce(diagram)) showToast('The browser blocked the new tab. Allow pop-ups for the Toolkit and try again.')
+}
+
+// ── SQL to builder ─────────────────────────────────────────
+const importOpen = ref(false)
+const importText = ref('')
+const importBusy = ref(false)
+const importError = ref('')
+const importNotes = ref([])
+function openImport() {
+  importText.value = generatedSql.value || ''
+  importError.value = ''
+  importOpen.value = true
+}
+async function runImport(sql) {
+  importBusy.value = true
+  importError.value = ''
+  try {
+    const r = await importSqlToBuilder(sql, stack.value)
+    if (r.error) { importError.value = r.error; importOpen.value = true; importText.value = sql; return }
+    importOpen.value = false
+    importNotes.value = r.notes
+    restoring = true
+    layout.value = {}
+    visualMode.value = true
+    branches.value = r.branches.length > 1 ? r.branches : []
+    setOps.value = r.branches.length > 1 ? r.ops : []
+    activeBranch.value = 0
+    await applyBuilderState(r.branches[0])
+    // A drawn query is new work: save it.
+    saveStatus.value = 'pending'
+    clearTimeout(autosaveTimer)
+    autosaveTimer = setTimeout(doAutosave, 300)
+  } catch (e) {
+    importError.value = e?.message || String(e)
+    importOpen.value = true
+  } finally {
+    importBusy.value = false
+  }
+}
 
 function loadRecord(id) {
   restoring = true
@@ -141,6 +293,11 @@ function loadRecord(id) {
     }
     visualMode.value = !!bs.visualMode
     layout.value = bs.layout && typeof bs.layout === 'object' ? { ...bs.layout } : {}
+    if (Array.isArray(bs.branches) && bs.branches.length > 1) {
+      branches.value = bs.branches
+      setOps.value = Array.isArray(bs.setOps) ? bs.setOps : []
+      activeBranch.value = Math.min(bs.activeBranch || 0, bs.branches.length - 1)
+    }
     // Records from before the shared model kept the visual joins in a graph of their own.
     if (!bs.layout && (bs.graphNodes?.length || bs.graphEdges?.length)) {
       const m = graphToModel(bs.selectedDEs || [], bs.graphNodes || [], bs.graphEdges || [])
@@ -186,6 +343,7 @@ async function doAutosave() {
         queryOptions: queryOptions.value,
         visualMode: visualMode.value,
         layout: layout.value,
+        ...(branches.value.length > 1 ? { branches: allBranches(), setOps: setOps.value, activeBranch: activeBranch.value } : {}),
       },
     })
     if (id !== recordId.value) emit('saved', id)
@@ -200,7 +358,7 @@ async function doAutosave() {
 
 // Debounced autosave: fires after AUTOSAVE_IDLE_MS of no changes.
 watch(
-  [selectedDEs, joins, where, queryOptions, generatedSql, visualMode, layout],
+  [selectedDEs, joins, where, queryOptions, generatedSql, visualMode, layout, branches, setOps, activeBranch],
   () => {
     if (restoring) return
     if (!selectedDEs.value.length && !recordId.value) return
@@ -220,9 +378,11 @@ const saveStatusLabel = computed(() => {
   }
 })
 
-function onManualSave(id) {
-  if (id !== recordId.value) emit('saved', id)
-  recordId.value = id
+async function onManualSave() {
+  const wasUpdate = !!recordId.value
+  clearTimeout(autosaveTimer)
+  await doAutosave()
+  if (saveStatus.value === 'saved') showToast(wasUpdate ? 'Query updated in Saved queries.' : 'Saved to Saved queries.')
 }
 
 function onSelectDe(node) {
@@ -243,6 +403,7 @@ function onCanvasFilter({ alias, field }) {
   <div class="flex flex-col h-full bg-background">
     <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card shrink-0">
       <span class="text-[10px] font-bold uppercase tracking-wide bg-amber-200 text-amber-900 rounded-full px-2 py-0.5">Experimental</span>
+      <span v-if="importBusy && !importOpen" class="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Drawing the query…</span>
       <span v-if="saveStatusLabel" class="flex items-center gap-1 text-xs text-muted-foreground">
         <Loader2 v-if="saveStatus === 'saving'" class="h-3 w-3 animate-spin" />
         <Check v-else-if="saveStatus === 'saved'" class="h-3 w-3 text-emerald-600" />
@@ -250,6 +411,29 @@ function onCanvasFilter({ alias, field }) {
       </span>
       <div class="flex-1" />
       <slot name="actions" />
+      <div class="relative">
+        <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium border border-border hover:bg-accent disabled:opacity-50"
+          :disabled="!selectedDEs.length" title="Open this query as a diagram in Diagramforce (diagramforce.com, a free diagram editor)" @click="dfMenu = !dfMenu">
+          <Share class="h-3.5 w-3.5" /> Diagramforce <ChevronDown class="h-3 w-3" />
+        </button>
+        <template v-if="dfMenu">
+          <div class="fixed inset-0 z-40" @click="dfMenu = false" />
+          <div class="absolute right-0 top-8 z-50 w-72 rounded-lg border border-border bg-card text-card-foreground shadow-xl p-1 text-xs">
+            <button class="w-full text-left px-2 py-1.5 rounded hover:bg-muted" @click="toDiagramforce('model')"><b>Data model</b>, fields the query uses<br><span class="text-muted-foreground">Tables and their join lines</span></button>
+            <button class="w-full text-left px-2 py-1.5 rounded hover:bg-muted" @click="toDiagramforce('model', true)"><b>Data model</b>, all fields</button>
+            <button class="w-full text-left px-2 py-1.5 rounded hover:bg-muted" @click="toDiagramforce('lineage')"><b>Lineage</b><br><span class="text-muted-foreground">Which source fields feed each output column</span></button>
+            <p class="px-2 pt-1 pb-1.5 text-[10px] text-muted-foreground border-t border-border mt-1">Opens diagramforce.com in a new tab and hands it the diagram. Table and field names are sent to that page only; no data rows.</p>
+          </div>
+        </template>
+      </div>
+      <button v-if="branches.length < 2" class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium border border-border hover:bg-accent disabled:opacity-50"
+        :disabled="!selectedDEs.length" title="Add a second SELECT, combined with UNION ALL (each SELECT gets a tab)" @click="addBranch">
+        + UNION
+      </button>
+      <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium border border-border hover:bg-accent"
+        title="Draw a query you paste (or the SQL panel's) as tables and joins" @click="openImport">
+        <FileInput class="h-3.5 w-3.5" /> From SQL
+      </button>
       <!-- SQL panel: open or hide, then where it docks -->
         <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium"
           :class="sqlOpen ? 'border border-border hover:bg-accent' : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50'"
@@ -281,6 +465,71 @@ function onCanvasFilter({ alias, field }) {
             @click="visualMode = true"
           ><LayoutGrid class="h-3 w-3" /> Visual</button>
         </div>
+    </div>
+
+    <!-- One tab per SELECT of a UNION / EXCEPT / INTERSECT -->
+    <div v-if="branches.length > 1" class="flex items-center gap-1 px-3 py-1 border-b border-border bg-muted/30 shrink-0 overflow-x-auto text-xs">
+      <template v-for="(b, i) in branches" :key="i">
+        <select v-if="i > 0" class="h-6 text-[10px] font-semibold border border-border rounded px-1 bg-background" :value="setOps[i - 1]" title="How this SELECT combines with the one before" @change="setOp(i - 1, $event.target.value)">
+          <option v-for="op in SET_OPS" :key="op">{{ op }}</option>
+        </select>
+        <div class="flex items-center rounded-md border" :class="i === activeBranch ? 'border-primary bg-card text-primary font-semibold' : 'border-border text-muted-foreground hover:bg-card'">
+          <button class="px-2 h-6" @click="switchBranch(i)">SELECT {{ i + 1 }}</button>
+          <button class="pr-1.5 h-6 hover:text-destructive" title="Remove this SELECT" @click="removeBranch(i)"><X class="h-3 w-3" /></button>
+        </div>
+      </template>
+      <button class="ml-1 h-6 px-2 rounded-md text-primary hover:bg-card" title="Add another SELECT, combined with UNION ALL" @click="addBranch">+ SELECT</button>
+    </div>
+
+    <div v-if="importNotes.length" class="flex items-start gap-2 px-3 py-1.5 bg-sky-50 dark:bg-sky-950 border-b border-sky-200 dark:border-sky-800 text-[11px] text-sky-900 dark:text-sky-100 shrink-0">
+      <div class="min-w-0">
+        <div class="font-semibold">Drawn from SQL. Check these:</div>
+        <ul class="list-disc pl-4"><li v-for="n in importNotes" :key="n">{{ n }}</li></ul>
+      </div>
+      <button class="ml-auto shrink-0 hover:underline" @click="importNotes = []">Dismiss</button>
+    </div>
+
+    <!-- From SQL -->
+    <div v-if="importOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="importOpen = false">
+      <div class="w-full max-w-2xl rounded-xl border border-border bg-card text-card-foreground shadow-2xl p-4 space-y-3">
+        <div class="flex items-center">
+          <h2 class="text-sm font-bold">Draw a query</h2>
+          <button class="ml-auto text-muted-foreground hover:text-foreground" title="Close" @click="importOpen = false"><X class="h-4 w-4" /></button>
+        </div>
+        <p class="text-xs text-muted-foreground">
+          Paste a SELECT. Its tables, joins, columns, filters and options open in the builder; expressions it cannot model are kept as written.
+          Comments and formatting are not kept. <template v-if="selectedDEs.length">This replaces what is in the builder now.</template>
+        </p>
+        <textarea v-model="importText" class="w-full h-56 rounded-md border border-border bg-background p-2 font-mono text-xs" spellcheck="false" placeholder="SELECT ... FROM ..." />
+        <p v-if="importError" class="text-xs text-destructive">{{ importError }}</p>
+        <div class="flex justify-end gap-2">
+          <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="importOpen = false">Cancel</button>
+          <button class="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+            :disabled="importBusy || !importText.trim()" @click="runImport(importText)">
+            <Loader2 v-if="importBusy" class="h-3.5 w-3.5 animate-spin" /> Draw it
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subquery editor -->
+    <div v-if="subEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="subEdit = null">
+      <div class="w-full max-w-2xl rounded-xl border border-border bg-card text-card-foreground shadow-2xl p-4 space-y-3">
+        <div class="flex items-center">
+          <h2 class="text-sm font-bold">{{ subEdit.id ? 'Edit subquery' : 'Add a subquery' }}</h2>
+          <button class="ml-auto text-muted-foreground hover:text-foreground" title="Close" @click="subEdit = null"><X class="h-4 w-4" /></button>
+        </div>
+        <p class="text-xs text-muted-foreground">A SELECT used as a table: <code>FROM (SELECT ...) AS alias</code>. Its columns become the card's fields, so name each one.</p>
+        <label class="flex items-center gap-2 text-xs">Alias
+          <input v-model="subEdit.alias" class="h-7 w-40 rounded border border-border bg-background px-2 font-mono text-xs" />
+        </label>
+        <textarea v-model="subEdit.text" class="w-full h-48 rounded-md border border-border bg-background p-2 font-mono text-xs" spellcheck="false" placeholder="SELECT SubscriberKey, MAX(EventDate) AS LastOpen FROM _Open GROUP BY SubscriberKey" />
+        <p v-if="subEdit.error" class="text-xs text-destructive">{{ subEdit.error }}</p>
+        <div class="flex justify-end gap-2">
+          <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="subEdit = null">Cancel</button>
+          <button class="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50" :disabled="!subEdit.text.trim()" @click="saveSubquery">{{ subEdit.id ? 'Save' : 'Add' }}</button>
+        </div>
+      </div>
     </div>
 
     <div v-if="restoreNotice" class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border-b border-amber-200 text-[11px] text-amber-900 shrink-0">
@@ -330,11 +579,16 @@ function onCanvasFilter({ alias, field }) {
                   <WhereBuilder :field-options="visualFieldOptions" v-model="where" />
                 </div>
                 <div class="border-t border-border pt-2">
+                  <div class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Output columns</div>
+                  <OutputColumns :selected-d-es="selectedDEs" :query-options="queryOptions" @update:selected-d-es="selectedDEs = $event" @update:query-options="queryOptions = $event" />
+                </div>
+                <div class="border-t border-border pt-2">
                   <QueryOptions :field-options="visualFieldOptions" v-model="queryOptions" />
                 </div>
               </div>
             </div>
             <BuilderCanvas
+              :key="activeBranch"
               ref="canvasRef"
               class="flex-1 min-h-0"
               :selected-d-es="selectedDEs"
@@ -346,6 +600,7 @@ function onCanvasFilter({ alias, field }) {
               @update:layout="layout = $event"
               @add-de="onSelectDe"
               @add-filter="onCanvasFilter"
+              @edit-subquery="openSubquery"
             />
           </template>
         </div>
@@ -364,8 +619,8 @@ function onCanvasFilter({ alias, field }) {
           <SqlOutput
             v-model:sql="generatedSql"
             :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
-            :visual-mode="visualMode" :layout="layout"
-            :record-id="recordId" @saved="onManualSave"
+            :visual-mode="visualMode" :layout="layout" :sql-before="sqlBefore" :sql-after="sqlAfter"
+            :record-id="recordId" @save="onManualSave" @apply-sql="runImport"
           />
         </div>
       </div>
@@ -380,8 +635,8 @@ function onCanvasFilter({ alias, field }) {
         <SqlOutput
           v-model:sql="generatedSql"
           :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
-          :visual-mode="visualMode" :layout="layout"
-          :record-id="recordId" @saved="onManualSave"
+          :visual-mode="visualMode" :layout="layout" :sql-before="sqlBefore" :sql-after="sqlAfter"
+          :record-id="recordId" @save="onManualSave" @apply-sql="runImport"
         />
       </div>
     </div>

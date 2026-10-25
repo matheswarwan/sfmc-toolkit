@@ -1251,6 +1251,472 @@ function ruleOrderByNumber(ctx) {
 }
 
 // ---------------------------------------------------------------------------
+// Rules from the MCE SQL error list (2026-10-25; facts from SFMC's own error messages)
+
+// QS045: SFMC wraps the query, so a top-level ORDER BY needs TOP like a subquery's.
+function ruleOrderByTopLevel(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const ob = sc.clauses.orderBy
+    if (sc.depth !== 0 || !ob || sc.topIdx >= 0 || sc.clauses.for) continue
+    // A UNION's ORDER BY belongs to the whole query; it needs TOP in no branch either.
+    let offset = false
+    for (let i = ob.body; i < ob.end; i++) if (isWord(sig[i], 'OFFSET') && sig[i].depth === 0) offset = true
+    if (offset) continue
+    const last = sig[ob.end - 1]
+    out.push({
+      ...span(sig[ob.idx], sig[ob.idx + 1]),
+      message: 'ORDER BY without TOP is refused: SFMC runs the query as a subquery. A data extension keeps no order anyway; remove ORDER BY or add TOP.',
+      fixes: last ? [{ label: 'Remove ORDER BY', changes: [{ from: sig[ob.idx].start, to: last.end, insert: '' }] }] : undefined,
+    })
+  }
+  return out
+}
+
+// QS046: FROM a, b (old style join).
+function ruleCommaJoin(ctx) {
+  const out = []
+  for (const sc of ctx.scopes) for (const t of sc.tables) {
+    if (t.via !== ',' || t.func) continue
+    const tok = t.derived ? ctx.sig[t.startIdx] : t.nameTok
+    out.push({ ...span(tok, tok), message: 'Tables separated by commas in FROM (old style join) are refused by SFMC. Use JOIN ... ON.' })
+  }
+  return out
+}
+
+// QS047: syntax from other databases.
+function ruleOtherDialect(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    const t = sig[i]
+    if (isWord(t, 'LIMIT') && sig[i + 1]?.type === 'number') {
+      out.push({ ...span(t, sig[i + 1]), message: 'LIMIT is not SQL Server syntax: use SELECT TOP n.' })
+    } else if (t.type === 'op' && t.value === '|' && sig[i + 1]?.type === 'op' && sig[i + 1].value === '|' && sig[i + 1].start === t.end) {
+      out.push({ ...span(t, sig[i + 1]), message: '|| is not string concatenation in SQL Server: use + or CONCAT().', fixes: [{ label: 'Use +', changes: [{ from: t.start, to: sig[i + 1].end, insert: '+' }] }] })
+    } else if (isWord(t, 'CURRENT_DATE') && sig[i - 1]?.type !== 'dot') {
+      out.push({ ...span(t, t), message: 'CURRENT_DATE does not exist in SFMC: use CAST(GETDATE() AS DATE).', fixes: [{ label: 'Use CAST(GETDATE() AS DATE)', changes: [{ from: t.start, to: t.end, insert: 'CAST(GETDATE() AS DATE)' }] }] })
+    } else if (isWord(t, 'ILIKE')) {
+      out.push({ ...span(t, t), message: 'ILIKE is PostgreSQL: LIKE in SFMC already ignores case.', fixes: [{ label: 'Use LIKE', changes: [{ from: t.start, to: t.end, insert: 'LIKE' }] }] })
+    } else if (t.type === 'op' && t.value === '::') {
+      out.push({ ...span(t, t), message: ':: casting is PostgreSQL: use CAST(x AS type).' })
+    } else if (t.type === 'op' && t.value === '`') {
+      out.push({ ...span(t, t), message: 'Backticks are MySQL quoting: use [brackets].' })
+    } else if (isWord(t, 'WINDOW') && t.depth === 0 && isNameTok(sig[i + 1]) && isWord(sig[i + 2], 'AS')) {
+      out.push({ ...span(t, t), message: 'A named WINDOW clause is not available in SFMC: write the OVER (...) in full.' })
+    }
+  }
+  return out
+}
+
+// QS048: functions from other databases, with the SQL Server name.
+const OTHER_FUNCS = {
+  NOW: ['GETDATE', true], SYSDATE: ['GETDATE', true], CURDATE: ['CAST(GETDATE() AS DATE)', false], LOCALTIMESTAMP: ['GETDATE', true],
+  IFNULL: ['ISNULL', true], NVL: ['ISNULL', true], NVL2: ['IIF(x IS NOT NULL, a, b)', false],
+  SUBSTR: ['SUBSTRING', true], LENGTH: ['LEN', true], CHAR_LENGTH: ['LEN', true], INSTR: ['CHARINDEX (arguments swapped)', false],
+  LOCATE: ['CHARINDEX', true], STRPOS: ['CHARINDEX (arguments swapped)', false], LCASE: ['LOWER', true], UCASE: ['UPPER', true],
+  DATE_TRUNC: ['DATEADD/DATEDIFF, or CAST(x AS DATE) for days', false], DATETRUNC: ['DATEADD/DATEDIFF, or CAST(x AS DATE) for days', false],
+  DATE_ADD: ['DATEADD', false], DATE_SUB: ['DATEADD with a negative number', false], DATE_FORMAT: ['FORMAT or CONVERT with a style', false],
+  TO_CHAR: ['FORMAT or CONVERT', false], TO_DATE: ['CONVERT(DATETIME, x, style)', false], STRFTIME: ['FORMAT', false],
+  GROUP_CONCAT: ['STRING_AGG', false], LISTAGG: ['STRING_AGG', false], REGEXP_LIKE: ['LIKE with a pattern', false],
+  GREATEST: ['a CASE expression (GREATEST is newer than SFMC\'s SQL Server)', false], LEAST: ['a CASE expression (LEAST is newer than SFMC\'s SQL Server)', false],
+  GENERATE_SERIES: ['a numbers table or a recursive pattern (not available)', false], JSON_OBJECT: ['string building with CONCAT (JSON_OBJECT is newer than SFMC\'s SQL Server)', false],
+  JSON_ARRAY: ['string building with CONCAT', false], RANDOM: ['NEWID() for ordering, or RAND()', false],
+}
+function ruleOtherFunctions(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    const t = sig[i]
+    if (t.type !== 'word' || sig[i - 1]?.type === 'dot' || sig[i + 1]?.type !== 'lparen') continue
+    const hit = OTHER_FUNCS[t.upper]
+    if (!hit) continue
+    const [use, rename] = hit
+    const d = { ...span(t, t), message: `${t.upper}() is not a function in SFMC's SQL: use ${use}.` }
+    if (rename) d.fixes = [{ label: `Use ${use}`, changes: [{ from: t.start, to: t.end, insert: use }] }]
+    out.push(d)
+  }
+  return out
+}
+
+// QS049: alias.column where the alias is not in FROM (multi-part identifier could not be bound).
+function ruleUnknownAlias(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i + 2 < sig.length; i++) {
+    const t = sig[i]
+    if (!isNameTok(t) || sig[i + 1]?.type !== 'dot' || !isNameTok(sig[i + 2])) continue
+    if (sig[i - 1]?.type === 'dot' || sig[i + 3]?.type === 'dot' || sig[i + 3]?.type === 'lparen') continue
+    if (ctx.tableNameIdx.has(i)) continue
+    const sc = ctx.scopes[ctx.owner[i]]
+    if (!sc || !sc.tables.length) continue
+    // Skip anything outside SELECT/WHERE/GROUP/HAVING/ORDER/ON (INTO, OPTION, ...).
+    if (sc.clauses.into && i >= sc.clauses.into.idx && i < sc.clauses.into.end) continue
+    const qual = identName(t)
+    if (findTable(sc, qual)) continue
+    // Unaliased qualified names (ENT.X, a.b.c) are handled by other rules.
+    if (eqi(qual, 'ENT') || eqi(qual, 'dbo')) continue
+    out.push({ ...span(t, t), message: `${qual} is not a table or alias in this FROM (SFMC: "The multi-part identifier could not be bound").` })
+  }
+  return out
+}
+
+// QS050: the same alias (or unaliased table) twice in one FROM.
+function ruleDuplicateAlias(ctx) {
+  const out = []
+  for (const sc of ctx.scopes) {
+    const seen = new Map()
+    for (const t of sc.tables) {
+      const name = t.alias ? identName(t.alias) : (t.derived ? null : t.name)
+      if (!name) continue
+      const k = name.toLowerCase()
+      if (seen.has(k)) {
+        const tok = t.alias || t.nameTok
+        out.push({ ...span(tok, tok), message: `${name} is used twice in this FROM: give each table its own alias.` })
+      } else seen.set(k, t)
+    }
+  }
+  return out
+}
+
+/** sig indices of OVER keywords with their (start, end) paren range. */
+function overClauses(sig) {
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    if (!isWord(sig[i], 'OVER') || sig[i + 1]?.type !== 'lparen') continue
+    const q = matchParen(sig, i + 1)
+    if (q > 0) out.push({ idx: i, open: i + 1, close: q })
+  }
+  return out
+}
+
+/** The function call just before OVER: { name, nameIdx, open, close }. */
+function callBefore(sig, overIdx) {
+  const close = overIdx - 1
+  if (sig[close]?.type !== 'rparen') return null
+  for (let p = close - 1; p >= 0; p--) {
+    if (sig[p].type === 'lparen' && sig[p].depth === sig[close].depth && matchParen(sig, p) === close) {
+      return sig[p - 1]?.type === 'word' ? { name: sig[p - 1].upper, nameIdx: p - 1, open: p, close } : null
+    }
+  }
+  return null
+}
+
+function inClause(sc, kw, i) {
+  const c = sc.clauses[kw]
+  return !!c && i >= c.body && i < c.end
+}
+
+// QS051: OVER (...) in WHERE, GROUP BY or HAVING.
+function ruleWindowPlacement(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const o of overClauses(sig)) {
+    const sc = ctx.scopes[ctx.owner[o.idx]]
+    if (!sc) continue
+    const where = ['where', 'groupBy', 'having'].find((k) => inClause(sc, k, o.idx))
+    if (!where) continue
+    const label = { where: 'WHERE', groupBy: 'GROUP BY', having: 'HAVING' }[where]
+    out.push({ ...span(sig[o.idx], sig[o.close]), message: `Window functions (OVER) can only be in SELECT or ORDER BY, not ${label}. Compute it in a subquery and filter on its alias outside.` })
+  }
+  return out
+}
+
+const RANKING = new Set(['ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD', 'FIRST_VALUE', 'LAST_VALUE', 'CUME_DIST', 'PERCENT_RANK'])
+const NEED_ORDER = new Set(['ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD', 'CUME_DIST', 'PERCENT_RANK'])
+const NO_FRAME = new Set(['ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD', 'CUME_DIST', 'PERCENT_RANK'])
+
+// QS052 / QS053: window function rules.
+function ruleWindowDistinct(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const o of overClauses(sig)) {
+    const call = callBefore(sig, o.idx)
+    if (!call || !AGGREGATES.has(call.name)) continue
+    if (isWord(sig[call.open + 1], 'DISTINCT')) out.push({ ...span(sig[call.nameIdx], sig[o.close]), message: `${call.name}(DISTINCT ...) OVER (...) is refused: DISTINCT is not allowed in a window function. Use a subquery, or DENSE_RANK tricks.` })
+  }
+  return out
+}
+
+function ruleWindowShape(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const o of overClauses(sig)) {
+    const call = callBefore(sig, o.idx)
+    if (!call) continue
+    const d = sig[o.open].depth + 1
+    let order = false
+    let frame = -1
+    for (let i = o.open + 1; i < o.close; i++) {
+      if (sig[i].depth !== d) continue
+      if (isWord(sig[i], 'ORDER') && isWord(sig[i + 1], 'BY')) order = true
+      if (isWord(sig[i], 'ROWS', 'RANGE') && frame < 0) frame = i
+    }
+    const at = span(sig[call.nameIdx], sig[o.close])
+    if (call.name === 'STRING_AGG') out.push({ ...at, message: 'STRING_AGG cannot be a window function (no OVER): use it with GROUP BY.' })
+    else if (NEED_ORDER.has(call.name) && !order) out.push({ ...at, message: `${call.name}() needs ORDER BY inside OVER (...).` })
+    else if (NO_FRAME.has(call.name) && frame >= 0) out.push({ ...at, message: `${call.name}() cannot have a ROWS or RANGE frame.` })
+    else if (frame >= 0 && !order) out.push({ ...at, message: 'A ROWS or RANGE frame needs ORDER BY inside OVER (...).' })
+    else if (frame >= 0 && isWord(sig[frame], 'RANGE')) {
+      for (let i = frame + 1; i < o.close; i++) {
+        if (sig[i].type === 'number' && isWord(sig[i + 1], 'PRECEDING', 'FOLLOWING')) {
+          out.push({ ...at, message: 'RANGE only takes UNBOUNDED or CURRENT ROW: use ROWS for a number of rows.' })
+          break
+        }
+      }
+    }
+  }
+  // PERCENTILE_CONT / PERCENTILE_DISC need WITHIN GROUP and OVER.
+  for (let i = 0; i < sig.length; i++) {
+    if (!isWord(sig[i], 'PERCENTILE_CONT', 'PERCENTILE_DISC') || sig[i + 1]?.type !== 'lparen') continue
+    const q = matchParen(sig, i + 1)
+    if (q < 0) continue
+    let j = q + 1
+    if (isWord(sig[j], 'WITHIN') && sig[j + 2]?.type === 'lparen') j = matchParen(sig, j + 2) + 1
+    if (j > 0 && !isWord(sig[j], 'OVER')) out.push({ ...span(sig[i], sig[q]), message: `${sig[i].upper} needs OVER (...) in SQL Server (an empty OVER () works).` })
+  }
+  return out
+}
+
+// QS054: aggregates in WHERE, and an aggregate inside another.
+function ruleAggregatePlacement(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    const t = sig[i]
+    if (t.type !== 'word' || !AGGREGATES.has(t.upper) || sig[i + 1]?.type !== 'lparen' || sig[i - 1]?.type === 'dot') continue
+    const sc = ctx.scopes[ctx.owner[i]]
+    if (!sc) continue
+    const q = matchParen(sig, i + 1)
+    if (q > 0 && isWord(sig[q + 1], 'OVER')) continue
+    if (inClause(sc, 'where', i) && ctx.owner[i] === sc.index) {
+      out.push({ ...span(t, sig[q] || t), message: `${t.upper}() cannot be in WHERE: filter aggregates in HAVING (with GROUP BY), or aggregate in a subquery.` })
+      continue
+    }
+    // Nested: another aggregate between the parens, in the same scope.
+    for (let k = i + 2; q > 0 && k < q; k++) {
+      const u = sig[k]
+      if (u.type === 'word' && AGGREGATES.has(u.upper) && sig[k + 1]?.type === 'lparen' && ctx.owner[k] === ctx.owner[i]) {
+        const uq = matchParen(sig, k + 1)
+        if (uq > 0 && isWord(sig[uq + 1], 'OVER')) continue
+        out.push({ ...span(t, sig[q]), message: `An aggregate inside another (${t.upper}(${u.upper}(...))) is refused: aggregate in a subquery first.` })
+        break
+      }
+    }
+  }
+  return out
+}
+
+// QS055: IN (SELECT a, b ...).
+function ruleInSubqueryColumns(ctx) {
+  const out = []
+  for (const sc of ctx.scopes) {
+    if (sc.kind !== 'sub') continue
+    const p = sc.idx - 1
+    if (ctx.sig[p]?.type !== 'lparen' || !isWord(ctx.sig[p - 1], 'IN')) continue
+    if (sc.items.length > 1 || sc.items.some((it) => it.star)) {
+      out.push({ ...span(ctx.sig[sc.idx], ctx.sig[sc.idx]), message: 'The subquery after IN must return exactly one column.' })
+    }
+  }
+  return out
+}
+
+// QS056: GROUP BY 1.
+function ruleGroupByNumber(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const gb = sc.clauses.groupBy
+    if (!gb) continue
+    for (const g of splitOnCommas(sig, gb.body, gb.end, sc.depth)) {
+      if (g.end === g.start && sig[g.start]?.type === 'number') out.push({ ...span(sig[g.start], sig[g.start]), message: `GROUP BY ${sig[g.start].value} groups by the number ${sig[g.start].value}, not a column: SQL Server has no GROUP BY position. Write the column.` })
+    }
+  }
+  return out
+}
+
+// QS057: ORDER BY position out of range, or a constant.
+function ruleOrderByInvalid(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const ob = sc.clauses.orderBy
+    if (!ob) continue
+    for (const g of splitOnCommas(sig, ob.body, ob.end, sc.depth)) {
+      if (g.end < g.start) continue
+      const t = sig[g.start]
+      const single = g.end === g.start || (g.end === g.start + 1 && isWord(sig[g.end], 'ASC', 'DESC'))
+      if (!single) continue
+      if (t.type === 'number' && !sc.items.some((it) => it.star) && (Number(t.value) < 1 || Number(t.value) > sc.items.length)) {
+        out.push({ ...span(t, t), message: `ORDER BY ${t.value} is out of range: the select list has ${sc.items.length} column${sc.items.length === 1 ? '' : 's'}.` })
+      } else if (t.type === 'string') {
+        out.push({ ...span(t, t), message: 'ORDER BY a text constant is refused: order by a column.' })
+      }
+    }
+  }
+  return out
+}
+
+// QS058: SELECT DISTINCT ... ORDER BY something not selected.
+function ruleDistinctOrderBy(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const ob = sc.clauses.orderBy
+    if (!sc.distinct || !ob || sc.items.some((it) => it.star)) continue
+    const names = new Set(sc.items.map((it) => (it.outName || '').toLowerCase()).filter(Boolean))
+    const exprs = new Set(sc.items.map((it) => ctx.sql.slice(sig[it.exprStart].start, sig[it.exprEnd].end).replace(/\s+/g, '').toLowerCase()))
+    for (const g of splitOnCommas(sig, ob.body, ob.end, sc.depth)) {
+      if (g.end < g.start) continue
+      let e = g.end
+      if (isWord(sig[e], 'ASC', 'DESC')) e--
+      if (e < g.start || sig[g.start].type === 'number') continue
+      const text = ctx.sql.slice(sig[g.start].start, sig[e].end).replace(/\s+/g, '').toLowerCase()
+      const ch = chainAt(sig, g.start)
+      const last = ch && ch.end === e ? identName(ch.parts[ch.parts.length - 1]).toLowerCase() : null
+      if (exprs.has(text) || (last && names.has(last))) continue
+      out.push({ ...span(sig[g.start], sig[e]), message: 'With SELECT DISTINCT, ORDER BY items must be in the select list.' })
+    }
+  }
+  return out
+}
+
+// QS059: a JSON literal that is not valid JSON.
+function ruleJsonLiteral(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    if (!isWord(sig[i], 'JSON_VALUE', 'JSON_QUERY', 'ISJSON', 'JSON_MODIFY') || sig[i + 1]?.type !== 'lparen') continue
+    const s = sig[i + 2]
+    if (s?.type !== 'string' || !/^\s*[[{]/.test(stringValue(s))) continue
+    try { JSON.parse(stringValue(s)) } catch {
+      if (sig[i].upper !== 'ISJSON') out.push({ ...span(s, s), message: 'This JSON text is not valid JSON, so the run fails with "JSON text is not properly formatted".' })
+    }
+  }
+  return out
+}
+
+// QS060: a -- comment at the end of the query.
+function ruleTrailingLineComment(ctx) {
+  const all = ctx.tokens.filter((t) => t.type !== 'ws')
+  const last = all[all.length - 1]
+  if (last?.type !== 'comment' || !last.line) return []
+  const body = last.value.slice(2).trim().replace(/\*\//g, '* /')
+  return [{
+    ...span(last, last),
+    message: 'A -- comment at the very end can swallow what SFMC adds after the query, so the activity saves but the run fails. Use /* */ or remove it.',
+    fixes: [{ label: 'Use /* */', changes: [{ from: last.start, to: last.end, insert: `/* ${body} */` }] }],
+  }]
+}
+
+// QS061: expressions that fail the whole run on one bad row.
+function ruleRunTimeFailures(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 0; i < sig.length; i++) {
+    const t = sig[i]
+    if (t.type !== 'word' || sig[i - 1]?.type === 'dot' || sig[i + 1]?.type !== 'lparen') continue
+    const q = matchParen(sig, i + 1)
+    if (q < 0) continue
+    if (t.upper === 'CONVERT' || t.upper === 'CAST') {
+      const typeTok = t.upper === 'CONVERT' ? sig[i + 2] : (() => { for (let k = q - 1; k > i; k--) if (isWord(sig[k - 1], 'AS') && sig[k - 1].depth === sig[i + 1].depth + 1) return sig[k]; return null })()
+      if (isWord(typeTok, 'DATE', 'DATETIME', 'DATETIME2', 'SMALLDATETIME', 'INT', 'BIGINT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'MONEY')) {
+        out.push({ ...span(t, t), message: `${t.upper} to ${typeTok.upper} fails the whole run if one value cannot be converted. TRY_${t.upper} gives NULL for that row instead.`, fixes: [{ label: `Use TRY_${t.upper}`, changes: [{ from: t.start, to: t.end, insert: `TRY_${t.upper}` }] }] })
+      }
+    } else if (t.upper === 'DATEDIFF' && isWord(sig[i + 2], 'SECOND', 'SS', 'S', 'MILLISECOND', 'MS', 'MICROSECOND', 'NANOSECOND')) {
+      out.push({ ...span(t, t), message: `DATEDIFF in ${sig[i + 2].upper} overflows INT over long spans (about 68 years of seconds, 24 days of milliseconds). DATEDIFF_BIG does not.`, fixes: [{ label: 'Use DATEDIFF_BIG', changes: [{ from: t.start, to: t.end, insert: 'DATEDIFF_BIG' }] }] })
+    } else if (isWord(t, 'LEFT', 'RIGHT', 'SUBSTRING')) {
+      for (let k = i + 2; k < q; k++) {
+        if (isWord(sig[k], 'CHARINDEX', 'PATINDEX') && sig[k + 1]?.type === 'lparen') {
+          const cq = matchParen(sig, k + 1)
+          if (sig[cq + 1]?.type === 'op' && sig[cq + 1].value === '-') {
+            out.push({ ...span(t, sig[q]), message: `${t.upper} with ${sig[k].upper}(...) - n fails the run on rows where the text is not found (the length becomes negative). Wrap it: NULLIF(${sig[k].upper}(...), 0) - n.` })
+            break
+          }
+        }
+      }
+    }
+  }
+  // Division: flag `/ x` unless the divisor is a non-zero number or NULLIF(...).
+  for (let i = 1; i < sig.length - 1; i++) {
+    const t = sig[i]
+    if (t.type !== 'op' || (t.value !== '/' && t.value !== '%')) continue
+    const n = sig[i + 1]
+    if (n.type === 'number' && Number(n.value) !== 0) continue
+    if (isWord(n, 'NULLIF') || (n.type === 'lparen' && isWord(sig[i + 2], 'NULLIF'))) continue
+    out.push({ ...span(t, t), message: 'A division fails the whole run when the divisor is 0 for any row: divide by NULLIF(divisor, 0).' })
+  }
+  return out
+}
+
+// QS062: "text" in a comparison is a column name in SQL Server.
+function ruleDoubleQuotedValue(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (let i = 1; i < sig.length; i++) {
+    const t = sig[i]
+    if (t.type !== 'ident' || !t.quoted) continue
+    const p = sig[i - 1]
+    const valuePos = (p.type === 'op' && ['=', '<>', '!=', '<', '>', '<=', '>='].includes(p.value)) || isWord(p, 'LIKE') ||
+      ((p.type === 'lparen' || p.type === 'comma') && (() => { for (let k = i - 1; k >= 0; k--) { if (sig[k].type === 'lparen' && sig[k].depth === t.depth - 1) return isWord(sig[k - 1], 'IN'); } return false })())
+    if (!valuePos) continue
+    out.push({ ...span(t, t), message: `"${t.name}" is read as a column name (SFMC: Invalid column name). Text values take single quotes.`, fixes: [{ label: `Use '${t.name}'`, changes: [{ from: t.start, to: t.end, insert: `'${t.name.replace(/'/g, "''")}'` }] }] })
+  }
+  return out
+}
+
+// QS063: WHERE on the right table of a LEFT JOIN turns it into an INNER JOIN.
+function ruleLeftJoinFilteredInWhere(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const w = sc.clauses.where
+    if (!w) continue
+    const refName = (t) => (t.alias ? identName(t.alias) : t.name)
+    const lefts = sc.tables.filter((t, k) => k > 0 && !t.derived && (() => {
+      // The words before this table's JOIN.
+      for (let p = t.startIdx - 1; p >= 0 && p > t.startIdx - 4; p--) if (isWord(sig[p], 'LEFT')) return true
+      return false
+    })())
+    if (!lefts.length) continue
+    // Only plain AND-ed conditions at the WHERE's own level.
+    let hasOr = false
+    for (let i = w.body; i < w.end; i++) if (sig[i].depth === sc.depth && isWord(sig[i], 'OR')) hasOr = true
+    if (hasOr) continue
+    for (let i = w.body; i + 2 < w.end; i++) {
+      if (sig[i].depth !== sc.depth || !isNameTok(sig[i]) || sig[i + 1]?.type !== 'dot') continue
+      const t = lefts.find((l) => eqi(refName(l), identName(sig[i])))
+      if (!t) continue
+      // IS NULL keeps the LEFT JOIN meaning (rows without a match).
+      if (isWord(sig[i + 3], 'IS') && isWord(sig[i + 4], 'NULL')) continue
+      if (sig[i - 1]?.type === 'lparen' && isWord(sig[i - 2], 'ISNULL', 'COALESCE')) continue
+      out.push({ ...span(sig[i], sig[i + 2]), message: `This WHERE condition on ${refName(t)} drops the rows the LEFT JOIN kept without a match, so it works like an INNER JOIN. Move it into the ON, or allow NULL.` })
+      break
+    }
+  }
+  return out
+}
+
+// QS064: _PushTag to _PushAddress on the device alone.
+function rulePushJoin(ctx) {
+  const { sig } = ctx
+  const out = []
+  for (const sc of ctx.scopes) {
+    const names = sc.tables.map((t) => (t.derived ? '' : t.name.toUpperCase()))
+    if (!names.includes('_PUSHTAG') || !names.includes('_PUSHADDRESS')) continue
+    for (const t of sc.tables) {
+      if (!t.on) continue
+      const text = ctx.sql.slice(sig[t.on.start]?.start ?? 0, sig[t.on.end - 1]?.end ?? 0)
+      if (/_?DeviceID/i.test(text) && !/_?APID/i.test(text)) {
+        out.push({ ...span(sig[t.on.start], sig[t.on.end - 1]), message: 'A device ID is unique only within one MobilePush app: join _PushTag and _PushAddress on _DeviceID and _APID.' })
+      }
+    }
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 // Registry
 
 const RULES = [
@@ -1298,6 +1764,26 @@ const RULES = [
   { code: 'QS042', severity: 'info', title: 'ORDER BY column number', check: ruleOrderByNumber },
   { code: 'QS043', severity: 'warning', title: 'SELECT * instead of a column list', check: ruleSelectStar },
   { code: 'QS044', severity: 'warning', title: 'Output column name starts with an underscore', check: ruleUnderscoreName },
+  { code: 'QS045', severity: 'error', title: 'ORDER BY without TOP at the top level', check: ruleOrderByTopLevel },
+  { code: 'QS046', severity: 'error', title: 'Tables separated by commas in FROM (old style join)', check: ruleCommaJoin },
+  { code: 'QS047', severity: 'error', title: 'Syntax from another database (LIMIT, ||, CURRENT_DATE, ILIKE, ::, backticks)', check: ruleOtherDialect },
+  { code: 'QS048', severity: 'error', title: 'Function from another database (NOW, IFNULL, NVL, SUBSTR, ...)', check: ruleOtherFunctions },
+  { code: 'QS049', severity: 'error', title: 'Alias or table not in FROM (could not be bound)', check: ruleUnknownAlias },
+  { code: 'QS050', severity: 'error', title: 'The same alias twice in one FROM', check: ruleDuplicateAlias },
+  { code: 'QS051', severity: 'error', title: 'Window function in WHERE, GROUP BY or HAVING', check: ruleWindowPlacement },
+  { code: 'QS052', severity: 'error', title: 'DISTINCT in a window function', check: ruleWindowDistinct },
+  { code: 'QS053', severity: 'error', title: 'Window function shape (ORDER BY, frame, STRING_AGG, PERCENTILE)', check: ruleWindowShape },
+  { code: 'QS054', severity: 'error', title: 'Aggregate in WHERE, or an aggregate inside another', check: ruleAggregatePlacement },
+  { code: 'QS055', severity: 'error', title: 'Subquery after IN returns more than one column', check: ruleInSubqueryColumns },
+  { code: 'QS056', severity: 'error', title: 'GROUP BY a column number', check: ruleGroupByNumber },
+  { code: 'QS057', severity: 'error', title: 'ORDER BY position out of range, or a text constant', check: ruleOrderByInvalid },
+  { code: 'QS058', severity: 'error', title: 'SELECT DISTINCT with ORDER BY on a column not selected', check: ruleDistinctOrderBy },
+  { code: 'QS059', severity: 'error', title: 'JSON literal that is not valid JSON', check: ruleJsonLiteral },
+  { code: 'QS060', severity: 'warning', title: '-- comment at the end of the query', check: ruleTrailingLineComment },
+  { code: 'QS061', severity: 'info', title: 'Expression that fails the whole run on one bad row', check: ruleRunTimeFailures },
+  { code: 'QS062', severity: 'error', title: 'Text value in double quotes', check: ruleDoubleQuotedValue },
+  { code: 'QS063', severity: 'warning', title: 'WHERE on a LEFT JOIN table makes it an INNER JOIN', check: ruleLeftJoinFilteredInWhere },
+  { code: 'QS064', severity: 'warning', title: '_PushTag and _PushAddress joined without _APID', check: rulePushJoin },
 ]
 
 /** Every rule, for a settings or help list. */
@@ -1347,4 +1833,28 @@ export function applyFix(sql, fix) {
   let out = sql
   for (const c of changes) out = out.slice(0, c.from) + (c.insert || '') + out.slice(c.to)
   return out
+}
+
+/** Fixes that change what the query returns, so Fix all leaves them to the user. */
+export const FIX_ALL_SKIP = new Set(['QS027', 'QS061'])
+
+/**
+ * Applies every fix it can, one at a time (the query is linted again after each, so
+ * offsets stay right), taking each problem's first fix. Stops when nothing is left to
+ * fix or after `max` rounds. Returns { sql, applied: [{ code, label }] }.
+ */
+export function fixAll(sql, options = {}, max = 100) {
+  let text = typeof sql === 'string' ? sql : ''
+  const applied = []
+  const tried = new Set()
+  for (let round = 0; round < max; round++) {
+    const d = lintSql(text, options).find((x) => x.fixes?.length && !FIX_ALL_SKIP.has(x.code) && !tried.has(`${x.code}@${x.from}:${text.length}`))
+    if (!d) break
+    const next = applyFix(text, d.fixes[0])
+    tried.add(`${d.code}@${d.from}:${text.length}`)
+    if (next === text) continue
+    applied.push({ code: d.code, label: d.fixes[0].label })
+    text = next
+  }
+  return { sql: text, applied }
 }

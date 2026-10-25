@@ -296,6 +296,6 @@ async function onSaved(result) {
     </div>
 
     <AddQueryModal v-if="showAddModal" @save="onSaved" @validation-error="showToast('Enter a name and the SQL first.')" @close="showAddModal = false" />
-    <QueryPreviewModal v-if="previewCard" :card="previewCard" @open-editor="openEditor" @close="previewCard = null" />
+    <QueryPreviewModal v-if="previewCard" :card="previewCard" @open-editor="openEditor" @open-builder="(c) => { previewCard = null; router.push({ path: '/queries/builder', query: { sql: c.queryText } }) }" @close="previewCard = null" />
   </div>
 </template>
