@@ -9,6 +9,7 @@
 //   where, having (raw text), groupBy, orderBy, distinct, top, notes: [text], error }
 import { tokenize, significant, isWord, identName } from './sqlTokens.js'
 import { DATA_VIEWS } from './dataViews.js'
+import { smartAlias } from './builderOrder.js'
 
 const DATA_VIEW_NAMES = new Set([...DATA_VIEWS].map((v) => v.toUpperCase()))
 const CLAUSES = ['SELECT', 'FROM', 'WHERE', 'GROUP', 'HAVING', 'ORDER']
@@ -417,7 +418,7 @@ export async function builderFromParsed(parsed, resolveTable) {
 
   const selectedDEs = parsed.tables.map((t, i) => {
     const r = resolved[i]
-    const alias = t.alias || (SAFE_ALIAS.test(t.name) ? t.name : `t${i + 1}`)
+    const alias = t.alias || (SAFE_ALIAS.test(t.name) ? t.name : smartAlias(t.name, parsed.tables.map((x) => x.alias).filter(Boolean)))
     if (!t.alias && !SAFE_ALIAS.test(t.name)) notes.push(`${t.name} had no alias; it is ${alias} now.`)
     if (t.subquery !== undefined) {
       return {

@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { LayoutGrid, List, Check, Loader2, FileInput, X, Share, PanelRight, PanelBottom, EyeOff, Code2, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { LayoutGrid, List, Check, Loader2, FileInput, X, Share, CircleHelp, EyeOff, Code2, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import DEBrowser from './DEBrowser.vue'
 import SelectedDEsPanel from './SelectedDEsPanel.vue'
 import SqlOutput from './SqlOutput.vue'
 import BuilderCanvas from './canvas/BuilderCanvas.vue'
+import HelpTip from '@/components/ui/HelpTip.vue'
+import { BUILDER_HELP, BUILDER_HELP_ORDER } from '@/data/builderHelp.js'
 import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
 import OutputColumns from './OutputColumns.vue'
@@ -13,6 +15,7 @@ import { saveBuilderRecord, defaultQueryOptions, plainClone } from '@/utils/buil
 import { resolveSelectionTables, fieldOptionsFromTables, buildSqlFromSelections } from '@/utils/sqlBuilder.js'
 import { graphToModel } from '@/utils/builderOrder.js'
 import { importSqlToBuilder } from '@/utils/builderImport.js'
+import { listQueryActivities } from '@/utils/sfmcApi.js'
 import { parseSqlForBuilder } from '@/utils/sqlToBuilder.js'
 import { builderToDiagramforce, openInDiagramforce } from '@/utils/diagramforce.js'
 import { showToast } from '@/composables/useToast.js'
@@ -26,7 +29,10 @@ const props = defineProps({
 const emit = defineEmits(['saved'])
 
 const { stack, state: stackState } = useStack()
-const visualMode = ref(false)
+// Visual is the default view; the last one used is remembered (feedback #150).
+const VIEW_KEY = 'qb_view'
+const visualMode = ref((() => { try { return localStorage.getItem(VIEW_KEY) !== 'list' } catch { return true } })())
+watch(visualMode, (v) => { try { localStorage.setItem(VIEW_KEY, v ? 'visual' : 'list') } catch { /* ignore */ } })
 const selectedDEs = ref([])
 const joins = ref([])
 const where = ref({ combinator: 'AND', conditions: [] })
@@ -111,22 +117,20 @@ const canvasRef = ref(null)
 
 // SQL panel docking, remembered per mode: list defaults right, visual defaults bottom.
 // The panel starts hidden (feedback #61): Generate SQL opens it, Hide SQL closes it.
-const DOCK_KEY = 'qb_sql_dock_v2'
-const VALID_DOCKS = ['right', 'bottom']
-const dockPrefs = ref({ list: 'right', visual: 'bottom' })
-try {
-  const saved = JSON.parse(localStorage.getItem(DOCK_KEY) || '{}')
-  if (VALID_DOCKS.includes(saved.list)) dockPrefs.value.list = saved.list
-  if (VALID_DOCKS.includes(saved.visual)) dockPrefs.value.visual = saved.visual
-} catch { /* ignore */ }
-const sqlOpen = ref(false)
-const sqlDock = computed(() => (!sqlOpen.value ? 'hidden' : visualMode.value ? dockPrefs.value.visual : dockPrefs.value.list))
-function setDock(v) {
-  if (v === 'hidden') { sqlOpen.value = false; return }
-  sqlOpen.value = true
-  dockPrefs.value = { ...dockPrefs.value, [visualMode.value ? 'visual' : 'list']: v }
-  try { localStorage.setItem(DOCK_KEY, JSON.stringify(dockPrefs.value)) } catch { /* ignore */ }
-}
+// Help (feedback #150): ? icons, a Help panel, and tips on the first visit.
+const helpOpen = ref(false)
+const TIPS_KEY = 'qb_tips_seen'
+const showTips = ref((() => { try { return !localStorage.getItem(TIPS_KEY) } catch { return false } })())
+function closeTips() { showTips.value = false; try { localStorage.setItem(TIPS_KEY, '1') } catch { /* ignore */ } }
+
+// The SQL panel sits at the bottom (feedback #150): collapsed to a bar, open, or
+// maximized over the builder. Remembered.
+const SQL_STATE_KEY = 'qb_sql_state_v3'
+const SQL_STATES = ['collapsed', 'open', 'max']
+const sqlState = ref((() => { try { const v = localStorage.getItem(SQL_STATE_KEY); return SQL_STATES.includes(v) ? v : 'collapsed' } catch { return 'collapsed' } })())
+watch(sqlState, (v) => { try { localStorage.setItem(SQL_STATE_KEY, v) } catch { /* ignore */ } })
+const sqlOpen = computed(() => sqlState.value !== 'collapsed')
+function toggleSql() { sqlState.value = sqlOpen.value ? 'collapsed' : 'open' }
 
 // Resizable SQL panel — width (%) when docked right, height (%) when bottom.
 const SIZE_KEY = 'qb_sql_size_v1'
@@ -235,7 +239,43 @@ const importNotes = ref([])
 function openImport() {
   importText.value = generatedSql.value || ''
   importError.value = ''
+  importSource.value = 'paste'
   importOpen.value = true
+}
+
+// From SQL sources (feedback #160): paste, a Query Activity in SFMC, or a saved query.
+const importSource = ref('paste') // paste | activity | saved
+const pickFilter = ref('')
+const activities = ref(null)
+const activitiesError = ref('')
+const savedQueries = ref(null)
+async function setImportSource(src) {
+  importSource.value = src
+  pickFilter.value = ''
+  if (src === 'activity' && activities.value === null) {
+    activitiesError.value = ''
+    if (!stack.value) { activitiesError.value = 'Not connected to Marketing Cloud.'; return }
+    try { activities.value = (await listQueryActivities(stack.value, 500))?.items || [] }
+    catch (e) { activitiesError.value = `Could not read the Query Activities: ${e.message}`; activities.value = null }
+  }
+  if (src === 'saved' && savedQueries.value === null) {
+    chrome.storage.local.get(null, (all) => {
+      savedQueries.value = Object.values(all || {})
+        .filter((r) => r && typeof r === 'object' && /^sql_/.test(r.id || '') && String(r.queryText || '').trim())
+        .sort((a, b) => (b.timeStamp || 0) - (a.timeStamp || 0))
+    })
+  }
+}
+const pickList = computed(() => {
+  const q = pickFilter.value.trim().toLowerCase()
+  const list = importSource.value === 'activity'
+    ? (activities.value || []).map((a) => ({ id: a.queryDefinitionId || a.key, name: a.name, sub: a.targetName ? `to ${a.targetName}` : '', sql: a.queryText || '' }))
+    : (savedQueries.value || []).map((r) => ({ id: r.id, name: r.name || r.id, sub: r.source === 'builder' ? 'Query Builder' : (r.timeStamp ? new Date(r.timeStamp).toLocaleString() : ''), sql: r.queryText }))
+  return list.filter((x) => !q || `${x.name} ${x.sql}`.toLowerCase().includes(q)).slice(0, 200)
+})
+function pickSql(x) {
+  importText.value = x.sql
+  importSource.value = 'paste'
 }
 async function runImport(sql) {
   importBusy.value = true
@@ -403,6 +443,7 @@ function onCanvasFilter({ alias, field }) {
   <div class="flex flex-col h-full bg-background">
     <div class="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-border bg-card shrink-0">
       <span class="text-[10px] font-bold uppercase tracking-wide bg-amber-200 text-amber-900 rounded-full px-2 py-0.5">Experimental</span>
+      <HelpTip topic="overview" :topics="BUILDER_HELP" @more="helpOpen = true" />
       <span v-if="importBusy && !importOpen" class="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Drawing the query…</span>
       <span v-if="saveStatusLabel" class="flex items-center gap-1 text-xs text-muted-foreground">
         <Loader2 v-if="saveStatus === 'saving'" class="h-3 w-3 animate-spin" />
@@ -434,24 +475,16 @@ function onCanvasFilter({ alias, field }) {
         title="Draw a query you paste (or the SQL panel's) as tables and joins" @click="openImport">
         <FileInput class="h-3.5 w-3.5" /> From SQL
       </button>
-      <!-- SQL panel: open or hide, then where it docks -->
+      <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium border border-border hover:bg-accent" title="What each part of the Query Builder does" @click="helpOpen = !helpOpen">
+        <CircleHelp class="h-3.5 w-3.5" /> Help
+      </button>
+      <!-- SQL panel at the bottom: show or hide -->
         <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium"
           :class="sqlOpen ? 'border border-border hover:bg-accent' : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50'"
-          :disabled="!sqlOpen && !selectedDEs.length" :title="selectedDEs.length ? '' : 'Add a data extension first'"
-          @click="sqlOpen = !sqlOpen">
-          <EyeOff v-if="sqlOpen" class="h-3.5 w-3.5" /><Code2 v-else class="h-3.5 w-3.5" /> {{ sqlOpen ? 'Hide SQL' : 'Generate SQL' }}
+          :disabled="!sqlOpen && !selectedDEs.length" :title="selectedDEs.length ? 'Show or hide the generated SQL at the bottom' : 'Add a data extension first'"
+          @click="toggleSql">
+          <EyeOff v-if="sqlOpen" class="h-3.5 w-3.5" /><Code2 v-else class="h-3.5 w-3.5" /> {{ sqlOpen ? 'Hide SQL' : 'Show SQL' }}
         </button>
-        <div class="flex items-center gap-0.5 border border-border rounded-md p-0.5">
-          <button class="p-1 rounded" title="Dock SQL right"
-            :class="sqlDock === 'right' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
-            @click="setDock('right')"><PanelRight class="h-3.5 w-3.5" /></button>
-          <button class="p-1 rounded" title="Dock SQL bottom"
-            :class="sqlDock === 'bottom' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
-            @click="setDock('bottom')"><PanelBottom class="h-3.5 w-3.5" /></button>
-          <button class="p-1 rounded" title="Hide SQL"
-            :class="sqlDock === 'hidden' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
-            @click="setDock('hidden')"><EyeOff class="h-3.5 w-3.5" /></button>
-        </div>
 
         <div class="flex items-center gap-1 border border-border rounded-md p-0.5">
           <button
@@ -465,6 +498,7 @@ function onCanvasFilter({ alias, field }) {
             @click="visualMode = true"
           ><LayoutGrid class="h-3 w-3" /> Visual</button>
         </div>
+        <HelpTip topic="views" :topics="BUILDER_HELP" @more="helpOpen = true" />
     </div>
 
     <!-- One tab per SELECT of a UNION / EXCEPT / INTERSECT -->
@@ -500,7 +534,25 @@ function onCanvasFilter({ alias, field }) {
           Paste a SELECT. Its tables, joins, columns, filters and options open in the builder; expressions it cannot model are kept as written.
           Comments and formatting are not kept. <template v-if="selectedDEs.length">This replaces what is in the builder now.</template>
         </p>
-        <textarea v-model="importText" class="w-full h-56 rounded-md border border-border bg-background p-2 font-mono text-xs" spellcheck="false" placeholder="SELECT ... FROM ..." />
+        <div class="flex gap-1 text-xs">
+          <button v-for="t in [['paste', 'Paste SQL'], ['activity', 'Query Activity'], ['saved', 'Saved query']]" :key="t[0]"
+            class="h-7 px-2.5 rounded-md border" :class="importSource === t[0] ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border hover:bg-accent'"
+            @click="setImportSource(t[0])">{{ t[1] }}</button>
+        </div>
+        <textarea v-if="importSource === 'paste'" v-model="importText" class="w-full h-56 rounded-md border border-border bg-background p-2 font-mono text-xs" spellcheck="false" placeholder="SELECT ... FROM ..." />
+        <div v-else class="space-y-2">
+          <input v-model="pickFilter" class="w-full h-8 rounded-md border border-border bg-background px-2 text-xs" :placeholder="importSource === 'activity' ? 'Filter Query Activities by name or SQL' : 'Filter saved queries by name or SQL'" />
+          <p v-if="importSource === 'activity' && activitiesError" class="text-xs text-destructive">{{ activitiesError }}</p>
+          <div v-else-if="importSource === 'activity' && activities === null" class="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 class="h-3 w-3 animate-spin" /> Reading Query Activities...</div>
+          <div class="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
+            <button v-for="x in pickList" :key="x.id" class="w-full text-left px-2 py-1.5 hover:bg-accent text-xs" :title="x.sql.slice(0, 300)" @click="pickSql(x)">
+              <span class="font-medium">{{ x.name }}</span> <span class="text-muted-foreground">{{ x.sub }}</span>
+              <span class="block font-mono text-[10px] text-muted-foreground truncate">{{ x.sql.replace(/\s+/g, ' ').slice(0, 140) }}</span>
+            </button>
+            <p v-if="!pickList.length && (importSource === 'saved' ? savedQueries !== null : activities !== null)" class="px-2 py-2 text-xs text-muted-foreground">Nothing matches.</p>
+          </div>
+          <p class="text-[11px] text-muted-foreground">Pick one to load its SQL here, check it, then Draw it.</p>
+        </div>
         <p v-if="importError" class="text-xs text-destructive">{{ importError }}</p>
         <div class="flex justify-end gap-2">
           <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="importOpen = false">Cancel</button>
@@ -538,14 +590,14 @@ function onCanvasFilter({ alias, field }) {
     </div>
 
     <div ref="stackRef" class="flex-1 flex flex-col min-h-0">
-      <div ref="rowRef" class="flex-1 flex min-h-0">
+      <div v-show="sqlState !== 'max'" ref="rowRef" class="flex-1 flex min-h-0">
         <!-- Left: DE Browser -->
         <div class="w-64 shrink-0 min-h-0">
           <DEBrowser :stack="stack" @select-de="onSelectDe" />
         </div>
 
         <!-- Center: List or Visual -->
-        <div class="flex-1 flex flex-col min-w-0 min-h-0 border-r border-border">
+        <div class="relative flex-1 flex flex-col min-w-0 min-h-0 border-r border-border">
           <SelectedDEsPanel
             v-show="!visualMode"
             ref="selectedPanelRef"
@@ -559,7 +611,7 @@ function onCanvasFilter({ alias, field }) {
 
           <!-- Visual mode: Filters & options drawer + canvas -->
           <template v-if="visualMode">
-            <div class="border-b border-border shrink-0">
+            <div class="relative border-b border-border shrink-0">
               <button
                 class="w-full flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted/50"
                 @click="showVisualExtras = !showVisualExtras"
@@ -573,6 +625,7 @@ function onCanvasFilter({ alias, field }) {
                   class="ml-1 text-[9px] px-1.5 rounded-full bg-primary/15 text-primary normal-case"
                 >{{ where.conditions.length }} filter{{ where.conditions.length === 1 ? '' : 's' }}</span>
               </button>
+              <span class="absolute right-2 top-1.5"><HelpTip topic="filters" :topics="BUILDER_HELP" @more="helpOpen = true" /></span>
               <div v-show="showVisualExtras" class="max-h-[45vh] overflow-y-auto px-3 pb-3 space-y-3">
                 <div>
                   <div class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">Filters (WHERE)</div>
@@ -601,33 +654,39 @@ function onCanvasFilter({ alias, field }) {
               @add-de="onSelectDe"
               @add-filter="onCanvasFilter"
               @edit-subquery="openSubquery"
-            />
+            >
+              <template #tools>
+                <span class="inline-flex items-center rounded-md border border-border bg-card px-1 h-[26px] gap-0.5" title="Help">
+                  <HelpTip topic="cards" :topics="BUILDER_HELP" @more="helpOpen = true" />
+                  <HelpTip topic="joins" :topics="BUILDER_HELP" @more="helpOpen = true" />
+                </span>
+              </template>
+            </BuilderCanvas>
+            <!-- First visit: how it works -->
+            <div v-if="showTips" class="absolute right-4 top-16 z-30 w-80 rounded-lg border border-primary/40 bg-card text-card-foreground shadow-xl p-3 text-xs space-y-2">
+              <div class="font-semibold text-sm">New here? Three steps</div>
+              <ol class="list-decimal pl-4 space-y-1 text-muted-foreground">
+                <li>Click or drag data extensions and data views from the left onto the canvas.</li>
+                <li>Drag from the dot beside a field to a field on another card to join them; click the join's label to change it.</li>
+                <li>Tick the fields you want. The SQL is at the bottom; Run query runs it.</li>
+              </ol>
+              <p class="text-muted-foreground">The <CircleHelp class="inline h-3 w-3" /> icons explain each part; Help lists everything.</p>
+              <div class="flex justify-end gap-2">
+                <button class="h-7 px-2 rounded-md border border-border hover:bg-accent" @click="helpOpen = true; closeTips()">Open help</button>
+                <button class="h-7 px-2 rounded-md bg-primary text-primary-foreground" @click="closeTips">Got it</button>
+              </div>
+            </div>
           </template>
         </div>
 
-        <!-- Hidden: a small tab on the right edge opens the SQL -->
-        <button v-if="!sqlOpen && selectedDEs.length" class="shrink-0 self-center [writing-mode:vertical-rl] rotate-180 rounded-r-md bg-primary text-primary-foreground px-1.5 py-3 text-[11px] font-semibold shadow"
-          title="Show the generated SQL" @click="sqlOpen = true">SQL</button>
-
-        <!-- Right dock: SQL output (drag left edge to resize) -->
-        <div v-if="sqlDock === 'right'" class="relative shrink-0 min-h-0 border-l border-border" :style="{ width: sqlSize.right + '%' }">
-          <div
-            class="absolute left-0 top-0 h-full w-1.5 -ml-0.5 z-20 cursor-col-resize transition-colors hover:bg-primary/40 active:bg-primary/60"
-            title="Drag to resize"
-            @mousedown="startResize('right', $event)"
-          />
-          <SqlOutput
-            v-model:sql="generatedSql"
-            :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
-            :visual-mode="visualMode" :layout="layout" :sql-before="sqlBefore" :sql-after="sqlAfter"
-            :record-id="recordId" @save="onManualSave" @apply-sql="runImport"
-          />
-        </div>
       </div>
 
-      <!-- Bottom dock: SQL output (drag top edge to resize) -->
-      <div v-if="sqlDock === 'bottom'" class="relative shrink-0 min-h-0 border-t border-border" :style="{ height: sqlSize.bottom + '%' }">
-        <div
+      <!-- SQL at the bottom: a bar when collapsed, resizable when open, the whole area when maximized -->
+      <div v-if="selectedDEs.length || branches.length > 1"
+        class="relative min-h-0 border-t border-border"
+        :class="sqlState === 'max' ? 'flex-1' : 'shrink-0'"
+        :style="sqlState === 'open' ? { height: sqlSize.bottom + '%' } : {}">
+        <div v-if="sqlState === 'open'"
           class="absolute top-0 left-0 w-full h-1.5 -mt-0.5 z-20 cursor-row-resize transition-colors hover:bg-primary/40 active:bg-primary/60"
           title="Drag to resize"
           @mousedown="startResize('bottom', $event)"
@@ -636,9 +695,23 @@ function onCanvasFilter({ alias, field }) {
           v-model:sql="generatedSql"
           :selectedDEs="selectedDEs" :joins="joins" :where="where" :query-options="queryOptions"
           :visual-mode="visualMode" :layout="layout" :sql-before="sqlBefore" :sql-after="sqlAfter"
-          :record-id="recordId" @save="onManualSave" @apply-sql="runImport"
+          :record-id="recordId" :state="sqlState" @state="sqlState = $event" @save="onManualSave" @apply-sql="runImport"
         />
       </div>
+    </div>
+    <!-- Help panel -->
+    <div v-if="helpOpen" class="fixed inset-0 z-50" @click.self="helpOpen = false">
+      <aside class="absolute right-0 top-0 h-full w-[420px] max-w-[95vw] border-l border-border bg-card text-card-foreground shadow-2xl overflow-y-auto p-4 space-y-3" role="dialog" aria-label="Query Builder help">
+        <div class="flex items-center">
+          <h2 class="text-sm font-bold">Query Builder help</h2>
+          <button class="ml-auto text-muted-foreground hover:text-foreground" title="Close" @click="helpOpen = false"><X class="h-4 w-4" /></button>
+        </div>
+        <section v-for="id in BUILDER_HELP_ORDER" :key="id" class="space-y-0.5">
+          <h3 class="text-xs font-semibold">{{ BUILDER_HELP[id].title }}</h3>
+          <p class="text-xs text-muted-foreground leading-snug">{{ BUILDER_HELP[id].text }}</p>
+        </section>
+        <button class="text-xs text-primary hover:underline" @click="showTips = true; helpOpen = false">Show the first-visit tips again</button>
+      </aside>
     </div>
   </div>
 </template>

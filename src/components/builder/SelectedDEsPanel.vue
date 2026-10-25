@@ -9,7 +9,7 @@ import { fetchDEFieldsCached } from '../../utils/sfmcApi.js'
 import { DATA_VIEW_FIELDS, DATA_VIEWS } from '../../utils/dataViews.js'
 import { suggestJoinConditions, aliasFor, aliasOf } from '../../utils/sqlBuilder.js'
 import { defaultQueryOptions } from '../../utils/builderStorage.js'
-import { moveDE, swapDEs, joinsForOrder } from '../../utils/builderOrder.js'
+import { moveDE, swapDEs, joinsForOrder, smartAlias } from '../../utils/builderOrder.js'
 
 const props = defineProps({
   stack: { type: String, default: null },
@@ -109,7 +109,7 @@ async function addDe(node) {
     name: node.name,
     sourceType: node.sourceType,
     isDataView: node.isDataView || node.sourceType === 'dataview',
-    alias: node.sourceType === 'subquery' ? node.name : `t${selectedList.value.length + 1}`,
+    alias: node.sourceType === 'subquery' ? node.name : smartAlias(node.name, selectedList.value.map((d, i) => aliasOf(d, i))),
     ...(node.subquery !== undefined ? { subquery: node.subquery } : {}),
     fields: node.fields || [],
     selectedFields: null, // null => SELECT *

@@ -127,3 +127,31 @@ export function graphToModel(selectedDEs = [], graphNodes = [], graphEdges = [])
   for (const n of graphNodes) if (n?.id && Number.isFinite(n.x) && Number.isFinite(n.y)) layout[n.id] = { x: n.x, y: n.y }
   return { selectedDEs: list, joins: joinsForOrder(list, joins), layout }
 }
+
+// Table aliases (feedback #150): short, lower case, from the table's name, so a column
+// reads as which table it comes from (`cm.[Email]` for Customer Master), unique in the
+// query and never a SQL keyword. Data views get the aliases people commonly use.
+const DATA_VIEW_ALIASES = {
+  _SUBSCRIBERS: 'sub', _SENT: 's', _OPEN: 'o', _CLICK: 'c', _BOUNCE: 'b', _JOB: 'j', _UNSUBSCRIBE: 'u',
+  _COMPLAINT: 'cp', _LISTSUBSCRIBERS: 'ls', _ENTERPRISEATTRIBUTE: 'ea', _JOURNEY: 'jr', _JOURNEYACTIVITY: 'ja',
+  _FTAF: 'ftaf', _AUTOMATIONINSTANCE: 'ai', _AUTOMATIONACTIVITYINSTANCE: 'aai', _BUSINESSUNITUNSUBSCRIBES: 'buu',
+  _MOBILEADDRESS: 'ma', _MOBILESUBSCRIPTION: 'msub', _SMSMESSAGETRACKING: 'smt', _SMSSUBSCRIPTIONLOG: 'ssl',
+  _UNDELIVERABLESMS: 'usms', _PUSHADDRESS: 'pa', _PUSHTAG: 'pt', _COUPON: 'cou', _SURVEYRESPONSE: 'sr',
+}
+const ALIAS_STOP = new Set(['as', 'at', 'by', 'if', 'in', 'is', 'of', 'on', 'or', 'to', 'add', 'all', 'and', 'any', 'asc', 'end', 'for', 'key', 'not', 'set', 'top', 'use', 'desc', 'from', 'join', 'left', 'full', 'into', 'null', 'over', 'case', 'when', 'then', 'else', 'with', 'user', 'view', 'open', 'file', 'proc', 'rule', 'save', 'tran', 'kill', 'load', 'dump', 'exec', 'drop', 'deny', 'read', 'some', 'table'])
+
+export function smartAlias(name, taken = []) {
+  const used = new Set([...taken].map((a) => String(a || '').toLowerCase()))
+  const bare = String(name || '').replace(/^ENT\./i, '').replace(/[[\]]/g, '').trim()
+  let base = DATA_VIEW_ALIASES[bare.toUpperCase()]
+  if (!base) {
+    const words = bare.replace(/^_+/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[\s_\-.]+/).filter(Boolean)
+    const letters = (w) => w.replace(/[^A-Za-z]/g, '')
+    if (words.length >= 2) base = words.map((w) => letters(w)[0] || '').join('').slice(0, 3)
+    else base = letters(words[0] || '').slice(0, 3)
+    base = base.toLowerCase() || 't'
+  }
+  if (ALIAS_STOP.has(base)) base = `${base}1`
+  if (!used.has(base)) return base
+  for (let i = 2; ; i++) if (!used.has(`${base}${i}`)) return `${base}${i}`
+}

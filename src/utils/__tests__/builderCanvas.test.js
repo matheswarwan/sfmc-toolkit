@@ -93,3 +93,18 @@ describe('visual builder: joins drawn on the canvas', () => {
     expect(m.layout.b).toEqual({ x: 300, y: 10 })
   })
 })
+
+import { smartAlias } from '../builderOrder.js'
+describe('table aliases (feedback #150)', () => {
+  it('short, from the name, unique and never a keyword', () => {
+    expect(smartAlias('Customer Master')).toBe('cm')
+    expect(smartAlias('Orders')).toBe('ord')
+    expect(smartAlias('Welcome_Journey_DE')).toBe('wjd')
+    expect(smartAlias('ENT.[Shared Contacts]')).toBe('sc')
+    expect(smartAlias('_Subscribers')).toBe('sub')
+    expect(smartAlias('_Sent', ['s'])).toBe('s2')
+    expect(smartAlias('Order Number')).toBe('on1')
+    expect(smartAlias('Orders', ['ord', 'ord2'])).toBe('ord3')
+    expect(smartAlias('123')).toBe('t')
+  })
+})

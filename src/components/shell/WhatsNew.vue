@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.14'
+const VERSION = '2.0.15'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,6 +35,9 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
+        <li><strong class="block">Query Builder, easier</strong><span class="text-muted-foreground">Opens in Visual, the SQL sits at the bottom (minimize or maximize it), aliases come from table names, and ? icons and Help explain each part.</span></li>
+        <li><strong class="block">Contacts work</strong><span class="text-muted-foreground">The count and the search use Contact Builder's own session, and you can search up to 1,000 contact keys at once (paste or load a file).</span></li>
+        <li><strong class="block">Templates and run history</strong><span class="text-muted-foreground">Pick folders, get the automation's emails, edit the SQL before creating; failed runs name the step and its error.</span></li>
         <li><strong class="block">A visual Query Builder</strong><span class="text-muted-foreground">Tables as cards you join by dragging from field to field, like Diagramforce. Paste SQL to see it as a diagram (From SQL, or Open in Query Builder from Run Query), with subqueries, UNION tabs, AND/OR groups and HAVING. Open any query in Diagramforce as a data model or lineage.</span></li>
         <li><strong class="block">Run Query helps more</strong><span class="text-muted-foreground">Failed runs explain the error and the fix; Fix all applies every one-click fix; stale results are greyed; save results to a data extension; shared team snippets; Join from the schema search.</span></li>
         <li><strong class="block">Checks before saving a query activity</strong><span class="text-muted-foreground">Required fields, dropped columns, types, lengths, primary keys and duplicate keys are checked against the target first.</span></li>

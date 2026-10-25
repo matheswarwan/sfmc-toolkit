@@ -55,12 +55,12 @@ describe('SQL to Query Builder', () => {
     expect(r.sql).toBe([
       'SELECT',
       "  CASE WHEN Email LIKE '%@x.com' THEN 1 ELSE 0 END AS [IsX],",
-      '  t1.[Subscriber Key]',
-      'FROM [My DE] AS t1',
-      "WHERE t1.[Email] LIKE '%@%'",
-      'ORDER BY t1.[Subscriber Key] ASC',
+      '  md.[Subscriber Key]',
+      'FROM [My DE] AS md',
+      "WHERE md.[Email] LIKE '%@%'",
+      'ORDER BY md.[Subscriber Key] ASC',
     ].join('\n'))
-    expect(r.notes).toContain('My DE had no alias; it is t1 now.')
+    expect(r.notes).toContain('My DE had no alias; it is md now.')
   })
 
   it('a.* and * tick every field', async () => {
