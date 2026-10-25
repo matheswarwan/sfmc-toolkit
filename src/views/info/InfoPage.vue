@@ -4,6 +4,7 @@
 import { ref, computed } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { FEATURE_GROUPS } from '@/data/features.js'
+import CreatorCredit from '@/components/shell/CreatorCredit.vue'
 
 defineProps({
   page: { type: String, default: 'features' },
@@ -46,6 +47,7 @@ function scrollTo(id) {
         <p class="text-sm text-muted-foreground mt-1">
           What Marketing Cloud Toolkit does, section by section ({{ featureCount }} features).
         </p>
+        <p class="text-xs text-muted-foreground mt-1"><CreatorCredit /></p>
 
         <div class="relative mt-4">
           <Search class="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

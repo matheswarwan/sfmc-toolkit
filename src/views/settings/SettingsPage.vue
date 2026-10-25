@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import Switch from '@/components/ui/switch/Switch.vue'
 import StorageUsage from '@/components/StorageUsage.vue'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
+import CreatorCredit from '@/components/shell/CreatorCredit.vue'
 import { useTheme } from '@/composables/useTheme.js'
 import { useStoredSetting } from '@/composables/useStoredSetting.js'
 import { disabledRules, setRuleDisabled, onLintSettingsChange } from '@/editor/lintSettings.js'
@@ -296,6 +297,7 @@ function setDebounce(e) {
     <section class="rounded-lg border border-border bg-card p-4 text-sm">
       <h2 class="font-semibold mb-2">About</h2>
       <p class="text-muted-foreground">Marketing Cloud Toolkit {{ version }}. It combines SFMC Query Saver and SFMC Automation Viewer.</p>
+      <p class="text-muted-foreground mt-1"><CreatorCredit /></p>
       <div class="flex gap-2 mt-3">
         <RouterLink to="/features" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Features</RouterLink>
         <button class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="showFeedback = true">Send feedback</button>

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-vue-next'
 import { NAV_GROUPS } from '@/app/nav.js'
+import CreatorCredit from './CreatorCredit.vue'
 
 const COLLAPSED_KEY = 'toolkit_sidebar_collapsed'
 const collapsed = ref(false)
@@ -63,6 +64,7 @@ function toggle() {
         <PanelLeftClose v-else class="h-4 w-4 shrink-0" />
         <span v-if="!collapsed">Collapse</span>
       </button>
+      <p v-if="!collapsed" class="px-4 pt-1 text-[11px] text-muted-foreground truncate"><CreatorCredit /></p>
     </div>
   </nav>
 </template>

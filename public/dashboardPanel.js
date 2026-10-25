@@ -152,8 +152,17 @@
     off.type = 'button';
     off.title = 'Stop replacing the dashboard. Turn it back on in Marketing Cloud Toolkit: Settings > Connection.';
     off.addEventListener('click', function () { try { chrome.storage.local.set({ _dashboardPanel: false }); } catch (e) { /* gone */ } unmount(); });
+    var credit = el('span', '', 'Created by ');
+    var me = el('a', '', 'Mathes');
+    me.href = 'https://www.linkedin.com/in/mathesk/';
+    me.target = '_blank';
+    me.rel = 'noopener noreferrer';
+    me.style.color = 'inherit';
+    credit.appendChild(me);
+    credit.appendChild(document.createTextNode(', Ateko'));
     foot.appendChild(when);
     foot.appendChild(sp);
+    foot.appendChild(credit);
     foot.appendChild(refresh);
     foot.appendChild(off);
     card.appendChild(head);
