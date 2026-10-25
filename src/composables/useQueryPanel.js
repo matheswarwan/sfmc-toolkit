@@ -608,8 +608,6 @@ export function useQueryPanel(options) {
       if (fromStep <= 1) {
         setStep(1, 'running')
         const deName      = sfmcSafeName('sql')
-        const selectCols  = extractSelectColumns(runText)
-        const colDetails  = inferSelectColumnDetails(runText)
 
         // ── Resolve DE folder (contactsmeta API) ──
         // The folder ID is cached on the query record together with its stack; a
@@ -779,6 +777,8 @@ export function useQueryPanel(options) {
     // which fetchDEMetadata also finds under Shared Items.
     const sourceDeNames = [...new Set(extractDataExtensions(runText).map(bareTableName))]
       .filter(n => n && !isSkippableDE(n))
+    const selectCols = extractSelectColumns(runText)
+    const colDetails = inferSelectColumnDetails(runText)
     const fieldMap = {}
     for (const sourceName of sourceDeNames) {
       try {
