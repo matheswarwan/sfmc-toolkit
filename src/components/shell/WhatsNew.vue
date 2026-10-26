@@ -35,6 +35,9 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
+        <li><strong class="block">Run Query runs again</strong><span class="text-muted-foreground">Fixed "selectCols is not defined" at the Create DE step in 2.0.12, which stopped every run and Save as query activity.</span></li>
+        <li><strong class="block">Data Extensions filters</strong><span class="text-muted-foreground">Search all sources, this BU only, Shared only or Synchronized only, and hide QueryStudioResults data extensions.</span></li>
+        <li><strong class="block">Smaller query preview</strong><span class="text-muted-foreground">The Saved queries preview fits the window, and Esc or a click outside closes it.</span></li>
         <li><strong class="block">Query Builder, easier</strong><span class="text-muted-foreground">Opens in Visual, the SQL sits at the bottom (minimize or maximize it), aliases come from table names, and ? icons and Help explain each part.</span></li>
         <li><strong class="block">Contacts work</strong><span class="text-muted-foreground">The count and the search use Contact Builder's own session, and you can search up to 1,000 contact keys at once (paste or load a file).</span></li>
         <li><strong class="block">Templates and run history</strong><span class="text-muted-foreground">Pick folders, get the automation's emails, edit the SQL before creating; failed runs name the step and its error.</span></li>

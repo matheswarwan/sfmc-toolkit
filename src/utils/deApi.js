@@ -16,6 +16,21 @@ export const SYSTEM_DE_PREFIXES = [
   'PI_ABANDONED_CART_EVENT', 'PI_ABANDONED_CART_ITEMS',
 ]
 export const isSystemDE = (name) => SYSTEM_DE_PREFIXES.some((p) => String(name || '').startsWith(p))
+// Query Studio's result DEs ("QueryStudioResults at ..."), hidden on their own (feedback #1004).
+export const isQueryStudioResultsDE = (name) => /^QueryStudioResults/i.test(String(name || ''))
+
+// Which DEs the Data Extensions page shows. source: 'all' | 'local' | 'shared' |
+// 'sync' (local DEs have no sourceType; Shared/Synchronized ones have 'shared'/'sync').
+export const DE_SOURCES = ['all', 'local', 'shared', 'sync']
+export function filterDEList(list, { source = 'all', hideSystem = false, hideQueryStudio = false } = {}) {
+  return list.filter((d) => {
+    if (source === 'local' && d.sourceType) return false
+    if ((source === 'shared' || source === 'sync') && d.sourceType !== source) return false
+    if (hideSystem && isSystemDE(d.name)) return false
+    if (hideQueryStudio && isQueryStudioResultsDE(d.name)) return false
+    return true
+  })
+}
 
 export function toDE(item, sourceType = null) {
   return {

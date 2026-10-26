@@ -3,7 +3,7 @@
 // Shared and Synchronized DEs, see folder paths and fields, tick fields to build a
 // query, export to Excel or a document.
 import ProgressBar from '@/components/ui/ProgressBar.vue'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink, Rows3 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
@@ -17,7 +17,7 @@ import { useStack, whenStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, fetchDERowCount, clearDECaches, isSystemDE, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
+import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, fetchDERowCount, clearDECaches, filterDEList, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
@@ -39,6 +39,18 @@ const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
 const hideSystem = ref(false)
+// Common search criteria (feedback #1004), remembered in localStorage.
+function readPref(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback } }
+function writePref(key, value) { try { localStorage.setItem(key, JSON.stringify(value)) } catch {} }
+const sourceFilter = ref(readPref('toolkit_deSource', 'all'))
+const hideQueryStudio = ref(readPref('toolkit_deHideQS', false))
+watch(hideQueryStudio, (v) => writePref('toolkit_deHideQS', v))
+watch(sourceFilter, (v) => {
+  writePref('toolkit_deSource', v)
+  if (searched.value !== null) search()
+})
+const wantsLocal = computed(() => sourceFilter.value === 'all' || sourceFilter.value === 'local')
+const wantsShared = computed(() => sourceFilter.value !== 'local')
 
 // Local DEs come 50 a page, straight away; Shared and Synchronized DEs need a folder
 // walk, so they load in the background and are slotted in by date (mergeDEPages).
@@ -67,7 +79,7 @@ const expanded = ref(new Set())
 const selected = ref(new Map()) // id → { de, fields: Set } in the order first ticked (query building)
 const picked = ref(new Set()) // ids of rows ticked for Download and Excel
 
-const shown = computed(() => (hideSystem.value ? results.value.filter((d) => !isSystemDE(d.name)) : results.value))
+const shown = computed(() => filterDEList(results.value, { source: sourceFilter.value, hideSystem: hideSystem.value, hideQueryStudio: hideQueryStudio.value }))
 const canLoadMore = computed(() => searched.value !== null && merged.value.hasMore)
 // Exports cover the ticked rows when there are any, else everything shown.
 const exportList = computed(() => (picked.value.size ? shown.value.filter((d) => picked.value.has(d.id)) : shown.value))
@@ -103,10 +115,14 @@ async function search() {
   limit.value = DE_PAGE_SIZE
   expanded.value = new Set()
   picked.value = new Set()
-  searchSharedSyncDEs(stack.value, searched.value)
-    .then((list) => { if (id === searchId) shared.value = list })
-    .catch((e) => { if (id === searchId) { shared.value = []; sharedError.value = e.message } })
+  const sharedLoad = wantsShared.value
+    ? searchSharedSyncDEs(stack.value, searched.value)
+      .then((list) => { if (id === searchId) shared.value = list })
+      .catch((e) => { if (id === searchId) { shared.value = []; sharedError.value = e.message } })
+    : Promise.resolve().then(() => { if (id === searchId) shared.value = [] })
   try {
+    // Shared or Synchronized only: no local pages, wait for the folder walk.
+    if (!wantsLocal.value) { await sharedLoad; return }
     await withReconnect(stack.value, () => loadLocalPage(id))
     // A filtered search can match nothing on the first page; read on (20 pages at most).
     for (let n = 1; n < 20 && id === searchId && localFiltered.value && !localDone.value && local.value.length < DE_PAGE_SIZE; n++) await loadLocalPage(id)
@@ -344,7 +360,14 @@ const columns = [
           <Loader2 v-if="loading" class="h-3.5 w-3.5 mr-1 animate-spin" /> Search
         </Button>
       </form>
+      <select v-model="sourceFilter" aria-label="Which data extensions" class="h-8 rounded-md border border-border bg-background px-2 text-xs">
+        <option value="all">All sources</option>
+        <option value="local">This BU only</option>
+        <option value="shared">Shared only</option>
+        <option value="sync">Synchronized only</option>
+      </select>
       <label class="flex items-center gap-1.5 text-xs text-muted-foreground"><input v-model="hideSystem" type="checkbox" /> Hide system DEs</label>
+      <label class="flex items-center gap-1.5 text-xs text-muted-foreground" title="Hide the QueryStudioResults data extensions that Query Studio creates for each run"><input v-model="hideQueryStudio" type="checkbox" /> Hide QueryStudioResults</label>
       <div class="flex-1" />
       <template v-if="searched !== null && shown.length">
         <Button v-if="!allShown && !allFields.running" variant="outline" size="sm" class="h-8 text-xs" @click="viewAllFields"><ListTree class="h-3.5 w-3.5 mr-1" /> View all fields</Button>
@@ -378,7 +401,7 @@ const columns = [
       </div>
       <template v-else-if="searched !== null">
         <p class="mb-2 text-xs text-muted-foreground">
-          {{ total.toLocaleString() }}{{ totalIsPartial ? '+' : '' }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="hideSystem && shown.length !== results.length"> ({{ results.length - shown.length }} system DEs hidden)</template>.
+          {{ total.toLocaleString() }}{{ totalIsPartial ? '+' : '' }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown<template v-if="shown.length !== results.length"> ({{ results.length - shown.length }} hidden by the filters)</template>.
           <span v-if="shared === null" class="inline-flex items-center gap-1 ml-1"><Loader2 class="h-3 w-3 animate-spin" /> Adding Shared and Synchronized data extensions…</span>
           <span v-else-if="sharedError" class="ml-1 text-amber-700 dark:text-amber-400">Shared and Synchronized data extensions could not be loaded ({{ sharedError }}).</span>
           <template v-if="picked.size"> {{ picked.size }} ticked for download. <button class="text-primary hover:underline" @click="picked = new Set()">Clear</button></template>

@@ -62,18 +62,25 @@ async function shareQuery() {
 </script>
 
 <template>
-  <DialogRoot :open="true">
+  <DialogRoot :open="true" @update:open="(v) => { if (!v) emit('close') }">
     <DialogPortal>
-      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" @click="emit('close')" />
+      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" />
 
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[760px] max-h-[85vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[min(92vw,720px)] max-h-[min(70vh,640px)] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
         @click.stop
-        @keyup.esc="emit('close')"
       >
-        <!-- Header -->
-        <div class="flex items-center justify-between gap-3 px-5 py-3.5 bg-muted/30 border-b border-border shrink-0">
-          <div class="min-w-0 flex flex-col gap-0.5">
+        <!-- Header: the title row keeps Close visible; the actions wrap below it on narrow windows (feedback #1005). -->
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pl-5 pr-12 py-3 bg-muted/30 border-b border-border shrink-0">
+          <button
+            class="absolute right-3 top-3 inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
+            title="Close (Esc)"
+            aria-label="Close"
+            @click="emit('close')"
+          >
+            <X class="h-4 w-4" />
+          </button>
+          <div class="min-w-0 flex-1 basis-56 flex flex-col gap-0.5">
             <DialogTitle class="text-[15px] font-bold text-foreground truncate">{{ displayName }}</DialogTitle>
             <div class="flex items-center gap-2 min-w-0">
               <span v-if="card.businessUnit?.name"
@@ -85,7 +92,7 @@ async function shareQuery() {
             </div>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex flex-wrap items-center gap-2">
             <button
               class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60"
               :class="shareState === 'copied'
@@ -128,13 +135,6 @@ async function shareQuery() {
             >
               <ExternalLink class="h-3.5 w-3.5" />
               Open in editor
-            </button>
-            <button
-              class="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors"
-              title="Close"
-              @click="emit('close')"
-            >
-              <X class="h-4 w-4" />
             </button>
           </div>
         </div>

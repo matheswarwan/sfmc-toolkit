@@ -23,6 +23,11 @@ async function sendDataToBackground(data) {
   })
 }
 
+// Esc or a click outside closes the dialog, unless something was typed (feedback #1005).
+function onOpenChange(open) {
+  if (!open && !sqlName.value.trim() && !enteredSQL.value.trim()) emit('close')
+}
+
 async function saveSQL() {
   if (!sqlName.value.trim() || !enteredSQL.value.trim()) {
     emit('validation-error')
@@ -50,14 +55,14 @@ async function saveSQL() {
 </script>
 
 <template>
-  <DialogRoot :open="true">
+  <DialogRoot :open="true" @update:open="onOpenChange">
     <DialogPortal>
       <!-- Overlay -->
-      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" @click="emit('close')" />
+      <DialogOverlay class="fixed inset-0 z-9998 bg-black/50" />
 
       <!-- Modal container -->
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[70vw] max-w-[860px] max-h-[90vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[min(92vw,760px)] max-h-[80vh] rounded-xl bg-card border border-border shadow-2xl flex flex-col overflow-hidden focus:outline-none"
         @click.stop
       >
         <!-- Header -->
