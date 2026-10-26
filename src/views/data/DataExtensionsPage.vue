@@ -17,7 +17,7 @@ import { useStack, whenStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
 import { useRouteSearch } from '@/composables/useRouteSearch.js'
 import { showToast } from '@/composables/useToast.js'
-import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, fetchDERowCount, clearDECaches, filterDEList, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
+import { searchLocalDEs, searchSharedSyncDEs, mergeDEPages, fetchDEFieldList, fetchDEFolderPath, fetchDEDetail, deRowCountOf, clearDECaches, filterDEList, fieldTypeLabel, deContactBuilderUrl, DE_PAGE_SIZE } from '@/utils/deApi.js'
 import { clearSharedDECache } from '@/utils/sfmcApi.js'
 import { buildDESelect } from '@/utils/deSql.js'
 import { runInBatches } from '@/utils/batchRunner.js'
@@ -216,7 +216,10 @@ async function loadCount(de) {
   if (counts[de.id]?.status === 'ok' || counts[de.id]?.status === 'loading') return
   counts[de.id] = { status: 'loading' }
   try {
-    counts[de.id] = { status: 'ok', count: await fetchDERowCount(stack.value, de.id) }
+    const d = await fetchDEDetail(stack.value, de.id)
+    // The list search may leave the description out; the DE's own record has it (#1008).
+    if (!de.description && d?.description) de.description = d.description
+    counts[de.id] = { status: 'ok', count: deRowCountOf(d) }
   } catch (e) {
     counts[de.id] = { status: 'error', error: e.message }
   }
@@ -290,8 +293,8 @@ async function runExcelExport() {
     const pathOf = (de) => paths[de.id]?.path || ''
     const index = {
       name: exportKind.value === 'fields' ? 'Index' : 'Data Extensions',
-      columns: ['DE Name', 'Customer Key', 'ID', 'Source', 'Rows', 'Created', 'Modified', ...(exportPaths.value ? ['Path'] : [])],
-      rows: list.map((de) => [de.name, de.customerKey, de.id, de.sourceType || 'local', counts[de.id]?.status === 'ok' ? counts[de.id].count : '', de.createdDate || '', de.modifiedDate || '', ...(exportPaths.value ? [pathOf(de)] : [])]),
+      columns: ['DE Name', 'Description', 'Customer Key', 'ID', 'Source', 'Rows', 'Created', 'Modified', ...(exportPaths.value ? ['Path'] : [])],
+      rows: list.map((de) => [de.name, de.description || '', de.customerKey, de.id, de.sourceType || 'local', counts[de.id]?.status === 'ok' ? counts[de.id].count : '', de.createdDate || '', de.modifiedDate || '', ...(exportPaths.value ? [pathOf(de)] : [])]),
     }
     const sheets = [index]
     if (exportKind.value === 'fields') {
@@ -320,9 +323,10 @@ async function buildDoc() {
   return {
     title: picked.value.size ? `${list.length} data extensions` : searched.value ? `Data extensions matching "${searched.value}"` : 'Data extensions',
     blocks: [
-      { type: 'table', columns: ['Name', 'Customer Key', 'Source', 'Folder', 'Rows', 'Modified'], rows: list.map((de) => [de.name, de.customerKey, de.sourceType || 'local', paths[de.id]?.path || '', countText(de), formatDateTime(de.modifiedDate)]) },
+      { type: 'table', columns: ['Name', 'Description', 'Customer Key', 'Source', 'Folder', 'Rows', 'Modified'], rows: list.map((de) => [de.name, de.description || '', de.customerKey, de.sourceType || 'local', paths[de.id]?.path || '', countText(de), formatDateTime(de.modifiedDate)]) },
       ...list.slice(0, 200).flatMap((de) => [
         { type: 'h', level: 2, text: de.name },
+        ...(de.description ? [{ type: 'p', text: de.description }] : []),
         fields[de.id]?.status === 'ok'
           ? { type: 'table', columns: ['Field', 'Type', 'Primary key', 'Required'], rows: fields[de.id].list.map((f) => [f.name, fieldTypeLabel(f), f.isPrimaryKey ? 'Yes' : '', f.isNullable ? '' : 'Yes']) }
           : { type: 'p', text: `Fields could not be loaded${fields[de.id]?.error ? `: ${fields[de.id].error}` : '.'}` },
@@ -337,6 +341,7 @@ useRouteSearch('/data-extensions', (q) => { query.value = q; whenStack(search) }
 const columns = [
   { key: 'pick', label: '', hideable: false, class: 'w-8' },
   { key: 'name', label: 'Name', hideable: false },
+  { key: 'description', label: 'Description' },
   { key: 'customerKey', label: 'Customer key' },
   { key: 'path', label: 'Folder', sortValue: (r) => (paths[r.id]?.status === 'ok' ? paths[r.id].path || '(root)' : null) },
   { key: 'rows', label: 'Rows', class: 'text-right whitespace-nowrap', sortValue: (r) => (counts[r.id]?.status === 'ok' ? counts[r.id].count : null) },
@@ -419,6 +424,9 @@ const columns = [
               :class="row.sourceType === 'shared' ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300'">
               {{ row.sourceType === 'shared' ? 'Shared' : 'Synchronized' }}
             </span>
+          </template>
+          <template #cell-description="{ row }">
+            <span v-if="row.description" class="block max-w-xs truncate text-muted-foreground" :title="row.description">{{ row.description }}</span>
           </template>
           <template #cell-path="{ row }">
             <span v-if="paths[row.id]?.status === 'ok'">{{ paths[row.id].path || '(root)' }}</span>

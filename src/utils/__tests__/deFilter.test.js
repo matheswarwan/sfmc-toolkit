@@ -24,3 +24,13 @@ describe('filterDEList (feedback #1004)', () => {
   })
   it('hides system DEs', () => expect(ids(filterDEList(list, { hideSystem: true }))).toEqual(['1', '3', '4']))
 })
+
+describe('DE descriptions (#1008)', () => {
+  it('keeps the description from the list item', async () => {
+    const { toDE, deRowCountOf } = await import('../deApi.js')
+    expect(toDE({ id: 'a', name: 'X', description: 'Daily copy' }).description).toBe('Daily copy')
+    expect(toDE({ id: 'a', name: 'X' }).description).toBe('')
+    expect(deRowCountOf({ totalRowCount: 3, description: 'D' })).toBe(3)
+    expect(() => deRowCountOf({})).toThrow()
+  })
+})

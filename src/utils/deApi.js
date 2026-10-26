@@ -36,6 +36,7 @@ export function toDE(item, sourceType = null) {
   return {
     id: String(item.id ?? item.customerKey ?? ''),
     name: item.name || '',
+    description: item.description || '',
     customerKey: item.customerKey ?? item.key ?? '',
     categoryId: item.categoryId ?? item.categoryID ?? null,
     createdDate: item.createdDate || null,
@@ -138,8 +139,16 @@ export function mergeDEPages({ local, localDone, shared = [], limit }) {
 }
 
 /** Number of rows in one DE (totalRowCount of its record; feedback #46). */
+/** One DE's record (row count, description and settings). */
+export function fetchDEDetail(stack, id) {
+  return sfmcFetch(`${CM(stack)}/internal/v1/customobjects/${encodeURIComponent(id)}`, 'GET')
+}
+
 export async function fetchDERowCount(stack, id) {
-  const d = await sfmcFetch(`${CM(stack)}/internal/v1/customobjects/${encodeURIComponent(id)}`, 'GET')
+  return deRowCountOf(await fetchDEDetail(stack, id))
+}
+
+export function deRowCountOf(d) {
   if (typeof d?.totalRowCount !== 'number') throw new Error('No row count in the response.')
   return d.totalRowCount
 }
