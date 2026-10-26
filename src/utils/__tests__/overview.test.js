@@ -60,3 +60,30 @@ describe('run trends and journey channels', () => {
     expect(r.rows[1].push).toEqual(['Push'])
   })
 })
+
+describe('fetchRunsSince (feedback #1007)', () => {
+  // A fake run log: one run every 15 minutes for 30 days, newest first, `top` at most,
+  // filtered by whole-day end dates like the legacy instance API.
+  const now = Date.parse('2026-10-26T12:00:00Z')
+  const all = []
+  for (let t = now; t > now - 30 * 86400000; t -= 15 * 60000) all.push({ id: String(t), start: new Date(t).toISOString(), status: 'Complete' })
+  const fake = async (stack, id, { top, end }) => {
+    const endDay = end.toISOString().slice(0, 10)
+    return { runs: all.filter((r) => r.start.slice(0, 10) <= endDay).slice(0, top) }
+  }
+  it('reads past the newest 200 runs', async () => {
+    const { fetchRunsSince } = await import('../overview.js')
+    const since = now - 10 * 86400000
+    const { runs, partialDays } = await fetchRunsSince('s4', 'a', { since, now, days: 10, top: 200, maxCalls: 30, fetch: fake })
+    const days = new Set(runs.map((r) => r.start.slice(0, 10)))
+    expect(runs.length).toBeGreaterThan(200)
+    expect(days.size).toBeGreaterThanOrEqual(10)
+    expect(new Set(runs.map((r) => r.id)).size).toBe(runs.length)
+    expect(partialDays.size).toBe(0) // 96 runs a day fits in 200
+  })
+  it('marks a day with more runs than one call returns', async () => {
+    const { fetchRunsSince } = await import('../overview.js')
+    const { partialDays } = await fetchRunsSince('s4', 'a', { since: now - 3 * 86400000, now, days: 3, top: 50, maxCalls: 10, fetch: fake })
+    expect(partialDays.size).toBeGreaterThan(0)
+  })
+})

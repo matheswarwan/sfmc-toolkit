@@ -32,21 +32,50 @@ export async function listAllAutomations(stack, onProgress = () => {}) {
 const dayKey = (t) => new Date(t).toISOString().slice(0, 10)
 
 /**
+ * Every run of one automation since `since` (feedback #1007: one call returns the newest
+ * `top` runs only, so an automation that runs every 15 minutes filled 200 runs in two days
+ * and older days looked empty). Reads again with the end date moved back to the oldest run
+ * read, up to `maxCalls` times; runs are deduplicated by id (or start). A day with more
+ * than `top` runs cannot be read in full: it is counted in `partialDays`.
+ */
+export async function fetchRunsSince(stack, id, { since, now, days, top = 200, maxCalls = 15, fetch = fetchRunHistory } = {}) {
+  const seen = new Map()
+  const partialDays = new Set()
+  let end = new Date(now)
+  for (let call = 0; call < maxCalls; call++) {
+    const { runs } = await fetch(stack, id, { days, top, now: new Date(now), end })
+    for (const r of runs) seen.set(r.id || r.start, r)
+    if (runs.length < top) break
+    const oldest = Math.min(...runs.map((r) => time(r.start)).filter(Boolean))
+    if (!Number.isFinite(oldest) || oldest <= since) break
+    let next = new Date(oldest)
+    // The API takes whole days: when the oldest run is on the end day itself, that day
+    // has more than `top` runs. Count it as partial and go on with the day before.
+    if (dayKey(next) === dayKey(end)) { partialDays.add(dayKey(next)); next = new Date(oldest - 86400000) }
+    if (next.getTime() < since) break
+    end = next
+  }
+  return { runs: [...seen.values()], partialDays }
+}
+
+/**
  * Runs per day (succeeded / failed) over the last `days`, from the run log of the
  * `max` most recently run automations, 4 at a time. Returns { days: [{ key, ok,
  * failed }], perAutomation: [{ automation, runs, failed, lastFailure }], read, errors }.
  */
-export async function runTrends(stack, list, { days = 30, max = 40, now = Date.now(), onProgress } = {}) {
+export async function runTrends(stack, list, { days = 30, max = 40, now = Date.now(), onProgress, fetch = fetchRunHistory } = {}) {
   const since = now - days * 86400000
   const recent = list.filter((a) => time(a.lastRunTime) >= since).sort((a, b) => time(b.lastRunTime) - time(a.lastRunTime)).slice(0, max)
   const perDay = new Map()
   // Each day also lists its runs, so a click on the chart can show which automations ran (feedback #62).
   for (let t = since; t <= now; t += 86400000) perDay.set(dayKey(t), { key: dayKey(t), ok: 0, failed: 0, runs: [] })
   const perAutomation = []
+  const partial = new Set()
   let errors = 0
   await runInBatches(recent, 4, async (a) => {
     try {
-      const { runs } = await fetchRunHistory(stack, a.id, { days, top: 200, now: new Date(now) })
+      const { runs, partialDays } = await fetchRunsSince(stack, a.id, { since, now, days, fetch })
+      partialDays.forEach((d) => partial.add(d))
       let failed = 0
       let lastFailure = null
       for (const r of runs) {
@@ -68,7 +97,7 @@ export async function runTrends(stack, list, { days = 30, max = 40, now = Date.n
   }, { onProgress })
   perAutomation.sort((x, y) => y.failed - x.failed || y.runs - x.runs)
   for (const d of perDay.values()) d.runs.sort((x, y) => time(y.start) - time(x.start))
-  return { days: [...perDay.values()], perAutomation, read: recent.length, errors }
+  return { days: [...perDay.values()], perAutomation, read: recent.length, errors, partialDays: [...partial].sort() }
 }
 
 /** Every journey's latest version (up to 2,000). */

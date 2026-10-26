@@ -174,10 +174,10 @@ export function normalizeRun(r) {
 }
 
 /** Runs of one automation between `days` ago and today, newest first. `id` is the legacy (list) ID. */
-export async function fetchRunHistory(stack, id, { days = 30, top = 50, now = new Date() } = {}) {
+export async function fetchRunHistory(stack, id, { days = 30, top = 50, now = new Date(), end = now } = {}) {
   const begin = new Date(now.getTime() - days * 86400000)
   const url = `${AS(stack)}/legacy/v1/beta/automations/automation/instance/?definition_id=${encodeURIComponent(id)}&$top=${top}`
-    + `&begin_date=${ymd(begin)}&end_date=${ymd(now)}&order_by=${encodeURIComponent('StartTime desc')}&to_server_time=1`
+    + `&begin_date=${ymd(begin)}&end_date=${ymd(end)}&order_by=${encodeURIComponent('StartTime desc')}&to_server_time=1`
   const data = await sfmcFetch(url, 'GET')
   const list = data?.entry ?? data?.items ?? (Array.isArray(data) ? data : [])
   return { runs: list.map(normalizeRun), total: data?.totalResults ?? data?.count ?? list.length }
