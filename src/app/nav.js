@@ -11,7 +11,7 @@ export const NAV_GROUPS = [
       { path: '/queries/saved', name: 'Saved queries', icon: Bookmark },
       { path: '/queries/workspace', name: 'Run Query', icon: LayoutGrid },
       { path: '/queries/builder', name: 'Query Builder', icon: Blocks },
-      { path: '/queries/cleanup', name: 'Clean up SFMC', icon: Trash2 },
+      { path: '/queries/cleanup', name: 'Delete Toolkit runs', icon: Trash2 },
     ],
   },
   {
