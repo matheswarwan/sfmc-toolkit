@@ -14,6 +14,7 @@ import { openInSfmc } from '@/utils/sfmcLinks.js'
 import { useStack } from '@/composables/useStack.js'
 import { fetchJourney, journeyGraph, layoutJourney, describeJourneyNode, journeyOverviewRows, journeyBuilderUrl, journeyDoc, nodeEmailId, fetchJourneyEmailAsset } from '@/utils/journeys.js'
 import { compile } from '@/utils/emailCompiler.js'
+import { journeySvg } from '@/utils/journeySvg.js'
 
 const ORIENTATION_KEY = 'toolkit_journey_orientation'
 const route = useRoute()
@@ -86,7 +87,7 @@ watch(selectedNode, async (n) => {
   }
 })
 
-const getDoc = () => journeyDoc(journey.value, graph.value, layout.value)
+const getDoc = () => journeyDoc(journey.value, graph.value, layout.value, journeySvg(graph.value, layout.value, orientation.value))
 </script>
 
 <template>

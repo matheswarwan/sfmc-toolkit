@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { journeyGraph, layoutJourney, describeJourneyNode, nodeSummary, nodeKind, outcomeLabel, journeyDoc, nodeEmailId, describeCriteria } from '../journeys.js'
-import { toMarkdown } from '../exportDoc.js'
+import { toMarkdown, toHtml } from '../exportDoc.js'
+import { journeySvg } from '../journeySvg.js'
 
 // Entry → Email → Decision (Yes → Wait → Email 2; No → exit)
 const journey = {
@@ -93,6 +94,21 @@ describe('journey node content', () => {
     expect(md).toContain('### Email: Welcome email')
     expect(md).toContain('| Next | Opened: 2 days; Remainder: Exit |')
     expect(md).toContain('## Goals')
+  })
+
+  it('draws the journey in the HTML download (feedback #1009)', () => {
+    const g = journeyGraph({ ...journey, activities: journey.activities.map((a, i) => (i === 0 ? { ...a, name: 'Welcome <b>email</b>' } : a)) })
+    const l = layoutJourney(g)
+    for (const o of ['horizontal', 'vertical']) {
+      const svg = journeySvg(g, l, o)
+      expect(svg.match(/<rect /g).length).toBe(g.nodes.length)
+      expect(svg.match(/<path d=/g).length).toBe(g.edges.length + 1) // plus the arrowhead
+      expect(svg).toContain('Welcome &lt;b&gt;email&lt;/b&gt;')
+      expect(svg).not.toContain('<b>')
+    }
+    const doc = journeyDoc(journey, g, l, journeySvg(g, l))
+    expect(toHtml(doc)).toContain('<div class="diagram"><svg')
+    expect(toMarkdown(doc)).toContain('_Journey diagram: in the HTML and PDF downloads._')
   })
 })
 

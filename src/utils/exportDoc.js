@@ -7,6 +7,7 @@
 //   { type: 'kv', rows: [[label, value], ...] },        two-column details
 //   { type: 'table', columns: [label, ...], rows: [[cell, ...], ...] },
 //   { type: 'code', text, lang? },
+//   { type: 'svg', svg, note? },                         a drawing (HTML and PDF; the others say so)
 // ] }
 //
 // Excel exports use sheets: [{ name, columns, rows }].
@@ -49,7 +50,7 @@ export function toMarkdown(doc, now = new Date()) {
     else if (b.type === 'code') {
       const fence = str(b.text).includes('```') ? '~~~' : '```'
       out.push(`${fence}${b.lang || ''}\n${str(b.text)}\n${fence}`)
-    }
+    } else if (b.type === 'svg') out.push(`_${str(b.note || 'Diagram: in the HTML and PDF downloads.')}_`)
   }
   out.push(`*${footer(now)}*`)
   return out.join('\n\n') + '\n'
@@ -70,6 +71,7 @@ export function toHtml(doc, now = new Date()) {
     else if (b.type === 'kv') parts.push(htmlTable([], b.rows || []).replace('<table>', '<table class="kv">'))
     else if (b.type === 'table') parts.push((b.rows || []).length ? htmlTable(b.columns || [], b.rows) : '<p class="none">None.</p>')
     else if (b.type === 'code') parts.push(`<pre>${htmlEscape(b.text)}</pre>`)
+    else if (b.type === 'svg') parts.push(`<div class="diagram">${b.svg}</div>`) // built by our own code, values escaped there
   }
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><title>${htmlEscape(doc.title)}</title>
@@ -82,6 +84,8 @@ td,th{padding:6px 10px;border:1px solid #e4e8ec;vertical-align:top;text-align:le
 th,table.kv td:first-child{background:#f0f4f8;font-weight:600}
 table.kv td:first-child{width:220px}
 pre{background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:6px;font-family:Consolas,'Courier New',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word}
+.diagram{overflow:auto;border:1px solid #e4e8ec;border-radius:6px;padding:8px;margin:10px 0 20px;background:#fafbfc}
+@media print{.diagram{overflow:visible}.diagram svg{width:100%;height:auto}}
 .none{color:#888}.footer{margin-top:40px;border-top:1px solid #e4e8ec;padding-top:12px;font-size:11px;color:#999}
 </style></head><body>
 <h1>${htmlEscape(doc.title)}</h1>
@@ -122,6 +126,7 @@ export function toDocxDocumentXml(doc, now = new Date()) {
     else if (b.type === 'kv') body += wTable([], (b.rows || []).map(([k, v]) => [k, v]))
     else if (b.type === 'table') body += (b.rows || []).length ? wTable(b.columns || [], b.rows) : wPara('None.')
     else if (b.type === 'code') body += wPara(b.text, { mono: true, size: 18 })
+    else if (b.type === 'svg') body += wPara(b.note || 'Diagram: in the HTML and PDF downloads.', { color: '666666' })
   }
   body += wPara(footer(now), { size: 16, color: '999999' })
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +

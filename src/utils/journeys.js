@@ -328,10 +328,13 @@ export function journeyOverviewRows(j) {
   ].filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)])
 }
 
-export function journeyDoc(journey, graph, layout) {
+export function journeyDoc(journey, graph, layout, diagram = null) {
   const ordered = [...graph.nodes].filter((n) => n.type !== 'EXIT')
     .sort((a, b) => (layout.pos.get(a.key)?.lane - layout.pos.get(b.key)?.lane) || (layout.pos.get(a.key)?.depth - layout.pos.get(b.key)?.depth))
-  const blocks = [{ type: 'h', level: 2, text: 'Overview' }, { type: 'kv', rows: journeyOverviewRows(journey) }, { type: 'h', level: 2, text: 'Steps' }]
+  const blocks = [{ type: 'h', level: 2, text: 'Overview' }, { type: 'kv', rows: journeyOverviewRows(journey) },
+    // The canvas as a drawing (feedback #1009), passed in as an SVG string.
+    ...(diagram ? [{ type: 'h', level: 2, text: 'Journey' }, { type: 'svg', svg: diagram, note: 'Journey diagram: in the HTML and PDF downloads.' }] : []),
+    { type: 'h', level: 2, text: 'Steps' }]
   const nameOf = (k) => graph.nodes.find((x) => x.key === k)?.name || k
   for (const n of ordered) {
     const d = describeJourneyNode(n, nameOf)

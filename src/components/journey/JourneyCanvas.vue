@@ -1,10 +1,11 @@
 <script setup>
 // A journey drawn like the Journey Builder canvas: horizontal (flow left to right,
 // paths stacked) or vertical (flow top to bottom, paths side by side). Nodes are
-// positioned by layoutJourney(); edges are SVG elbows with the path labels.
+// positioned by layoutJourney() and journeyGeometry(); edges are SVG elbows with the path labels.
 import { computed } from 'vue'
 import { LogIn, Mail, Clock, GitBranch, Zap, LogOut } from 'lucide-vue-next'
-import { nodeKind, nodeSummary, nodeTypeLabel } from '@/utils/journeys.js'
+import { nodeTypeLabel } from '@/utils/journeys.js'
+import { journeyGeometry, NODE_W, NODE_H, EXIT_H } from '@/utils/journeySvg.js'
 
 const props = defineProps({
   graph: { type: Object, required: true },
@@ -14,49 +15,10 @@ const props = defineProps({
 })
 const emit = defineEmits(['select'])
 
-const NODE_W = 184
-const NODE_H = 76
-const GAP_FLOW = 72 // between steps along the flow
-const GAP_LANE = 36 // between paths
-
-const horizontal = computed(() => props.orientation !== 'vertical')
-const cell = computed(() => (horizontal.value
-  ? { w: NODE_W + GAP_FLOW, h: NODE_H + GAP_LANE }
-  : { w: NODE_W + GAP_LANE, h: NODE_H + GAP_FLOW }))
-
-function box(key) {
-  const p = props.layout.pos.get(key)
-  if (!p) return null
-  const [col, row] = horizontal.value ? [p.depth, p.lane] : [p.lane, p.depth]
-  return { x: 16 + col * cell.value.w, y: 16 + row * cell.value.h }
-}
-
-const size = computed(() => {
-  const [cols, rows] = horizontal.value ? [props.layout.depths, props.layout.lanes] : [props.layout.lanes, props.layout.depths]
-  return { w: 32 + cols * cell.value.w - (horizontal.value ? GAP_FLOW : GAP_LANE), h: 32 + rows * cell.value.h - (horizontal.value ? GAP_LANE : GAP_FLOW) }
-})
-
-const nodes = computed(() => props.graph.nodes.map((n) => ({ ...n, box: box(n.key), kind: nodeKind(n.type), summary: nodeSummary(n) })).filter((n) => n.box))
-
-// Elbow from the parent's exit side to the child's entry side.
-const edges = computed(() => props.graph.edges.map((e, i) => {
-  const a = box(e.from)
-  const b = box(e.to)
-  if (!a || !b) return null
-  let d, lx, ly
-  if (horizontal.value) {
-    const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2, x2 = b.x, y2 = b.y + NODE_H / 2
-    const mx = x2 > x1 ? x1 + (x2 - x1) / 2 : x1 + GAP_FLOW / 2
-    d = `M${x1},${y1} H${mx} V${y2} H${x2}`
-    lx = mx + 4; ly = y2 - 4
-  } else {
-    const x1 = a.x + NODE_W / 2, y1 = a.y + NODE_H, x2 = b.x + NODE_W / 2, y2 = b.y
-    const my = y2 > y1 ? y1 + (y2 - y1) / 2 : y1 + GAP_FLOW / 2
-    d = `M${x1},${y1} V${my} H${x2} V${y2}`
-    lx = x2 + 4; ly = my - 4
-  }
-  return { id: i, d, label: e.label, lx, ly }
-}).filter(Boolean))
+const geo = computed(() => journeyGeometry(props.graph, props.layout, props.orientation))
+const size = computed(() => geo.value.size)
+const nodes = computed(() => geo.value.nodes)
+const edges = computed(() => geo.value.edges)
 
 const KIND = {
   entry: { icon: LogIn, cls: 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40', tag: 'text-emerald-700 dark:text-emerald-300' },
@@ -84,7 +46,7 @@ const KIND = {
     <button v-for="n in nodes" :key="n.key" type="button"
       class="absolute text-left rounded-lg border-2 px-2.5 py-1.5 shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       :class="[KIND[n.kind].cls, selected === n.key ? 'ring-2 ring-primary' : '']"
-      :style="{ left: `${n.box.x}px`, top: `${n.box.y}px`, width: `${NODE_W}px`, height: `${n.kind === 'exit' ? 40 : NODE_H}px` }"
+      :style="{ left: `${n.box.x}px`, top: `${n.box.y}px`, width: `${NODE_W}px`, height: `${n.kind === 'exit' ? EXIT_H : NODE_H}px` }"
       :aria-pressed="selected === n.key" :title="n.name" @click="emit('select', n.key)">
       <div class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide" :class="KIND[n.kind].tag">
         <component :is="KIND[n.kind].icon" class="h-3 w-3 shrink-0" />
