@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.15'
+const VERSION = '2.0.16'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
@@ -35,6 +35,11 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
+        <li><strong class="block">View a CloudPage</strong><span class="text-muted-foreground">CloudPages: View shows the page itself (scripts off), its HTML to copy or download, and the raw record; for code resources, their code.</span></li>
+        <li><strong class="block">The journey diagram in downloads</strong><span class="text-muted-foreground">HTML and PDF downloads of a journey include its canvas.</span></li>
+        <li><strong class="block">Data extension descriptions</strong><span class="text-muted-foreground">Data Extensions has a Description column, also in the Excel and document downloads.</span></li>
+        <li><strong class="block">Run trends further back</strong><span class="text-muted-foreground">Automation overview reads past the newest 200 runs of each automation.</span></li>
+        <li><strong class="block">Delete Toolkit runs</strong><span class="text-muted-foreground">Clean up SFMC is now called Delete Toolkit runs, which says what it removes.</span></li>
         <li><strong class="block">Run Query runs again</strong><span class="text-muted-foreground">Fixed "selectCols is not defined" at the Create DE step in 2.0.12, which stopped every run and Save as query activity.</span></li>
         <li><strong class="block">Data Extensions filters</strong><span class="text-muted-foreground">Search all sources, this BU only, Shared only or Synchronized only, and hide QueryStudioResults data extensions.</span></li>
         <li><strong class="block">Smaller query preview</strong><span class="text-muted-foreground">The Saved queries preview fits the window, and Esc or a click outside closes it.</span></li>

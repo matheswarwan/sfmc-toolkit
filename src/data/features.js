@@ -348,7 +348,7 @@ export const FEATURE_GROUPS = [
       { title: 'Find a journey', detail: 'Search by name or description, or list all, most recently changed first; filter by status. Shows status, version and dates.' },
       { title: 'The journey canvas', how: 'View on a journey', detail: 'The journey drawn like Journey Builder: entry, every step and every path, with the path names on the arrows. Switch between Horizontal and Vertical; the choice is remembered.' },
       { title: 'What each step does', how: 'Click a step', detail: 'Emails show their subject, preheader and a preview from Content Builder; waits their duration or date; decision and random splits each path with its criteria or share; every step all of its settings.' },
-      { title: 'Download the journey', detail: 'Every step with its settings, goals and exit criteria, as Markdown, Word, PDF or HTML.' },
+      { title: 'Download the journey', detail: 'Every step with its settings, goals and exit criteria, as Markdown, Word, PDF or HTML. Since 2.0.16 HTML and PDF include the journey canvas.' },
     ],
   },
   {
@@ -376,6 +376,7 @@ export const FEATURE_GROUPS = [
     intro: 'Content > CloudPages.',
     items: [
       { title: 'Find CloudPages', detail: 'Search by name, content or key, or list all. Hide unpublished or system pages.' },
+      { title: 'View a CloudPage', since: '2.0.16', how: 'View on a CloudPage', detail: 'Preview (the page with scripts off), Source (its HTML: copy or download) and Raw JSON (the record as SFMC returns it). Code resources show their code instead of a preview.' },
       { title: 'URLs and folders', detail: 'Get each page\'s public URL and folder path, one by one or for every listed page.' },
       { title: 'Excel export', detail: 'Name, key, type, status, asset ID, URL and dates, with folder paths if you want them.' },
     ],
