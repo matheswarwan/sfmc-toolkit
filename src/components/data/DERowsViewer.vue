@@ -13,12 +13,23 @@ import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { fetchDEFieldList } from '@/utils/deApi.js'
 import { fetchRowsAt, loadRemainingRows, reloadRows, columnsFor, filterRows, ROWS_PAGE, LOAD_ALL_LIMIT } from '@/utils/deRows.js'
 import { showToast } from '@/composables/useToast.js'
+import { useRouter } from 'vue-router'
+import { duplicatesSql, distinctSql } from '@/utils/columnValues.js'
 
 const props = defineProps({
   stack: { type: String, required: true },
   de: { type: Object, required: true }, // { id, name, customerKey, sourceType }
 })
 const emit = defineEmits(['close'])
+const router = useRouter()
+
+// "Distinct values / Duplicates in SFMC" from a column's values (feedback #1012):
+// the GROUP BY over the whole data extension, opened in Run Query.
+function valuesQuery({ col, kind }) {
+  const opts = { shared: props.de.sourceType === 'shared' }
+  const sql = kind === 'duplicates' ? duplicatesSql(props.de.name, col, opts) : distinctSql(props.de.name, col, opts)
+  router.push({ path: '/queries/workspace', query: { sql } })
+}
 
 const fieldNames = ref([])
 const rows = ref([])
@@ -176,7 +187,7 @@ onUnmounted(() => { all.value.stop = true; document.removeEventListener('keydown
       <div v-if="error" class="px-4 pt-3"><SfmcErrorNotice :error="error" :retrying="busy" @retry="rows.length ? loadMore() : start()" /></div>
       <p v-if="filter && rows.length" class="px-4 pt-2 text-xs text-muted-foreground">{{ shownRows.length.toLocaleString() }} of the {{ rows.length.toLocaleString() }} loaded rows match. Downloads use the rows and columns shown, or only the ticked rows.</p>
       <div v-if="loading && !rows.length" class="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground"><Loader2 class="h-4 w-4 animate-spin" /> Reading rows…</div>
-      <ResultsTable v-else selectable :rows="shownRows" :columns="shownColumns" :filename="de.name" file-prefix="de" :total-count="filter ? null : knownTotal" />
+      <ResultsTable v-else selectable sfmc-values :rows="shownRows" :columns="shownColumns" :filename="de.name" file-prefix="de" :total-count="filter ? null : knownTotal" @values-query="valuesQuery" />
     </div>
   </div>
 </template>

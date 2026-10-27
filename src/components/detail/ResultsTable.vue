@@ -1,7 +1,9 @@
 <script setup>
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ListFilter, FileSpreadsheet } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Download, FileText, Copy, Check, Loader2, ArrowUp, ArrowDown, ArrowUpDown, ListFilter, FileSpreadsheet, ChartBar } from 'lucide-vue-next'
+import ColumnValues from '@/components/detail/ColumnValues.vue'
+import { applyValueFilters, valueFiltering } from '@/utils/columnValues.js'
 import { buildResultsMarkdown, MARKDOWN_ROW_LIMIT } from '@/utils/markdownExport.js'
 import { sortRows, filterRows, nextSort } from '@/utils/tableSort.js'
 import { rowsAsTsv, rangeSelect } from '@/utils/rowSelection.js'
@@ -28,8 +30,10 @@ const props = defineProps({
   filePrefix: { type: String, default: 'query' },
   // Tick rows to copy or download only those (feedback #138, Preview data).
   selectable: { type: Boolean, default: false },
+  // The column values panel offers SFMC queries over the whole DE (Preview data, #1012).
+  sfmcValues: { type: Boolean, default: false },
 })
-const emit = defineEmits(['load-more', 'load-all'])
+const emit = defineEmits(['load-more', 'load-all', 'values-query'])
 
 const total = computed(() => props.totalCount ?? props.rows.length)
 // Zero rows can still be exported: the SQL, the columns and "0 rows" (feedback #31).
@@ -41,10 +45,30 @@ const sort = ref(null)
 const filters = ref({})
 const filtersOpen = ref(false)
 const colDefs = computed(() => props.columns.map((c) => ({ key: c, label: c })))
-const filtering = computed(() => Object.values(filters.value).some((v) => String(v || '').trim()))
-const viewRows = computed(() => sortRows(filterRows(props.rows, colDefs.value, filters.value), colDefs.value, sort.value))
+// Each column's values (feedback #1012): ticked values and "Duplicates only".
+const picks = ref({})
+const dups = ref({})
+const valuesOpen = ref(null)
+const textFiltered = computed(() => filterRows(props.rows, colDefs.value, filters.value))
+const valuesFiltering = computed(() => valueFiltering(picks.value, dups.value))
+const filtering = computed(() => Object.values(filters.value).some((v) => String(v || '').trim()) || valuesFiltering.value)
+const viewRows = computed(() => sortRows(applyValueFilters(textFiltered.value, picks.value, dups.value), colDefs.value, sort.value))
+// A column's list counts the rows every other filter keeps.
+const valuesBase = (col) => applyValueFilters(textFiltered.value, picks.value, dups.value, col)
+const hasValueFilter = (col) => !!(picks.value[col]?.length || dups.value[col])
 function clickHeader(col) { sort.value = nextSort(sort.value, col); page.value = 0 }
+function toggleValues(col) { valuesOpen.value = valuesOpen.value === col ? null : col }
+function clearValueFilters() { picks.value = {}; dups.value = {} }
 watch(filters, () => { page.value = 0 }, { deep: true })
+watch([picks, dups], () => { page.value = 0 }, { deep: true })
+// Columns that go away take their value filters with them.
+watch(() => props.columns, (cols) => {
+  const have = new Set(cols)
+  const keep = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => have.has(k)))
+  if (Object.keys(picks.value).some((k) => !have.has(k))) picks.value = keep(picks.value)
+  if (Object.keys(dups.value).some((k) => !have.has(k))) dups.value = keep(dups.value)
+  if (valuesOpen.value && !have.has(valuesOpen.value)) valuesOpen.value = null
+})
 
 const page = ref(0)
 const totalPages = computed(() => Math.max(1, Math.ceil(viewRows.value.length / PAGE_SIZE)))
@@ -141,7 +165,7 @@ function downloadCSV() {
     <!-- Toolbar -->
     <div class="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0">
       <span class="text-xs font-bold text-foreground">
-        <template v-if="filtering">{{ viewRows.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} loaded rows (filtered)</template>
+        <template v-if="filtering">{{ viewRows.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} loaded rows (filtered)<button v-if="valuesFiltering" class="ml-1 font-normal text-primary hover:underline" @click="clearValueFilters">Clear value filters</button></template>
         <template v-else-if="total > rows.length">Showing {{ rows.length.toLocaleString() }} of {{ total.toLocaleString() }} rows</template>
         <template v-else>{{ rows.length.toLocaleString() }} rows</template>
         <template v-if="selectable && picked.size"> · {{ pickedRows.length.toLocaleString() }} ticked
@@ -209,13 +233,24 @@ function downloadCSV() {
               <input type="checkbox" :checked="allViewPicked" aria-label="Tick every row shown" @change="togglePickAll" />
             </th>
             <th v-for="col in columns" :key="col" :aria-sort="sort?.key === col ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'"
-              class="px-3 py-2 text-left text-[11px] font-semibold text-muted-foreground bg-muted border-b-2 border-border border-r border-r-border/60 last:border-r-0 sticky top-0 z-10 whitespace-nowrap">
-              <button class="inline-flex items-center gap-1 hover:text-foreground" :title="`Sort by ${col}`" @click="clickHeader(col)">
-                {{ col }}
-                <ArrowUp v-if="sort?.key === col && sort.dir === 'asc'" class="h-3 w-3" />
-                <ArrowDown v-else-if="sort?.key === col" class="h-3 w-3" />
-                <ArrowUpDown v-else class="h-3 w-3 opacity-30" />
-              </button>
+              class="px-3 py-2 text-left text-[11px] font-semibold text-muted-foreground bg-muted border-b-2 border-border border-r border-r-border/60 last:border-r-0 sticky top-0 whitespace-nowrap"
+              :class="valuesOpen === col ? 'z-20' : 'z-10'">
+              <div class="relative inline-flex items-center gap-1">
+                <button class="inline-flex items-center gap-1 hover:text-foreground" :title="`Sort by ${col}`" @click="clickHeader(col)">
+                  {{ col }}
+                  <ArrowUp v-if="sort?.key === col && sort.dir === 'asc'" class="h-3 w-3" />
+                  <ArrowDown v-else-if="sort?.key === col" class="h-3 w-3" />
+                  <ArrowUpDown v-else class="h-3 w-3 opacity-30" />
+                </button>
+                <button data-values-toggle class="rounded p-0.5 hover:text-foreground hover:bg-accent" :class="hasValueFilter(col) ? 'text-primary' : 'opacity-40 hover:opacity-100'"
+                  :title="`Values of ${col}: distinct values, counts, duplicates`" :aria-label="`Values of ${col}`" :aria-expanded="valuesOpen === col" @click="toggleValues(col)">
+                  <ChartBar class="h-3 w-3" />
+                </button>
+                <ColumnValues v-if="valuesOpen === col" :col="col" :rows="valuesBase(col)"
+                  :picked="picks[col] || []" :dups="!!dups[col]" :partial="total > rows.length" :sfmc="sfmcValues"
+                  @update:picked="picks = { ...picks, [col]: $event }" @update:dups="dups = { ...dups, [col]: $event }"
+                  @close="valuesOpen = null" @query="emit('values-query', { col, kind: $event }); valuesOpen = null" />
+              </div>
             </th>
           </tr>
           <tr v-if="filtersOpen">
