@@ -5,7 +5,7 @@
 import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 
-const VERSION = '2.0.16'
+const VERSION = '2.0.17'
 const open = ref(false)
 const fromQuerySaver = ref(false)
 
