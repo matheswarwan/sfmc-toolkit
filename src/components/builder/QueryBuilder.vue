@@ -11,7 +11,7 @@ import WhereBuilder from './WhereBuilder.vue'
 import QueryOptions from './QueryOptions.vue'
 import OutputColumns from './OutputColumns.vue'
 import { useStack } from '@/composables/useStack.js'
-import { saveBuilderRecord, defaultQueryOptions, plainClone } from '@/utils/builderStorage.js'
+import { saveBuilderRecord, getBuilderRecord, listSavedQueryRecords, defaultQueryOptions, plainClone } from '@/utils/builderStorage.js'
 import { resolveSelectionTables, fieldOptionsFromTables, buildSqlFromSelections } from '@/utils/sqlBuilder.js'
 import { graphToModel } from '@/utils/builderOrder.js'
 import { importSqlToBuilder } from '@/utils/builderImport.js'
@@ -259,11 +259,7 @@ async function setImportSource(src) {
     catch (e) { activitiesError.value = `Could not read the Query Activities: ${e.message}`; activities.value = null }
   }
   if (src === 'saved' && savedQueries.value === null) {
-    chrome.storage.local.get(null, (all) => {
-      savedQueries.value = Object.values(all || {})
-        .filter((r) => r && typeof r === 'object' && /^sql_/.test(r.id || '') && String(r.queryText || '').trim())
-        .sort((a, b) => (b.timeStamp || 0) - (a.timeStamp || 0))
-    })
+    listSavedQueryRecords().then((list) => { savedQueries.value = list })
   }
 }
 const pickList = computed(() => {
@@ -306,8 +302,7 @@ async function runImport(sql) {
 
 function loadRecord(id) {
   restoring = true
-  chrome.storage.local.get(id, (data) => {
-    const rec = data[id]
+  getBuilderRecord(id).then((rec) => {
     if (!rec) {
       restoreNotice.value = `No saved record found for "${id}".`
       restoring = false

@@ -61,3 +61,21 @@ export function saveBuilderRecord({ id, sql, state }) {
     })
   })
 }
+
+/** The saved query record `id`, or null. */
+export function getBuilderRecord(id) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(id, (data) => resolve(data?.[id] || null))
+  })
+}
+
+/** Every saved query with SQL (From SQL > Saved query), newest first. */
+export function listSavedQueryRecords() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(null, (all) => {
+      resolve(Object.values(all || {})
+        .filter((r) => r && typeof r === 'object' && /^sql_/.test(r.id || '') && String(r.queryText || '').trim())
+        .sort((a, b) => (b.timeStamp || 0) - (a.timeStamp || 0)))
+    })
+  })
+}
