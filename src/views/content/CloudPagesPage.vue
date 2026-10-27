@@ -2,12 +2,13 @@
 // CloudPages (SFMC Automation Viewer's CloudPage Finder): search CloudPage assets,
 // get each page's public URL and folder (one or all), export to Excel or a document.
 import { computed, reactive, ref } from 'vue'
-import { Search, Loader2, Link2, FolderTree, FileSpreadsheet, RefreshCw, ExternalLink } from 'lucide-vue-next'
+import { Search, Loader2, Link2, FolderTree, FileSpreadsheet, RefreshCw, ExternalLink, Code2 } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import StatusBadge from '@/components/results/StatusBadge.vue'
 import Button from '@/components/ui/button/Button.vue'
 import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
+import CloudPageSourceDialog from '@/components/content/CloudPageSourceDialog.vue'
 import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
 import { exportBaseName } from '@/utils/exportName.js'
@@ -32,6 +33,8 @@ const hideSystem = ref(false)
 const urls = reactive({}) // id → { status, url }
 const paths = reactive({}) // id → { status, path }
 const busy = reactive({ urls: false, paths: false })
+// The page whose preview and source are open (feedback #1010).
+const viewing = ref(null)
 
 const shown = computed(() => pages.value.filter((p) => (!hideUnpublished.value || p.status === 'Published') && (!hideSystem.value || !isSystemCloudPage(p.name))))
 
@@ -164,7 +167,10 @@ const columns = [
       <template v-else-if="searched !== null">
         <p class="mb-2 text-xs text-muted-foreground">{{ total.toLocaleString() }} found{{ searched ? ` for "${searched}"` : '' }}, {{ shown.length }} shown.</p>
         <DataTable :columns="columns" :rows="shown" row-key="id" storage-key="cloudpages" empty-text="No CloudPages found.">
-          <template #cell-name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
+          <template #cell-name="{ row }">
+            <span class="font-medium">{{ row.name }}</span>
+            <button class="ml-2 inline-flex items-center gap-0.5 text-primary hover:underline text-[11px]" title="Preview and source" @click="viewing = row"><Code2 class="h-3 w-3" /> View</button>
+          </template>
           <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
           <template #cell-url="{ row }">
             <a v-if="urls[row.id]?.url" :href="urls[row.id].url" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline break-all">{{ urls[row.id].url }} <ExternalLink class="h-3 w-3 shrink-0" /></a>
@@ -185,6 +191,8 @@ const columns = [
         </div>
       </template>
     </div>
+
+    <CloudPageSourceDialog :page="viewing" :stack="stack" @close="viewing = null" />
 
     <div v-if="exportOpen" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
       <div class="w-full max-w-sm rounded-lg border border-border bg-card p-4 shadow-xl text-sm" role="dialog" aria-modal="true" aria-labelledby="cp-export-title">

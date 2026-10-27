@@ -2,11 +2,13 @@
 // Content Builder for CloudPage assets, then on demand each page's URL and folder.
 import { sfmcFetch } from './sfmcApi.js'
 import { RESULTS_PAGE_SIZE } from './paging.js'
+import { compile } from './emailCompiler.js'
 
 export const CP_PAGE_SIZE = RESULTS_PAGE_SIZE
 export const CLOUD_PAGE_ASSET_TYPE_IDS = [240, 241, 242, 243, 244, 245, 247, 248, 249]
 const FIELDS = ['assetType', 'category', 'createdDate', 'customerKey', 'id', 'modifiedDate', 'name', 'meta', 'status']
 const CB = (stack) => `https://content-builder.${stack}.marketingcloudapps.com/fuelapi`
+const CP = (stack) => `https://cloud-pages.${stack}.marketingcloudapps.com/fuelapi`
 
 export const SYSTEM_CP_PREFIXES = ['System', 'Default', 'Template']
 export const isSystemCloudPage = (name) => SYSTEM_CP_PREFIXES.some((p) => String(name || '').startsWith(p))
@@ -110,6 +112,80 @@ export async function resolveCloudPageUrl(stack, page) {
   } catch {
     return null
   }
+}
+
+// ── Source and preview (feedback #1010, #1011) ──
+// CloudPages' own app reads a page as a Content Builder asset from its host, and a
+// code resource's text from internal/v2/cloudpages/code-resources/<id>. Which asset
+// fields hold the HTML and the code resource ID are guesses until seen live, so
+// several likely ones are read and the raw JSON is shown as well.
+
+const CODE_LANGUAGES = [[/json/i, 'json'], [/javascript|\bjs/i, 'js'], [/css/i, 'css'], [/rss/i, 'xml'], [/xml/i, 'xml'], [/text|txt/i, 'txt']]
+
+/** True for JavaScript, CSS, JSON, XML, RSS and Text code resources. */
+export function isCodeResource(asset) {
+  const t = `${asset?.assetType?.name || ''} ${asset?.assetType?.displayName || ''}`
+  return /code\s*resource/i.test(t) || !!codeResourceIdOf(asset, { strict: true })
+}
+
+/** The file extension for a code resource's text ('txt' when unknown). */
+export function codeLanguage(asset) {
+  const t = `${asset?.assetType?.name || ''} ${asset?.assetType?.displayName || ''}`.replace(/coderesource|code resource/gi, '')
+  return CODE_LANGUAGES.find(([re]) => re.test(t))?.[1] || 'txt'
+}
+
+/**
+ * The CloudPages code resource ID behind an asset, or null. `strict` only accepts
+ * fields named for code resources; otherwise the page's own CloudPages ID counts too.
+ */
+export function codeResourceIdOf(asset, { strict = false } = {}) {
+  const cp = asset?.meta?.cloudPages || {}
+  const id = cp.codeResourceId ?? cp.codeResource?.id ?? asset?.codeResourceId ?? (strict ? null : (cp.id ?? cp.pageId ?? null))
+  return id != null && id !== '' ? String(id) : null
+}
+
+/** The page's HTML: content with its slots and blocks filled in, else the html view. */
+export function htmlFromAsset(asset) {
+  if (!asset) return ''
+  let html = compile(asset, 'html') || ''
+  // A published landing page's content can be just {"url": ...}: the HTML is in the views.
+  if (urlFromContent(html) || /^\s*\{/.test(html)) html = compile({ views: asset.views }, 'html') || ''
+  return html
+}
+
+/** A code resource record's text. */
+export function codeFromResource(r) {
+  if (r == null) return ''
+  if (typeof r === 'string') return r
+  const v = r.content ?? r.code ?? r.body ?? r.text ?? r.data?.content ?? r.entity?.content ?? r.entities?.[0]?.content
+  return typeof v === 'string' ? v : ''
+}
+
+/**
+ * A CloudPage's source: { asset, html, code, language, codeResource, errors }.
+ * The asset comes from the CloudPages host, else Content Builder's.
+ */
+export async function fetchCloudPageSource(stack, page, fetch = sfmcFetch) {
+  const errors = []
+  let asset = null
+  for (const base of [CP(stack), CB(stack)]) {
+    try { asset = await fetch(`${base}/asset/v1/content/assets/${page.id}`, 'GET'); if (asset) break } catch (e) { errors.push(e.message) }
+  }
+  if (!asset) throw new Error(errors[0] || 'The page could not be read.')
+  const out = { asset, html: htmlFromAsset(asset), code: '', language: '', codeResource: null, errors: [] }
+  if (isCodeResource(asset)) {
+    out.language = codeLanguage(asset)
+    const id = codeResourceIdOf(asset)
+    if (id) {
+      try {
+        out.codeResource = await fetch(`${CP(stack)}/internal/v2/cloudpages/code-resources/${id}`, 'GET')
+        out.code = codeFromResource(out.codeResource)
+      } catch (e) { out.errors.push(`Code resource ${id}: ${e.message}`) }
+    }
+    // The asset itself may carry the text.
+    if (!out.code) out.code = typeof asset.content === 'string' && !urlFromContent(asset.content) ? asset.content : ''
+  }
+  return out
 }
 
 const folderCache = new Map() // `${stack}:${id}` → Promise<{ name, parentId }>
