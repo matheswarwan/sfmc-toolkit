@@ -53,4 +53,26 @@ describe('CloudPage source (feedback #1010, #1011)', () => {
     ])
     expect(r).toMatchObject({ code: 'console.log(1)', language: 'js', errors: [] })
   })
+
+  it('reads a landing page\'s code from the Web Page asset its thumbnailRefAssetId names (user capture)', async () => {
+    const calls = []
+    const page = { id: 126396, assetType: { id: 247, name: 'landingpage' }, content: '{"url":"https://x.pub.s13.sfmc-content.com/abc"}', meta: { thumbnailRefAssetId: 126397, cloudPages: { publishDate: '2026-10-25' } }, availableViews: [] }
+    const web = { id: 126397, assetType: { id: 205, name: 'webpage' }, views: { html: { content: '<!-- grid -->\n%%[ SET @a = 1 ]%%<table></table>', slots: { col1: { design: '<p>Drop blocks or content here</p>' } } } } }
+    const fetch = async (url) => { calls.push(url); return url.endsWith('/126397') ? web : page }
+    const r = await fetchCloudPageSource('s13', { id: 126396 }, fetch)
+    expect(calls).toEqual([
+      'https://cloud-pages.s13.marketingcloudapps.com/fuelapi/asset/v1/content/assets/126396',
+      'https://cloud-pages.s13.marketingcloudapps.com/fuelapi/asset/v1/content/assets/126397',
+    ])
+    expect(r.html).toBe('<!-- grid -->\n%%[ SET @a = 1 ]%%<table></table>')
+    expect(r.contentAsset.id).toBe(126397)
+    expect(r.errors).toEqual([])
+  })
+
+  it('says so when the Web Page asset cannot be read', async () => {
+    const fetch = async (url) => { if (url.endsWith('/7')) throw new Error('403'); return { id: 6, meta: { thumbnailRefAssetId: 7 } } }
+    const r = await fetchCloudPageSource('s13', { id: 6 }, fetch)
+    expect(r.html).toBe('')
+    expect(r.errors).toEqual(['Page content (asset 7): 403'])
+  })
 })

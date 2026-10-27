@@ -162,8 +162,9 @@ export function codeFromResource(r) {
 }
 
 /**
- * A CloudPage's source: { asset, html, code, language, codeResource, errors }.
- * The asset comes from the CloudPages host, else Content Builder's.
+ * A CloudPage's source: { asset, html, code, language, codeResource, contentAsset, errors }.
+ * The asset comes from the CloudPages host, else Content Builder's; a landing page's
+ * HTML from the Web Page asset it points to (`contentAsset`).
  */
 export async function fetchCloudPageSource(stack, page, fetch = sfmcFetch) {
   const errors = []
@@ -172,7 +173,19 @@ export async function fetchCloudPageSource(stack, page, fetch = sfmcFetch) {
     try { asset = await fetch(`${base}/asset/v1/content/assets/${page.id}`, 'GET'); if (asset) break } catch (e) { errors.push(e.message) }
   }
   if (!asset) throw new Error(errors[0] || 'The page could not be read.')
-  const out = { asset, html: htmlFromAsset(asset), code: '', language: '', codeResource: null, errors: [] }
+  const out = { asset, html: htmlFromAsset(asset), code: '', language: '', codeResource: null, contentAsset: null, errors: [] }
+  // A landing page asset has no views; its code is in the Web Page asset that
+  // meta.thumbnailRefAssetId names, under views.html.content (user's capture, 2026-10-27).
+  const ref = asset.meta?.thumbnailRefAssetId
+  if (!out.html && ref != null && String(ref) !== String(page.id)) {
+    for (const base of [CP(stack), CB(stack)]) {
+      try {
+        out.contentAsset = await fetch(`${base}/asset/v1/content/assets/${encodeURIComponent(ref)}`, 'GET')
+        if (out.contentAsset) break
+      } catch (e) { if (base === CB(stack)) out.errors.push(`Page content (asset ${ref}): ${e.message}`) }
+    }
+    out.html = htmlFromAsset(out.contentAsset)
+  }
   if (isCodeResource(asset)) {
     out.language = codeLanguage(asset)
     const id = codeResourceIdOf(asset)

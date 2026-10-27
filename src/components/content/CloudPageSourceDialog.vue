@@ -22,7 +22,12 @@ const tab = ref('preview')
 const isCode = computed(() => !!src.value?.language)
 const text = computed(() => (isCode.value ? src.value.code : src.value?.html) || '')
 const ext = computed(() => (isCode.value ? src.value.language : 'html'))
-const raw = computed(() => JSON.stringify(src.value?.codeResource ? { asset: src.value.asset, codeResource: src.value.codeResource } : src.value?.asset ?? null, null, 2))
+const raw = computed(() => {
+  const v = src.value
+  if (v?.codeResource) return JSON.stringify({ asset: v.asset, codeResource: v.codeResource }, null, 2)
+  if (v?.contentAsset) return JSON.stringify({ asset: v.asset, contentAsset: v.contentAsset }, null, 2)
+  return JSON.stringify(v?.asset ?? null, null, 2)
+})
 const tabs = computed(() => [...(isCode.value ? [] : [['preview', 'Preview']]), ['source', isCode.value ? 'Code' : 'Source'], ['raw', 'Raw JSON']])
 
 watch(() => props.page, async (p) => {
