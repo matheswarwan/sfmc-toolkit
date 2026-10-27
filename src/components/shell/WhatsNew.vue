@@ -35,7 +35,8 @@ function close() {
       </div>
       <h2 id="whatsnew-title" class="px-5 mt-3 text-lg font-bold">{{ fromQuerySaver ? 'SFMC Query Saver is now Marketing Cloud Toolkit' : 'What\'s new in Marketing Cloud Toolkit' }}</h2>
       <ul v-if="!fromQuerySaver" class="px-5 mt-3 mb-5 space-y-3 text-sm">
-        <li><strong class="block">View a CloudPage</strong><span class="text-muted-foreground">CloudPages: View shows the page itself (scripts off), its HTML to copy or download, and the raw record; for code resources, their code.</span></li>
+        <li><strong class="block">Column values and duplicates</strong><span class="text-muted-foreground">The chart icon by a column name in Preview data and Run Query results lists its distinct values with counts; tick values to filter, or keep only duplicates.</span></li>
+        <li><strong class="block">View a CloudPage</strong><span class="text-muted-foreground">CloudPages: View shows the page itself (scripts off), its code (landing pages included), and the raw record; for code resources, their code.</span></li>
         <li><strong class="block">The journey diagram in downloads</strong><span class="text-muted-foreground">HTML and PDF downloads of a journey include its canvas.</span></li>
         <li><strong class="block">Data extension descriptions</strong><span class="text-muted-foreground">Data Extensions has a Description column, also in the Excel and document downloads.</span></li>
         <li><strong class="block">Run trends further back</strong><span class="text-muted-foreground">Automation overview reads past the newest 200 runs of each automation.</span></li>
