@@ -51,15 +51,23 @@ async function copyValues() {
 }
 
 const box = ref(null)
+// Opens to the left when the column is too near the right edge of the table.
+const alignRight = ref(false)
+function place() {
+  const el = box.value
+  if (!el?.getBoundingClientRect) return
+  const edge = el.parentElement?.closest('.overflow-auto, .overflow-hidden')?.getBoundingClientRect().right ?? window.innerWidth
+  if (el.getBoundingClientRect().right > edge - 4) alignRight.value = true
+}
 const onDown = (e) => { if (box.value && !box.value.contains(e.target) && !e.target.closest?.('[data-values-toggle]')) emit('close') }
 const onKey = (e) => { if (e.key === 'Escape') emit('close') }
-onMounted(() => { document.addEventListener('mousedown', onDown); document.addEventListener('keydown', onKey) })
+onMounted(() => { place(); document.addEventListener('mousedown', onDown); document.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) })
 </script>
 
 <template>
-  <div ref="box" role="dialog" :aria-label="`Values of ${col}`"
-    class="absolute left-0 top-full mt-1 z-30 w-80 max-w-[90vw] rounded-md border border-border bg-popover text-popover-foreground shadow-lg text-xs font-normal text-left whitespace-normal">
+  <div ref="box" role="dialog" :aria-label="`Values of ${col}`" :class="alignRight ? 'right-0' : 'left-0'"
+    class="absolute top-full mt-1 z-30 w-80 max-w-[90vw] rounded-md border border-border bg-popover text-popover-foreground shadow-lg text-xs font-normal text-left whitespace-normal">
     <div class="flex items-center gap-2 px-3 py-2 border-b border-border">
       <span class="font-semibold truncate">{{ col }}</span>
       <button class="ml-auto text-muted-foreground hover:text-foreground" title="Close (Esc)" @click="emit('close')"><X class="h-3.5 w-3.5" /></button>
