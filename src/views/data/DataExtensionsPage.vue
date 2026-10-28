@@ -5,12 +5,13 @@
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink, Rows3 } from 'lucide-vue-next'
+import { Search, Loader2, RefreshCw, FolderTree, Hash, ListTree, FileSpreadsheet, Copy, Play, X, ChevronDown, ChevronRight, Network, ExternalLink, Rows3, ArrowUpDown } from 'lucide-vue-next'
 import DataTable from '@/components/results/DataTable.vue'
 import DownloadMenu from '@/components/results/DownloadMenu.vue'
 import Button from '@/components/ui/button/Button.vue'
 import SfmcErrorNotice from '@/components/results/SfmcErrorNotice.vue'
 import DERowsViewer from '@/components/data/DERowsViewer.vue'
+import ReorderFieldsDialog from '@/components/data/ReorderFieldsDialog.vue'
 import { withReconnect, searchError } from '@/utils/sfmcErrors.js'
 import { useUsage } from '@/composables/useUsage.js'
 import { useStack, whenStack } from '@/composables/useStack.js'
@@ -32,6 +33,13 @@ const whereFieldUsed = (de, field) => usage.start(stack.value, { kind: 'field', 
 
 // The DE whose rows are open in DERowsViewer (feedback #117).
 const rowsDE = ref(null)
+// The DE whose columns are being reordered (feedback #1013).
+const reorderDE = ref(null)
+function afterReorder(de) {
+  clearDECaches()
+  delete fields[de.id]
+  loadFields(de)
+}
 
 const query = ref('')
 const searched = ref(null) // the query of the results shown, null before any search
@@ -463,6 +471,7 @@ const columns = [
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="font-semibold">{{ fields[row.id].list.length }} {{ fields[row.id].list.length === 1 ? 'field' : 'fields' }}</span>
                 <button class="inline-flex items-center gap-1 text-primary hover:underline" @click="rowsDE = row"><Rows3 class="h-3.5 w-3.5" /> Preview data</button>
+                <button v-if="!row.sourceType" class="inline-flex items-center gap-1 text-primary hover:underline" title="Change the order of this data extension's columns" @click="reorderDE = row"><ArrowUpDown class="h-3.5 w-3.5" /> Reorder columns</button>
                 <button class="text-primary hover:underline" @click="tickAll(row)">
                   {{ fields[row.id].list.length && fields[row.id].list.every((f) => isTicked(row, f.name)) ? 'Untick all' : 'Tick all for a query' }}
                 </button>
@@ -505,6 +514,7 @@ const columns = [
     </div>
 
     <DERowsViewer v-if="rowsDE" :key="rowsDE.id" :stack="stack" :de="rowsDE" @close="rowsDE = null" />
+    <ReorderFieldsDialog v-if="reorderDE" :key="reorderDE.id" :stack="stack" :de="reorderDE" @changed="afterReorder(reorderDE)" @close="reorderDE = null" />
 
     <!-- Excel export -->
     <div v-if="exportOpen" class="fixed inset-0 z-120 flex items-center justify-center bg-black/40 p-4" @mousedown.self="exportOpen = false">
