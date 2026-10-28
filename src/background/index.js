@@ -35,6 +35,7 @@ import { openSfmcLink } from './deepLinks.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
 import { watchPolicy, getPolicy } from './policy.js'
 import { sharedQueryRecords } from './sharedImport.js'
+import { messageAllowed } from './senders.js'
 import { makeRoom } from './storageRoom.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
@@ -180,6 +181,10 @@ const handlers = {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handler = handlers[message?.type]
   if (!handler) return false
+  if (!messageAllowed(message, sender, chrome.runtime.getURL(''))) {
+    sendResponse({ error: 'Not allowed from this page.' })
+    return false
+  }
   Promise.resolve()
     .then(() => handler(message, sender))
     .then((reply) => sendResponse(reply ?? {}), (err) => sendResponse(errorReply(err)))

@@ -176,7 +176,8 @@ export async function loadSW(o = {}) {
   Object.assign(timing, { pollMs: 2, landingTimeoutMs: 200, cooldownMs: 60000 })
   Object.assign(mintTiming, { timeoutMs: 300 })
 
-  function send(message, sender = {}) {
+  // Messages come from an extension page unless a test passes another sender.
+  function send(message, sender = { url: 'chrome-extension://id/app.html' }) {
     return new Promise((resolve) => {
       let answered = false
       const reply = (r) => { if (!answered) { answered = true; resolve(r) } }
