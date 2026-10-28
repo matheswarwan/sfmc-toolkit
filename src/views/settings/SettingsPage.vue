@@ -346,6 +346,7 @@ function setDebounce(e) {
       <p class="text-muted-foreground mt-1"><CreatorCredit /></p>
       <div class="flex gap-2 mt-3">
         <RouterLink to="/features" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Features</RouterLink>
+        <a href="privacy.html" target="_blank" rel="noopener" class="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs hover:bg-accent">Privacy policy</a>
         <button v-if="!policy.disableFeedback" class="h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="showFeedback = true">Send feedback</button>
       </div>
     </section>

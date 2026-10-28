@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
-    "build": "vite build && vite build --config vite.sw.config.js",
+    "build": "node scripts/build-privacy.mjs && vite build && vite build --config vite.sw.config.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "privacy": "node scripts/build-privacy.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

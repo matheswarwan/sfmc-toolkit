@@ -55,7 +55,7 @@ async function copy() {
               <AlertTriangle class="h-4 w-4 shrink-0 mt-0.5" />
               <div class="space-y-1">
                 <p><b>This text leaves your browser.</b> It is sent to the share service and anyone who has the link can read it for 24 hours.</p>
-                <p>Only the name and SQL below are sent: no results, no data extension rows, no account details. Remove customer data (e-mail addresses, names, IDs) from the SQL before sharing.</p>
+                <p>Only the name and SQL below are sent: no results, no data extension rows, no account details. Remove customer data (e-mail addresses, names, IDs) from the SQL before sharing. <a href="privacy.html" target="_blank" rel="noopener" class="underline">Privacy policy</a></p>
                 <p v-if="hints.length" class="font-semibold">The SQL contains {{ hints.join(' and ') }}.</p>
               </div>
             </div>

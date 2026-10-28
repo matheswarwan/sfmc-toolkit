@@ -72,4 +72,4 @@ The store text, single-purpose statement, permission justifications and data-use
 
 ## Feedback
 
-Use **Send feedback** in the app, or email mathes.kanagarajan@cloudkettle.com.
+Use **Send feedback** in the app, or email mathes.btech@gmail.com.

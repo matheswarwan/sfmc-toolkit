@@ -192,7 +192,7 @@ const KINDS = [
       </div>
 
       <form v-else class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="review">
-        <p class="text-xs text-muted-foreground">Or email <a href="mailto:mathes.kanagarajan@cloudkettle.com" class="text-primary hover:underline">mathes.kanagarajan@cloudkettle.com</a>, or reach out on <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="text-primary hover:underline">LinkedIn</a>.</p>
+        <p class="text-xs text-muted-foreground">Or email <a href="mailto:mathes.btech@gmail.com" class="text-primary hover:underline">mathes.btech@gmail.com</a>, or reach out on <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="text-primary hover:underline">LinkedIn</a>. How feedback is kept: <a href="privacy.html" target="_blank" rel="noopener" class="text-primary hover:underline">privacy policy</a>.</p>
         <div class="flex gap-2" role="radiogroup" aria-label="Kind of feedback">
           <button v-for="k in KINDS" :key="k.id" type="button" role="radio" :aria-checked="kind === k.id"
             class="h-8 px-3 rounded-full border text-xs" :class="kind === k.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent'"
