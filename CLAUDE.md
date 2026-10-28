@@ -83,6 +83,8 @@ Known Automation Viewer bugs not to carry over: Journey "Event Definition Key" f
 
 - Reorder columns (feedback #1013): `utils/deReorder.js` + `components/data/ReorderFieldsDialog.vue`, button in the DE page's Fields panel (local DEs only). In place = PATCH `internal/v1/customobjects/<id>` `{ id, fields }` with each field as read and new ordinals, then `readFieldOrder` (ordinal order, uncached) decides whether it took (unconfirmed live). Copy = `createDE` with `toCreateField`/`copySettings`, query activity `TK_Reorder_<ts>` (Overwrite) in the QuerySaver folder, polled every 5 s, deleted afterwards unless still running after 60 min; row counts compared.
 
+- Security review (2026-10-28): `PRIVACY.md` (one source; `npm run privacy` renders `public/privacy.html` and `site/public/privacy.html`, a test fails if stale), `SECURITY.md`, `CHANGELOG.md` (Unreleased 2.0.18 at the top), `docs/security-summary.md`, `docs/enterprise-deployment.md`, `docs/store-listing-checklist.md`, `security/audits/` (self-assessments, NOT independent). Hosted privacy policy: `site/` (Worker `marketing-cloud-toolkit-site`, https://marketing-cloud-toolkit.mathes.dev/privacy; deploy from `site/`). Workers: `workers/share` (moved from Query Saver) and `workers/feedback` (no IP, 180-day cleanup after each post; the account has no free cron trigger). Admin policy keys: `public/managed_schema.json`, `utils/policyKeys.js`. Feedback screenshots save outside the repo (`../feedback-screenshots`).
+
 ## Release checklist
 
 The Toolkit ships as an update to the SFMC Query Saver store listing; the user uploads the zip and then tells Claude (record it in `../CLAUDE.md`).
@@ -90,6 +92,6 @@ The Toolkit ships as an update to the SFMC Query Saver store listing; the user u
 1. Version: `public/manifest.json` and `package.json` (higher than the published one; Query Saver ended at 1.4.0). If the release has news for users, update `WhatsNew.vue` (`VERSION` and the list) and `src/data/features.js` / `todo.js`.
 2. Permissions: compare `public/manifest.json` with the published manifest. Any new permission, host or content-script match makes Chrome disable the extension until each user accepts it; tell the user first.
 3. `npm test` and `npm run build`.
-4. Package from inside `dist/` (manifest at the zip root; Query Saver's Bug 11): `cd dist && zip -qr ../releases/sfmc-toolkit-<version>.zip . -x "*.DS_Store"`. Never delete older zips in `releases/`.
+4. Package reproducibly: `npm run package` (`scripts/package.mjs`: builds, sets every file's time to the commit's, zips in sorted order with the manifest at the root, writes `releases/sfmc-toolkit-<version>.zip`, prints the SHA-256; refuses to overwrite a zip unless `--force`). Two builds of one commit give identical bytes. Never delete older zips in `releases/`.
 5. Check the zip: `unzip -l releases/sfmc-toolkit-<version>.zip` lists `manifest.json`, `background.js`, `app.html`, `content.js` with no `dist/` prefix; `unzip -p releases/sfmc-toolkit-<version>.zip manifest.json | grep version` shows the new version.
 6. Commit the zip, push, and make a GitHub release `v<version>` with it.

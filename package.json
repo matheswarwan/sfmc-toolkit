@@ -8,7 +8,8 @@
     "build": "node scripts/build-privacy.mjs && vite build && vite build --config vite.sw.config.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "privacy": "node scripts/build-privacy.mjs"
+    "privacy": "node scripts/build-privacy.mjs",
+    "package": "node scripts/package.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

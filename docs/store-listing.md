@@ -114,26 +114,26 @@ Marketing Cloud Toolkit helps Salesforce Marketing Cloud users work with their o
 
 ## Permission justifications (Privacy practices tab)
 
-- **storage, unlimitedStorage:** saved queries, their run history, saved email versions and settings are stored locally in the browser; email versions can be large.
-- **cookies:** the extension calls Marketing Cloud with the user's existing Marketing Cloud session, and reads Marketing Cloud's own security cookie (CSRF token) to send with requests that change data, such as running a query or reverting an email.
-- **webRequest:** to save queries the user runs in Query Studio and emails the user saves in Content Builder, and to read the security token Marketing Cloud attaches to its own requests.
-- **tabs:** to open the app in a tab, to tell which Marketing Cloud stack the user is working in from their open Marketing Cloud tabs, and to open a Marketing Cloud page briefly in the background when an app (such as Journey Builder) needs a session.
-- **Host permissions:**
-  - `*.exacttarget.com`, `*.marketingcloudapps.com`, `*.marketingcloud.com`, `*.salesforce-marketingcloud.com`: Marketing Cloud's own domains, which the extension calls on the user's behalf.
-  - `querystudio.herokuapp.com`: Query Studio, to save the queries the user runs there.
-  - Optional permission `notifications` (from 2.0.6): requested only when the user turns on Settings > Connection > Desktop notifications for watched automations, to show a desktop notification when a watched automation is paused, activated, runs or fails. Turning the setting off removes the permission.
-  - `querystudio2-dev-89f7e4653c61.herokuapp.com` (required from 2.0.10; optional `*.herokuapp.com` in 2.0.3 to 2.0.9): Query Studio 2, to save the queries the user runs there. Settings > Running queries > Save Query Studio 2 runs (on by default) turns the saving off.
-  - `sfmc-share-worker.mathes-btech.workers.dev`: creates and opens share links for queries, when the user chooses to share one.
-  - `query-saver-feedback.mathes-btech.workers.dev`: receives feedback the user chooses to send.
-  - `www.google-analytics.com`: anonymous usage counts (see below).
+From 2.0.18 (security review, 2026-10-28). The full explanation is `docs/security-summary.md`.
+
+- **storage:** saved queries, settings and (only when the user turns them on) saved email and activity versions are kept in the browser. Marketing Cloud's security token is kept in session storage, which is cleared when the browser closes. Administrators' policies are read from managed storage.
+- **cookies:** reads the names of Marketing Cloud's login cookies to tell which Marketing Cloud stack the user works in, and Content Builder's security cookie to send it back with changes the user makes there (such as reverting an email). Cookie values are never stored or sent anywhere except Marketing Cloud.
+- **webRequest:** Marketing Cloud only gives its security token as a header on its own requests; the extension reads it to make the changes the user asks for (such as running a query). Also tells which stack a tab uses and, only for features the user turns on, keeps a copy of emails, activities and Query Studio queries the user saves. Nothing is blocked or changed.
+- **notifications (optional):** asked for only when the user turns on desktop notifications for watched automations.
+- **Host permissions:** `*.exacttarget.com`, `*.marketingcloudapps.com`, `*.marketingcloud.com`, `*.salesforce-marketingcloud.com`: Marketing Cloud's own domains, which the extension calls on the user's behalf with their existing login.
+- **Optional host permission `*.herokuapp.com`:** asked for only when the user turns on Save Query Studio runs (Query Studio and Query Studio 2 are Marketing Cloud apps hosted on Heroku); only their "run query" requests are read.
 - **Remote code:** none. All code is in the package.
 
 ## Data usage (Privacy practices tab)
 
-- **Website content:** yes. Marketing Cloud content the user views (queries, automations, journeys, emails) is shown and stored locally in the browser. It is not sent anywhere except back to the user's own Marketing Cloud account.
-- **Personally identifiable information:** only if the user types a name or email into the feedback form, or includes a screenshot.
-- **Usage data:** anonymous events (for example "query run", "app opened") with a random ID, sent to Google Analytics. No SQL, data or names.
-- Certify: data is not sold, not used for unrelated purposes, and not used for creditworthiness or lending.
+Tick these, matching `PRIVACY.md`:
+
+- **Personally identifiable information:** yes, only what the user types into the feedback form (name, email) when they choose to send feedback.
+- **Authentication information:** yes. Marketing Cloud's security token and session are used to call Marketing Cloud on the user's behalf; they are kept in memory or session storage and never sent anywhere else.
+- **Website content:** yes. Marketing Cloud content the user opens (queries, automations, journeys, emails) is shown and, for features the user uses, stored in the browser. A query the user chooses to share (name and SQL) is sent to the share service; feedback the user sends is sent to the feedback service.
+- **Not collected:** health, financial and payment, personal communications, location, web history, user activity (no analytics since 2.0.18).
+- Certify all three: data is not sold or transferred to third parties outside the approved use cases; not used for purposes unrelated to the single purpose; not used to determine creditworthiness or for lending.
+- **Privacy policy URL:** https://marketing-cloud-toolkit.mathes.dev/privacy
 
 ## Screenshots to upload (1280x800 or 640x400)
 
