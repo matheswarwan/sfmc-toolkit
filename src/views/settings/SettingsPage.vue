@@ -16,6 +16,7 @@ import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
 import { policy, POLICY_NOTE } from '@/utils/policy.js'
 import { HISTORY_SETTING } from '@/utils/history.js'
+import { SHARE_SETTING } from '@/utils/share.js'
 import { QUERY_STUDIO_SETTING, QUERY_STUDIO_PERMISSION } from '@/utils/queryStudio.js'
 import { NOTIFY_KEY } from '@/utils/watches.js'
 import { ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS } from '@/utils/activityVersions.js'
@@ -58,6 +59,7 @@ function setDesktopNotify(on) {
 }
 
 const { value: keepHistory } = useStoredSetting(HISTORY_SETTING, true, (v) => v !== false)
+const { value: shareSetting } = useStoredSetting(SHARE_SETTING, false, (v) => v === true)
 
 // Saving Query Studio runs: off by default (security review); on asks Chrome for the
 // optional *.herokuapp.com permission, off gives it back (utils/queryStudio.js).
@@ -221,6 +223,14 @@ function setDebounce(e) {
           <p class="text-xs text-muted-foreground">Running the same query again reuses its last target DE and Query Activity instead of creating new ones.</p>
         </div>
         <Switch v-model="reuseQueryDE" aria-label="Reuse the data extension and Query Activity" />
+      </div>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Share queries</div>
+          <p class="text-xs text-muted-foreground">Shows Share on queries. Sharing sends a query's name and SQL to the Toolkit's share service, where anyone with the link can read it for 24 hours; each share shows what will be sent and asks first. Off by default.</p>
+          <p v-if="policy.disableShare" class="text-xs text-amber-700 dark:text-amber-400">{{ POLICY_NOTE }}</p>
+        </div>
+        <Switch :model-value="shareSetting && !policy.disableShare" :disabled="policy.disableShare" aria-label="Share queries" @update:model-value="shareSetting = $event" />
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">

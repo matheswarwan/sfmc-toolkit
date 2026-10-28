@@ -7,6 +7,9 @@ import {
   Table2, FileOutput, Blocks, Share, Wand2, Users,
 } from 'lucide-vue-next'
 import { importSqlToBuilder } from '../../utils/builderImport.js'
+import ShareQueryDialog from './ShareQueryDialog.vue'
+import { SHARE_SETTING, shareAllowed } from '../../utils/share.js'
+import { useStoredSetting } from '../../composables/useStoredSetting.js'
 import { policy } from '../../utils/policy.js'
 import { builderToDiagramforce, openInDiagramforce } from '../../utils/diagramforce.js'
 import { useRouter } from 'vue-router'
@@ -39,6 +42,11 @@ const props = defineProps({
 const emit = defineEmits(['close', 'duplicate', 'title-change', 'expand'])
 const router = useRouter()
 
+// Share: only when turned on in Settings and allowed by policy (utils/share.js).
+const shareOpen = ref(false)
+const { value: shareSetting } = useStoredSetting(SHARE_SETTING, false, (v) => v === true)
+const canShare = computed(() => shareAllowed(shareSetting.value))
+
 // Open in Diagramforce: lineage of this query (tables looked up as for Open in Query Builder).
 function queryToDiagramforce() {
   const diagram = importSqlToBuilder(queryText.value, props.stack).then((r) => {
@@ -64,7 +72,7 @@ const {
   showQueryPicker, queryPickerLoading, queryPickerSearch, queryPickerError,
   filteredPickerItems, openQueryPicker, refreshQueryPicker, selectQueryActivity,
   relativeDate, queryPickerTree, expandedQaFolders, toggleQaFolder, queryPickerItems,
-  showShare, shareUrl, shareLoading, shareError, shareQuery, copiedText, copyToClipboard,
+  copiedText, copyToClipboard,
   cleanQueryText, resolveTargetFields,
 } = useQueryPanel({
   queryId: props.queryId,
@@ -160,7 +168,7 @@ function openSchema() {
         <Button variant="ghost" size="icon" class="h-6 w-6" title="Save name" @click="saveName"><Check class="h-3 w-3" /></Button>
       </template>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || isRunning" title="Open an existing Query Activity from Automation Studio" @click="openQueryPicker"><FolderOpen class="h-3 w-3" /></Button>
-      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Share query" @click="shareQuery"><Share2 class="h-3 w-3" /></Button>
+      <Button v-if="canShare" variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Share query: create a link anyone can open for 24 hours (you see what is sent first)" @click="shareOpen = true"><Share2 class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Format SQL (Shift+Alt+F)" @click="formatQuery"><AlignLeft class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || activeTab !== 'editor'" title="Shared snippets: SQL your team keeps in this business unit" @click="openSnippets"><Users class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Fix all: apply every one-click fix the SQL checks offer" @click="fixAllQuery"><Wand2 class="h-3 w-3" /></Button>
@@ -275,69 +283,8 @@ function openSchema() {
       </DialogPortal>
     </DialogRoot>
 
-    <!-- Share query -->
-    <DialogRoot :open="showShare">
-      <DialogPortal>
-        <DialogOverlay class="fixed inset-0 z-9999 bg-black/45" @click="showShare = false" />
-        <DialogContent class="fixed left-1/2 top-1/2 z-9999 -translate-x-1/2 -translate-y-1/2 w-[420px] rounded-xl bg-card border border-border shadow-2xl overflow-hidden flex flex-col focus:outline-none" @click.stop>
-          <DialogTitle class="sr-only">Share Query</DialogTitle>
-
-          <div class="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
-            <div class="flex items-center gap-2">
-              <Share2 class="h-4 w-4 text-primary" />
-              <span class="text-sm font-bold text-foreground">Share Query</span>
-            </div>
-            <Button variant="ghost" size="icon" class="h-7 w-7 text-muted-foreground" title="Close" @click="showShare = false">
-              <X class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div class="px-5 py-4 flex flex-col gap-4">
-            <div v-if="shareLoading" class="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-              <span class="inline-block h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Generating share link…
-            </div>
-
-            <div v-else-if="shareError" class="text-xs text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md p-3">
-              {{ shareError }}
-            </div>
-
-            <template v-else-if="shareUrl">
-              <p class="text-xs text-muted-foreground leading-relaxed">
-                Anyone with this link can view and copy the SQL. The link expires in <strong class="text-foreground">24 hours</strong> and never exposes your SFMC data — only the query text is shared.
-              </p>
-
-              <div class="flex items-center gap-2">
-                <div class="flex-1 min-w-0 bg-muted rounded-md px-3 py-2 text-xs font-mono text-foreground truncate border border-border">
-                  {{ shareUrl }}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  class="h-8 text-xs gap-1.5 shrink-0 transition-colors"
-                  :class="copiedText === shareUrl ? 'border-emerald-400 text-emerald-600' : ''"
-                  @click="copyToClipboard(shareUrl)"
-                >
-                  <Check v-if="copiedText === shareUrl" class="h-3 w-3" />
-                  <Copy v-else class="h-3 w-3" />
-                  {{ copiedText === shareUrl ? 'Copied!' : 'Copy' }}
-                </Button>
-              </div>
-
-              <a :href="shareUrl" target="_blank"
-                class="flex items-center gap-1.5 text-xs text-primary hover:underline self-start">
-                <ExternalLink class="h-3 w-3" />
-                Open share page
-              </a>
-            </template>
-          </div>
-
-          <div class="px-5 pb-4 shrink-0">
-            <Button class="w-full" @click="showShare = false">Close</Button>
-          </div>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <!-- Share query: confirm what leaves the browser first (utils/share.js) -->
+    <ShareQueryDialog :open="shareOpen" :name="queryName || 'Untitled Query'" :sql="queryText" @close="shareOpen = false" />
 
     <div v-if="formatNote" class="px-2 py-1 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-b border-border shrink-0">{{ formatNote }}</div>
     <div v-show="activeTab === 'editor'" class="flex-1 flex flex-col min-h-0">

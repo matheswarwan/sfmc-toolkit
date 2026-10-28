@@ -33,7 +33,8 @@ import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 import { nextTo } from '../utils/openTab.js'
 import { openSfmcLink } from './deepLinks.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
-import { watchPolicy } from './policy.js'
+import { watchPolicy, getPolicy } from './policy.js'
+import { sharedQueryRecords } from './sharedImport.js'
 import { makeRoom } from './storageRoom.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
@@ -142,7 +143,14 @@ const handlers = {
   },
   SFMC_FETCH: async (m) => ({ data: await sfmcFetch(m) }),
   SAVE_RECORDS: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
-  IMPORT_SHARED_QUERY: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
+  // From share-handler.js on a share page only: one query record, known fields only.
+  IMPORT_SHARED_QUERY: async (m, sender) => {
+    const records = sharedQueryRecords(m.records, sender?.url)
+    if (!records) return { error: 'Not a share page or not a query.' }
+    if ((await getPolicy()).disableShare) return { error: 'Sharing is turned off by policy.' }
+    await saveRecords(records)
+    return { status: 'OK' }
+  },
   RENAME_QUERY: async (m) => { await renameQuery(m.id, m.name); return { status: 'OK' } },
   SFMC_CONTEXT_CAPTURED: (m) => {
     captureContext(m.context)

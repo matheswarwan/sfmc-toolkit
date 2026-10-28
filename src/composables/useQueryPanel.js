@@ -372,38 +372,6 @@ export function useQueryPanel(options) {
     return queryPickerItems.value.filter(item => item.name?.toLowerCase().includes(q))
   })
 
-  // ── Share query ─────────────────────────────────────────────
-  // POSTs the SQL text (only) to the sfmc-share-worker; gets back a 24hr link
-  // that imports the query into any browser with this extension installed.
-  const showShare    = ref(false)
-  const shareUrl     = ref('')
-  const shareLoading = ref(false)
-  const shareError   = ref('')
-
-  async function shareQuery() {
-    if (!queryText.value.trim()) return
-    showShare.value    = true
-    shareUrl.value     = ''
-    shareError.value   = ''
-    shareLoading.value = true
-    try {
-      const res = await fetch('https://sfmc-share-worker.mathes-btech.workers.dev/api/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name:      queryRecord.value?.name || queryName.value || 'Untitled Query',
-          queryText: queryText.value,
-        }),
-      })
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
-      const data = await res.json()
-      shareUrl.value = data.url
-    } catch (err) {
-      shareError.value = err.message || 'Failed to generate share link.'
-    } finally {
-      shareLoading.value = false
-    }
-  }
 
   // ── Run helpers ───────────────────────────────────────────
   // Folder IDs are cached on the query record with the stack they belong to.
@@ -1079,6 +1047,5 @@ export function useQueryPanel(options) {
     showQueryPicker, queryPickerLoading, queryPickerSearch, queryPickerError,
     filteredPickerItems, openQueryPicker, refreshQueryPicker, selectQueryActivity,
     relativeDate, queryPickerTree, expandedQaFolders, toggleQaFolder, queryPickerItems,
-    showShare, shareUrl, shareLoading, shareError, shareQuery,
   }
 }

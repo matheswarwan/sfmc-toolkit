@@ -1,7 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'radix-vue'
-import { Copy, Check, ExternalLink, X, Share2, Loader2, Blocks } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, X, Share2, Blocks } from 'lucide-vue-next'
+import ShareQueryDialog from '@/components/workspace/ShareQueryDialog.vue'
+import { SHARE_SETTING, shareAllowed } from '@/utils/share.js'
+import { useStoredSetting } from '@/composables/useStoredSetting.js'
 
 const props = defineProps({
   card: { type: Object, required: true },
@@ -36,29 +39,10 @@ async function copySql() {
 }
 
 // ── Share ─────────────────────────────────────────────────
-// Generates a 24hr share link via the sfmc-share-worker and copies it
-// straight to the clipboard — same one-click pattern as Copy SQL.
-const shareState = ref('idle') // idle | loading | copied | error
-
-async function shareQuery() {
-  if (shareState.value === 'loading') return
-  shareState.value = 'loading'
-  try {
-    const res = await fetch('https://sfmc-share-worker.mathes-btech.workers.dev/api/share', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: displayName.value, queryText: sql.value }),
-    })
-    if (!res.ok) throw new Error(`Server error: ${res.status}`)
-    const data = await res.json()
-    await navigator.clipboard.writeText(data.url)
-    shareState.value = 'copied'
-  } catch {
-    shareState.value = 'error'
-  } finally {
-    setTimeout(() => { shareState.value = 'idle' }, 2000)
-  }
-}
+// Only when turned on in Settings and allowed by policy; the dialog shows what is sent.
+const shareOpen = ref(false)
+const { value: shareSetting } = useStoredSetting(SHARE_SETTING, false, (v) => v === true)
+const canShare = computed(() => shareAllowed(shareSetting.value) && !!sql.value.trim())
 </script>
 
 <template>
@@ -94,20 +78,13 @@ async function shareQuery() {
 
           <div class="flex flex-wrap items-center gap-2">
             <button
-              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60"
-              :class="shareState === 'copied'
-                ? 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700'
-                : shareState === 'error'
-                  ? 'border-red-300 text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
-                  : 'border-border text-foreground hover:bg-muted'"
-              :disabled="shareState === 'loading'"
-              title="Generate a 24hr share link and copy it"
-              @click="shareQuery"
+              v-if="canShare"
+              class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors"
+              title="Share: create a link anyone can open for 24 hours (you see what is sent first)"
+              @click="shareOpen = true"
             >
-              <Loader2 v-if="shareState === 'loading'" class="h-3.5 w-3.5 animate-spin" />
-              <Check v-else-if="shareState === 'copied'" class="h-3.5 w-3.5" />
-              <Share2 v-else class="h-3.5 w-3.5" />
-              {{ shareState === 'loading' ? 'Generating…' : shareState === 'copied' ? 'Link copied!' : shareState === 'error' ? 'Failed' : 'Share' }}
+              <Share2 class="h-3.5 w-3.5" />
+              Share
             </button>
             <button
               class="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-semibold border transition-colors"
@@ -145,5 +122,6 @@ async function shareQuery() {
         </div>
       </DialogContent>
     </DialogPortal>
+    <ShareQueryDialog :open="shareOpen" :name="displayName" :sql="sql" @close="shareOpen = false" />
   </DialogRoot>
 </template>
