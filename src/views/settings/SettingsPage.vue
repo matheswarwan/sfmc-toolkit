@@ -14,6 +14,8 @@ import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
+import { policy, POLICY_NOTE } from '@/utils/policy.js'
+import { HISTORY_SETTING } from '@/utils/history.js'
 import { QUERY_STUDIO_SETTING, QUERY_STUDIO_PERMISSION } from '@/utils/queryStudio.js'
 import { NOTIFY_KEY } from '@/utils/watches.js'
 import { ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS } from '@/utils/activityVersions.js'
@@ -54,6 +56,8 @@ function setDesktopNotify(on) {
   if (on) chrome.permissions.request({ permissions: ['notifications'] }, done)
   else chrome.permissions.remove({ permissions: ['notifications'] }, () => done(false))
 }
+
+const { value: keepHistory } = useStoredSetting(HISTORY_SETTING, true, (v) => v !== false)
 
 // Saving Query Studio runs: off by default (security review); on asks Chrome for the
 // optional *.herokuapp.com permission, off gives it back (utils/queryStudio.js).
@@ -167,7 +171,7 @@ function setDebounce(e) {
           <div class="text-sm font-medium">Save email versions</div>
           <p class="text-xs text-muted-foreground">Each time you save an email in Content Builder, a copy is kept in this browser so you can compare or revert it (the 10 newest versions per email). Off by default.</p>
         </div>
-        <Switch v-model="emailSaver" aria-label="Save email versions" />
+        <Switch :model-value="emailSaver && !policy.disableHistory" :disabled="policy.disableHistory" aria-label="Save email versions" @update:model-value="emailSaver = $event" />
       </div>
       <div class="flex items-center gap-3" :class="{ 'opacity-50': !emailSaver }">
         <label for="email-debounce" class="flex-1">
@@ -189,7 +193,7 @@ function setDebounce(e) {
           <div class="text-sm font-medium">Save Query and Script activity versions</div>
           <p class="text-xs text-muted-foreground">Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept in this browser (Automation > Saved Activities). Off by default.</p>
         </div>
-        <Switch v-model="activitySaver" aria-label="Save Query and Script activity versions" />
+        <Switch :model-value="activitySaver && !policy.disableHistory" :disabled="policy.disableHistory" aria-label="Save Query and Script activity versions" @update:model-value="activitySaver = $event" />
       </div>
       <div class="flex items-center gap-3" :class="{ 'opacity-50': !activitySaver }">
         <label for="activity-max" class="flex-1">
@@ -203,6 +207,14 @@ function setDebounce(e) {
 
     <section class="rounded-lg border border-border bg-card p-4 space-y-4">
       <h2 class="text-sm font-semibold">Running queries</h2>
+      <p v-if="policy.disableHistory" class="text-xs text-amber-700 dark:text-amber-400">Query history and saving runs, emails and activities: {{ POLICY_NOTE }}</p>
+      <div class="flex items-start gap-3">
+        <div class="flex-1">
+          <div class="text-sm font-medium">Keep query history</div>
+          <p class="text-xs text-muted-foreground">Each saved query keeps the SQL of its runs, in this browser only. When off, a run keeps only the names of the data extension and Query Activity it created in SFMC (so Delete Toolkit runs can remove them), not its SQL. Query results are never stored in the browser.</p>
+        </div>
+        <Switch :model-value="keepHistory && !policy.disableHistory" :disabled="policy.disableHistory" aria-label="Keep query history" @update:model-value="keepHistory = $event" />
+      </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">
           <div class="text-sm font-medium">Reuse the data extension and Query Activity</div>
@@ -215,7 +227,7 @@ function setDebounce(e) {
           <div class="text-sm font-medium">Save Query Studio runs</div>
           <p class="text-xs text-muted-foreground">Queries you run in Query Studio and Query Studio 2 are saved in Saved queries, in this browser only. Off by default. Turning it on asks Chrome to let the extension read requests to herokuapp.com, where both Query Studios run; only their "run query" requests are read.</p>
         </div>
-        <Switch :model-value="qsCapture" aria-label="Save Query Studio runs" @update:model-value="setQsCapture" />
+        <Switch :model-value="qsCapture && !policy.disableHistory" :disabled="policy.disableHistory" aria-label="Save Query Studio runs" @update:model-value="setQsCapture" />
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">

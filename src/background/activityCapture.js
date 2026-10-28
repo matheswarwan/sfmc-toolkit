@@ -12,6 +12,7 @@
 // again once the save has completed (webRequest.onCompleted, activitySaveCompleted)
 // and that is the saved version.
 
+import { policyNow } from './policy.js'
 import { storageGet, storageSet } from './chromeAsync.js'
 import { sfmcFetch } from './fetchProxy.js'
 import { fetchCurrentBusinessUnit } from './businessUnit.js'
@@ -53,7 +54,7 @@ export function activitySaveCompleted(details) {
 
 export function captureActivity(details) {
   const hit = matchActivitySave(details?.url, details?.method)
-  if (!hit) return
+  if (!hit || policyNow().disableHistory) return
   const body = decodeRequestBody(details.requestBody)
   let saved = pickActivity(hit.kind, body)
   if (!saved && body) return // a body that holds no SQL or script: not a save of the text

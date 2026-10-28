@@ -4,6 +4,8 @@ import { planUnderscoreRenames, wrapWithRenamedColumns } from '../utils/columnNa
 import { DATA_VIEW_FIELDS, isSkippableDE } from '../utils/dataViews.js'
 import { bareTableName } from '../utils/schemaCatalog.js'
 import { openTab } from '../utils/openTab.js'
+import { useStoredSetting } from './useStoredSetting.js'
+import { HISTORY_SETTING, historyAllowed, runsForStorage } from '../utils/history.js'
 import {
   fetchDEMetadata, fetchDEFields, buildDEFields,
   createTargetDE, createQueryActivity,
@@ -15,6 +17,8 @@ import {
 } from '../utils/sfmcApi.js'
 
 export function useQueryPanel(options) {
+  // Query history: a run's SQL is stored only while history is on (utils/history.js).
+  const { value: keepHistory } = useStoredSetting(HISTORY_SETTING, true, (v) => v !== false)
   const { queryId, stack: stackInput, panelIndex = 0, initialSql = '', onTitleChange } = options
   const stack = computed(() => unref(stackInput))
   const canInteract = computed(() => !!stack.value)
@@ -746,7 +750,7 @@ export function useQueryPanel(options) {
       }
       currentRunId.value = runEntry.runId
       runs.value = [runEntry, ...(Array.isArray(runs.value) ? runs.value : Object.values(runs.value))]
-      const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
+      const updated = { ...queryRecord.value, runs: runsForStorage(runs.value, historyAllowed(keepHistory.value)) }
       queryRecord.value = updated
       await new Promise((resolve) => chrome.storage.local.set({ [queryId]: updated }, resolve))
 
@@ -909,7 +913,7 @@ export function useQueryPanel(options) {
       await deleteDE(run.stack || stack.value, run.deId)
       runs.value = runs.value.map(r => r.runId === runId ? { ...r, deId: null, deKey: null } : r)
       if (runId === currentRunId.value) { createdDeId.value = null; createdDeKey.value = null }
-      const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
+      const updated = { ...queryRecord.value, runs: runsForStorage(runs.value, historyAllowed(keepHistory.value)) }
       queryRecord.value = updated
       await new Promise(resolve => chrome.storage.local.set({ [queryId]: updated }, resolve))
     } catch (e) {
@@ -928,7 +932,7 @@ export function useQueryPanel(options) {
       await deleteQueryActivity(run.stack || stack.value, run.activityId)
       runs.value = runs.value.map(r => r.runId === runId ? { ...r, activityId: null } : r)
       if (runId === currentRunId.value) { createdActivityId.value = null }
-      const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
+      const updated = { ...queryRecord.value, runs: runsForStorage(runs.value, historyAllowed(keepHistory.value)) }
       queryRecord.value = updated
       await new Promise(resolve => chrome.storage.local.set({ [queryId]: updated }, resolve))
     } catch (e) {
@@ -965,7 +969,7 @@ export function useQueryPanel(options) {
       if (runId === currentRunId.value) {
         createdDeId.value = null; createdDeKey.value = null; createdActivityId.value = null
       }
-      const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
+      const updated = { ...queryRecord.value, runs: runsForStorage(runs.value, historyAllowed(keepHistory.value)) }
       queryRecord.value = updated
       await new Promise(resolve => chrome.storage.local.set({ [queryId]: updated }, resolve))
     } catch (e) {

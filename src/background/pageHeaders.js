@@ -7,6 +7,7 @@
 // (gone when the browser closes), and never logged. When none have been seen, a
 // Contact Builder page is opened in an inactive tab so it makes those requests.
 
+import { policyNow } from './policy.js'
 import { storageGet, storageSet, createTab, removeTab } from './chromeAsync.js'
 
 const MAX_AGE = 30 * 60 * 1000
@@ -38,6 +39,7 @@ async function persist() {
  */
 export function sniffPageHeaders(details) {
   if (!details?.requestHeaders || details.tabId < 0) return
+  if (policyNow().disableContacts) return // Contacts turned off by policy: nothing to read
   if (String(details.initiator || '').startsWith('chrome-extension://')) return
   const stack = stackOf(details.url)
   if (!stack) return

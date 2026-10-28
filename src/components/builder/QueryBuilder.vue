@@ -17,6 +17,7 @@ import { graphToModel } from '@/utils/builderOrder.js'
 import { importSqlToBuilder } from '@/utils/builderImport.js'
 import { listQueryActivities } from '@/utils/sfmcApi.js'
 import { parseSqlForBuilder } from '@/utils/sqlToBuilder.js'
+import { policy } from '@/utils/policy.js'
 import { builderToDiagramforce, openInDiagramforce } from '@/utils/diagramforce.js'
 import { showToast } from '@/composables/useToast.js'
 
@@ -447,7 +448,7 @@ function onCanvasFilter({ alias, field }) {
       </span>
       <div class="flex-1" />
       <slot name="actions" />
-      <div class="relative">
+      <div v-if="!policy.disableDiagramforce" class="relative">
         <button class="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium border border-border hover:bg-accent disabled:opacity-50"
           :disabled="!selectedDEs.length" title="Open this query as a diagram in Diagramforce (diagramforce.com, a free diagram editor)" @click="dfMenu = !dfMenu">
           <Share class="h-3.5 w-3.5" /> Diagramforce <ChevronDown class="h-3 w-3" />

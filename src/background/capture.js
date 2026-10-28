@@ -4,6 +4,7 @@
 // Storage keys and shapes are SFMC Query Saver's (`sql_<ts>`, `email_<assetId>`), so
 // a Query Saver backup imports unchanged.
 
+import { getPolicy } from './policy.js'
 import { makeRoom, EMAIL_MAX_VERSIONS } from './storageRoom.js'
 import { storageGet, storageSet, delay } from './chromeAsync.js'
 import { resolveStack } from './stack.js'
@@ -50,6 +51,7 @@ export async function tagBusinessUnit(id) {
 // (QUERY_STUDIO_CREATE_URLS in utils/queryStudio.js)
 export async function captureQueryStudio(details) {
   if (details.method !== 'POST' || !details.requestBody?.raw?.[0]?.bytes || !isQueryStudioUrl(details.url)) return
+  if ((await getPolicy()).disableHistory) return
   // Off unless the user turned it on (Settings > Running queries).
   if ((await storageGet('local', [QUERY_STUDIO_SETTING]))[QUERY_STUDIO_SETTING] !== true) return
   let queryText
@@ -106,6 +108,7 @@ function pickView(view) {
 // webRequest.onBeforeRequest for https://*.marketingcloudapps.com/fuelapi/asset/v1/content/assets/*
 export async function captureEmail(details) {
   if (!emailSaver.enabled || details.method !== 'PUT') return
+  if ((await getPolicy()).disableHistory) return
   if (!details.requestBody?.raw?.[0]?.bytes) return
   let jsonStr, asset
   try {

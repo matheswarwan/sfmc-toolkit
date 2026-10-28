@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { loadPolicy, routeBlocked } from '../utils/policy.js'
 import { NAV_ITEMS } from './nav.js'
 
 const PAGES = {
@@ -59,6 +60,11 @@ export const routes = [
 
 export function createAppRouter(history = createWebHashHistory()) {
   const router = createRouter({ history, routes })
+  // Pages an admin policy turned off (utils/policy.js) send the user home.
+  router.beforeEach(async (to) => {
+    await loadPolicy()
+    return routeBlocked(to.path) ? '/' : true
+  })
   router.afterEach((to) => {
     document.title = to.meta?.title ? `${to.meta.title} · Marketing Cloud Toolkit` : 'Marketing Cloud Toolkit'
   })

@@ -101,13 +101,15 @@ function refresh() {
 async function clearAll() {
   const ok = window.confirm(
     'Clear ALL extension data?\n\n' +
-    'This permanently deletes every saved query, saved email, Query Builder draft, ' +
-    'and all settings. This cannot be undone.'
+    'This permanently deletes every saved query and its history, saved email and activity ' +
+    'versions, Query Builder drafts, Where used scans and all settings. This cannot be undone.'
   )
   if (!ok) return
   clearing.value = true
   try {
     await new Promise((resolve) => chrome.storage.local.clear(resolve))
+    await new Promise((resolve) => chrome.storage.session.clear(resolve)).catch(() => {})
+    await forgetWhereUsed('').catch(() => {})
     try { localStorage.clear() } catch { /* ignore */ }
   } finally {
     // Reload so the UI reflects the now-empty state.

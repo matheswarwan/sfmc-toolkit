@@ -7,6 +7,7 @@ import {
   Table2, FileOutput, Blocks, Share, Wand2, Users,
 } from 'lucide-vue-next'
 import { importSqlToBuilder } from '../../utils/builderImport.js'
+import { policy } from '../../utils/policy.js'
 import { builderToDiagramforce, openInDiagramforce } from '../../utils/diagramforce.js'
 import { useRouter } from 'vue-router'
 import QueryEditor from '../detail/QueryEditor.vue'
@@ -164,7 +165,7 @@ function openSchema() {
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!canInteract || activeTab !== 'editor'" title="Shared snippets: SQL your team keeps in this business unit" @click="openSnippets"><Users class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim() || activeTab !== 'editor'" title="Fix all: apply every one-click fix the SQL checks offer" @click="fixAllQuery"><Wand2 class="h-3 w-3" /></Button>
       <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Open in Query Builder: draw this query as tables and joins" @click="router.push({ path: '/queries/builder', query: { sql: queryText } })"><Blocks class="h-3 w-3" /></Button>
-      <Button variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Open in Diagramforce: the query's lineage (source fields to output columns) as a diagram on diagramforce.com" @click="queryToDiagramforce"><Share class="h-3 w-3" /></Button>
+      <Button v-if="!policy.disableDiagramforce" variant="outline" size="sm" class="h-6 text-[10px] px-1" :disabled="!queryText.trim()" title="Open in Diagramforce: the query's lineage (source fields to output columns) as a diagram on diagramforce.com" @click="queryToDiagramforce"><Share class="h-3 w-3" /></Button>
       <InsertFieldsMenu :editor="editorRef" :disabled="activeTab !== 'editor' || isRunning" />
       <Button :variant="showSchema ? 'default' : 'outline'" size="sm" class="h-6 text-[10px] px-1" :disabled="activeTab !== 'editor'" :title="`Schema search: data extensions and their fields (${isMac ? 'Cmd' : 'Ctrl'}+Shift+S)`" :aria-pressed="showSchema" @click="setSchema(!showSchema)"><Table2 class="h-3 w-3" /></Button>
       <Button variant="ghost" size="icon" class="h-6 w-6" :title="isExpanded ? 'Minimize panel' : 'Expand panel'" @click="$emit('expand')">

@@ -1,6 +1,7 @@
 <script setup>
 // Ctrl+K / Cmd+K: jump to a section, open a saved query or email, or search an SFMC
 // section (see utils/paletteSearch.js).
+import { routeBlocked } from '@/utils/policy.js'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, FileCode2, Mail, Settings, BookOpen, ArrowRight, History } from 'lucide-vue-next'
@@ -23,7 +24,7 @@ const active = ref(0)
 const input = ref(null)
 const storage = ref({})
 
-const entries = computed(() => paletteEntries(query.value, SECTIONS, storage.value))
+const entries = computed(() => paletteEntries(query.value, SECTIONS.filter((s) => !routeBlocked(s.path)), storage.value))
 
 watch(() => props.open, async (isOpen) => {
   if (!isOpen) return

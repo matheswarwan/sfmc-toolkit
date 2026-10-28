@@ -33,6 +33,7 @@ import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 import { nextTo } from '../utils/openTab.js'
 import { openSfmcLink } from './deepLinks.js'
 import { QUERY_STUDIO_CREATE_URLS } from '../utils/queryStudio.js'
+import { watchPolicy } from './policy.js'
 import { makeRoom } from './storageRoom.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
@@ -45,6 +46,7 @@ restoreCsrfTokens()
 restorePageHeaders()
 loadEmailSaverPrefs()
 watchForUpdates()
+watchPolicy()
 // Without unlimitedStorage, an install that grew past the 10 MB limit drops old email versions.
 chrome.runtime.onInstalled?.addListener(() => { makeRoom(0) })
 updateBadge()

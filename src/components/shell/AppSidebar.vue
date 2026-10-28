@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-vue-next'
 import { NAV_GROUPS } from '@/app/nav.js'
+import { policy, routeBlocked } from '@/utils/policy.js'
 import CreatorCredit from './CreatorCredit.vue'
 
 const COLLAPSED_KEY = 'toolkit_sidebar_collapsed'
@@ -12,6 +13,9 @@ function toggle() {
   collapsed.value = !collapsed.value
   try { localStorage.setItem(COLLAPSED_KEY, collapsed.value ? '1' : '0') } catch { /* storage blocked */ }
 }
+
+// Pages an admin policy turned off are left out (utils/policy.js).
+const groups = computed(() => (policy.loaded, NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !routeBlocked(i.path)) }))))
 </script>
 
 <template>
@@ -26,7 +30,7 @@ function toggle() {
     </div>
 
     <div class="flex-1 overflow-y-auto py-2">
-      <div v-for="group in NAV_GROUPS" :key="group.label" class="mb-3">
+      <div v-for="group in groups" :key="group.label" class="mb-3">
         <div v-if="!collapsed" class="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {{ group.label }}
         </div>
