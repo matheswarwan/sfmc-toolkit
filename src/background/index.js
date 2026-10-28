@@ -37,7 +37,7 @@ import { makeRoom } from './storageRoom.js'
 import { watchForUpdates } from './updates.js'
 import { checkWatches, updateBadge } from './watches.js'
 import { getDashboardSummary } from './dashboard.js'
-import { captureActivity, activitySaveCompleted, logActivityRequest, logActivityRequestDone } from './activityCapture.js'
+import { captureActivity, activitySaveCompleted } from './activityCapture.js'
 
 onForgetStack(dropMcaToken)
 setOnMintFailure(forgetStack)
@@ -91,11 +91,6 @@ const ACTIVITY_URLS = ['https://*.marketingcloudapps.com/AutomationStudioFuel3/*
 chrome.webRequest?.onBeforeRequest.addListener(captureActivity, { urls: ACTIVITY_URLS }, ['requestBody'])
 chrome.webRequest?.onCompleted?.addListener(activitySaveCompleted, { urls: ACTIVITY_URLS })
 chrome.webRequest?.onErrorOccurred?.addListener(activitySaveCompleted, { urls: ACTIVITY_URLS })
-// The last Automation Studio writes, shown on Saved Activities to find the real save URL (#129).
-const SFMC_REQUEST_URLS = ['https://*.marketingcloudapps.com/*', 'https://*.exacttarget.com/*']
-chrome.webRequest?.onBeforeRequest.addListener(logActivityRequest, { urls: SFMC_REQUEST_URLS }, ['requestBody'])
-chrome.webRequest?.onCompleted?.addListener(logActivityRequestDone, { urls: SFMC_REQUEST_URLS })
-chrome.webRequest?.onErrorOccurred?.addListener(logActivityRequestDone, { urls: SFMC_REQUEST_URLS })
 
 const isSfmcUrl = (u) => /^https:\/\/[^/]*\.(exacttarget|marketingcloudapps|marketingcloud|salesforce-marketingcloud)\.com\//.test(u || '')
 const isLoggedInUrl = (u) => !u.includes('/login') && !u.includes('mc.login.') && !u.includes('sso')

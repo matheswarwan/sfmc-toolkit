@@ -16,7 +16,7 @@ const search = ref('')
 const favouritesOnly = ref(false)
 const deleteMode = ref(false)
 const selectedIds = ref(new Set())
-const { value: saverEnabled } = useStoredSetting('_emailSaverEnabled', true, (v) => v !== false)
+const { value: saverEnabled } = useStoredSetting('_emailSaverEnabled', false, (v) => v === true)
 
 function loadData() {
   return new Promise((resolve) => {

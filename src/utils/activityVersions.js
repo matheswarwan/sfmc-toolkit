@@ -57,54 +57,6 @@ export function matchActivitySave(url, method) {
 }
 
 // ── Diagnostic log (feedback #129) ───────────────────────────
-// The last requests that write from Automation Studio (and other SFMC paths that
-// mention automations, queries or scripts), so a user can tell us the real save URL
-// without a HAR. Kept in chrome.storage.session: method, URL without query values,
-// status, whether it matched, and the top-level keys of a JSON body (never values).
-export const ACTIVITY_LOG_KEY = 'toolkit_activityRequestLog'
-export const ACTIVITY_LOG_MAX = 25
-const LOG_HOST = /^https:\/\/[^/]+\.(?:marketingcloudapps|exacttarget)\.com\//i
-const LOG_PATH = /automationstudio|automation|script|ssjs|quer/i
-
-/** Whether a request belongs in the diagnostic log: it writes, on an SFMC host, on a relevant path. */
-export function isLoggedActivityRequest(url, method) {
-  const m = String(method || '').toUpperCase()
-  if (!m || m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false
-  const u = String(url || '')
-  if (!LOG_HOST.test(u)) return false
-  return LOG_PATH.test(u.split(/[?#]/)[0])
-}
-
-/** The URL with every query value removed (names kept), so no token is ever logged. */
-export function logSafeUrl(url) {
-  const u = String(url || '').split('#')[0]
-  const i = u.indexOf('?')
-  if (i < 0) return u
-  const names = u.slice(i + 1).split('&').filter(Boolean).map((p) => decodeURIComponentSafe(p.split('=')[0]))
-  return `${u.slice(0, i)}?${names.map((n) => `${n}=…`).join('&')}`
-}
-function decodeURIComponentSafe(s) { try { return decodeURIComponent(s) } catch { return s } }
-
-/** Top-level keys of a JSON body (at most 40), or null when there is none. */
-export function bodyKeys(body) {
-  if (!body || typeof body !== 'object') return null
-  return (Array.isArray(body) ? ['(array)'] : Object.keys(body)).slice(0, 40)
-}
-
-/** The log with `entry` added first, at most `max` entries. */
-export function addLogEntry(log, entry, max = ACTIVITY_LOG_MAX) {
-  return [entry, ...(Array.isArray(log) ? log : [])].slice(0, max)
-}
-
-/** The log as plain text for Copy. */
-export function logText(log) {
-  return (log || []).map((e) => [
-    new Date(e.at).toISOString(), e.method, e.status ?? '(no status yet)', e.url,
-    `matched=${e.matched ? `${e.matched.kind}:${e.matched.id}` : 'no'}`,
-    `body=${e.hasBody ? (e.keys ? `keys[${e.keys.join(',')}]` : 'not JSON') : 'none'}`,
-  ].join(' | ')).join('\n')
-}
-
 /** The JSON body of a webRequest requestBody (raw bytes or form fields), or null. */
 export function decodeRequestBody(requestBody) {
   try {

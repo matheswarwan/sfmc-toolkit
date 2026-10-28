@@ -21,9 +21,9 @@ import { ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS } fr
 const { currentTheme, themes, setTheme } = useTheme()
 
 // Same keys as SFMC Query Saver, read by the service worker and the run flow.
-const { value: emailSaver } = useStoredSetting('_emailSaverEnabled', true, (v) => v !== false)
+const { value: emailSaver } = useStoredSetting('_emailSaverEnabled', false, (v) => v === true)
 // Query and Script activity versions (feedback #122; background/activityCapture.js).
-const { value: activitySaver } = useStoredSetting(ACTIVITY_SAVER_SETTING, true, (v) => v !== false)
+const { value: activitySaver } = useStoredSetting(ACTIVITY_SAVER_SETTING, false, (v) => v === true)
 const { value: activityMax } = useStoredSetting(ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS,
   (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.floor(Number(v)) : DEFAULT_MAX_VERSIONS))
 function setActivityMax(e) {
@@ -165,7 +165,7 @@ function setDebounce(e) {
       <div class="flex items-start gap-3">
         <div class="flex-1">
           <div class="text-sm font-medium">Save email versions</div>
-          <p class="text-xs text-muted-foreground">Each time you save an email in Content Builder, a copy is kept here so you can compare or revert it.</p>
+          <p class="text-xs text-muted-foreground">Each time you save an email in Content Builder, a copy is kept in this browser so you can compare or revert it (the 10 newest versions per email). Off by default.</p>
         </div>
         <Switch v-model="emailSaver" aria-label="Save email versions" />
       </div>
@@ -187,7 +187,7 @@ function setDebounce(e) {
       <div class="flex items-start gap-3">
         <div class="flex-1">
           <div class="text-sm font-medium">Save Query and Script activity versions</div>
-          <p class="text-xs text-muted-foreground">Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept here (Automation > Saved Activities).</p>
+          <p class="text-xs text-muted-foreground">Each time you save a SQL Query or Script activity in Automation Studio, the version from before your edit and the saved one are kept in this browser (Automation > Saved Activities). Off by default.</p>
         </div>
         <Switch v-model="activitySaver" aria-label="Save Query and Script activity versions" />
       </div>

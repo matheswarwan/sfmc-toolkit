@@ -75,7 +75,8 @@ export async function captureQueryStudio(details) {
 }
 
 // ── Content Builder email versions ─────────────────────────
-export const emailSaver = { enabled: true, debounceMs: 5000 }
+// Saved Emails is off unless the user turns it on (security review, 2026-10-28).
+export const emailSaver = { enabled: false, debounceMs: 5000 }
 const lastSavedAt = {}
 
 export async function loadEmailSaverPrefs() {
@@ -84,7 +85,7 @@ export async function loadEmailSaverPrefs() {
 }
 
 export function applyEmailSaverPrefs(prefs) {
-  if ('_emailSaverEnabled' in prefs) emailSaver.enabled = prefs._emailSaverEnabled !== false
+  if ('_emailSaverEnabled' in prefs) emailSaver.enabled = prefs._emailSaverEnabled === true
   if ('_emailSaveDebounce' in prefs) {
     const s = prefs._emailSaveDebounce
     emailSaver.debounceMs = typeof s === 'number' && s >= 0 ? s * 1000 : 5000

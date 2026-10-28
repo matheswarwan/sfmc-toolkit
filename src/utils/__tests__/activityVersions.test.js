@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   matchActivitySave, decodeRequestBody, pickActivity, addVersions, makeVersion, recordKey, activityUrl, restoreBody,
   sideBySideDiff, versionsKeyFor, searchRecords,
-  isLoggedActivityRequest, logSafeUrl, looksLikeActivityId, isBadActivityKey, bodyKeys, addLogEntry, logText, ACTIVITY_LOG_KEY, ACTIVITY_LOG_MAX,
+  looksLikeActivityId, isBadActivityKey,
 } from '../activityVersions.js'
 import { describeActivity } from '../activityTypes.js'
 import { buildBackup, planImport, describeImport } from '../backup.js'
@@ -123,7 +123,7 @@ describe('captureActivity (service worker)', () => {
   let current
   beforeEach(() => {
     vi.resetModules()
-    store = {}
+    store = { _activitySaverEnabled: true } // off unless turned on
     fetched = []
     current = { queryDefinitionId: QID, name: 'Daily', queryText: 'SELECT old', targetName: 'T', targetUpdateTypeId: 0 }
     vi.doMock('../../background/chromeAsync.js', () => ({
@@ -213,58 +213,6 @@ describe('wider save patterns (feedback #129)', () => {
     expect(matchActivitySave(`https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/automation/v1/scripts/${id}`, 'GET')).toBeNull()
     expect(matchActivitySave(`https://mc.s13.marketingcloudapps.com/ContentBuilder/fuelapi/automation/v1/scripts/${id}`, 'PATCH')).toBeNull()
     expect(matchActivitySave('https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/automation/v1/scripts/', 'POST')).toBeNull()
-  })
-})
-
-describe('Automation Studio request log (feedback #129)', () => {
-  it('keeps writes on SFMC paths about automations, queries or scripts', () => {
-    expect(isLoggedActivityRequest('https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/x', 'PATCH')).toBe(true)
-    expect(isLoggedActivityRequest('https://mc.s13.exacttarget.com/cloud/fuelapi/legacy/v1/ssjs/1', 'POST')).toBe(true)
-    expect(isLoggedActivityRequest('https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/x', 'GET')).toBe(false)
-    expect(isLoggedActivityRequest('https://mc.s13.exacttarget.com/cloud/fuelapi/asset/v1/content/assets/1', 'PUT')).toBe(false)
-    expect(isLoggedActivityRequest('https://example.com/automation/1', 'POST')).toBe(false)
-    expect(isLoggedActivityRequest('https://mc.s13.exacttarget.com/cloud/x?next=automation', 'POST')).toBe(false)
-  })
-  it('drops every query value and keeps body field names only', () => {
-    expect(logSafeUrl('https://h.s1.exacttarget.com/a/scripts/1?access_token=SECRET&v=2#x')).toBe('https://h.s1.exacttarget.com/a/scripts/1?access_token=…&v=…')
-    expect(logSafeUrl('https://h/a')).toBe('https://h/a')
-    expect(bodyKeys({ name: 'x', script: 'secret code' })).toEqual(['name', 'script'])
-    expect(bodyKeys(null)).toBeNull()
-  })
-  it('keeps the newest 25 entries', () => {
-    let log = []
-    for (let i = 0; i < 30; i++) log = addLogEntry(log, { at: i })
-    expect(log).toHaveLength(ACTIVITY_LOG_MAX)
-    expect(log[0].at).toBe(29)
-    expect(log.at(-1).at).toBe(5)
-  })
-  it('copies as one line per request', () => {
-    const t = logText([{ at: 0, method: 'PATCH', status: 200, url: 'https://u', matched: { kind: 'script', id: 'abc' }, hasBody: true, keys: ['name', 'script'] }])
-    expect(t).toBe('1970-01-01T00:00:00.000Z | PATCH | 200 | https://u | matched=script:abc | body=keys[name,script]')
-  })
-
-  it('the service worker logs a write with its status, never body values', async () => {
-    vi.resetModules()
-    const store = {}
-    vi.doMock('../../background/chromeAsync.js', () => ({
-      storageGet: async (area, keys) => Object.fromEntries([].concat(keys).filter((k) => k in store).map((k) => [k, store[k]])),
-      storageSet: async (area, o) => { Object.assign(store, o) },
-    }))
-    vi.doMock('../../background/fetchProxy.js', () => ({ sfmcFetch: async () => null }))
-    vi.doMock('../../background/businessUnit.js', () => ({ fetchCurrentBusinessUnit: async () => null }))
-    const { logActivityRequest, logActivityRequestDone } = await import('../../background/activityCapture.js')
-    const url = 'https://mc.s13.marketingcloudapps.com/AutomationStudioFuel3/fuelapi/automation/v1/scripts/abcdef12?token=SECRET'
-    await logActivityRequest({ requestId: 'r1', tabId: 3, method: 'PATCH', url, timeStamp: 5, requestBody: { raw: [{ bytes: new TextEncoder().encode(JSON.stringify({ script: 'var secret = 1' })).buffer }] } })
-    await logActivityRequest({ requestId: 'r2', tabId: -1, method: 'PATCH', url, timeStamp: 6 })
-    await logActivityRequest({ requestId: 'r3', tabId: 3, method: 'GET', url, timeStamp: 7 })
-    await logActivityRequestDone({ requestId: 'r1', statusCode: 200 })
-    const log = store[ACTIVITY_LOG_KEY]
-    expect(log).toHaveLength(1)
-    expect(log[0]).toMatchObject({ method: 'PATCH', status: 200, matched: { kind: 'script', id: 'abcdef12' }, hasBody: true, keys: ['script'] })
-    expect(JSON.stringify(log)).not.toMatch(/SECRET|secret = 1/)
-    vi.doUnmock('../../background/chromeAsync.js')
-    vi.doUnmock('../../background/fetchProxy.js')
-    vi.doUnmock('../../background/businessUnit.js')
   })
 })
 
