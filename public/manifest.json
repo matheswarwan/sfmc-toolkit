@@ -22,32 +22,48 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "unlimitedStorage", "webRequest", "tabs", "cookies"],
-  "optional_permissions": ["notifications"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "webRequest",
+    "cookies"
+  ],
+  "optional_permissions": [
+    "notifications"
+  ],
   "host_permissions": [
     "https://*.exacttarget.com/*",
     "https://*.marketingcloudapps.com/*",
     "https://*.marketingcloud.com/*",
-    "https://*.salesforce-marketingcloud.com/*",
-    "https://querystudio.herokuapp.com/*",
-    "https://querystudio2-dev-89f7e4653c61.herokuapp.com/*",
-    "https://sfmc-share-worker.mathes-btech.workers.dev/*",
-    "https://query-saver-feedback.mathes-btech.workers.dev/*"
+    "https://*.salesforce-marketingcloud.com/*"
   ],
+  "optional_host_permissions": [
+    "https://*.herokuapp.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; connect-src 'self' https://*.exacttarget.com https://*.marketingcloudapps.com https://*.marketingcloud.com https://*.salesforce-marketingcloud.com https://sfmc-share-worker.mathes-btech.workers.dev https://query-saver-feedback.mathes-btech.workers.dev data: blob:"
+  },
   "content_scripts": [
     {
       "matches": [
         "https://*.exacttarget.com/*",
         "https://*.marketingcloudapps.com/*",
         "https://*.marketingcloud.com/*",
-        "https://*.salesforce-marketingcloud.com/*",
-        "https://querystudio.herokuapp.com/*"
+        "https://*.salesforce-marketingcloud.com/*"
       ],
-      "js": ["content.js", "automationPanel.js", "dashboardPanel.js"]
+      "js": [
+        "content.js",
+        "automationPanel.js",
+        "dashboardPanel.js"
+      ]
     },
     {
-      "matches": ["https://sfmc-share-worker.mathes-btech.workers.dev/share/*"],
-      "js": ["share-handler.js"],
+      "matches": [
+        "https://sfmc-share-worker.mathes-btech.workers.dev/share/*"
+      ],
+      "js": [
+        "share-handler.js"
+      ],
       "run_at": "document_idle"
     }
   ]

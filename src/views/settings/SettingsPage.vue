@@ -14,7 +14,7 @@ import { saveTextFile, readFileText } from '@/utils/download.js'
 import { showToast } from '@/composables/useToast.js'
 import { useApiConsole } from '@/composables/useApiConsole.js'
 import { DEFAULT_RETENTION_DAYS, SUGGESTED_RETENTION_DAYS, parseRetentionDays } from '@/utils/sfmcApi.js'
-import { QUERY_STUDIO_2_SETTING } from '@/utils/queryStudio.js'
+import { QUERY_STUDIO_SETTING, QUERY_STUDIO_PERMISSION } from '@/utils/queryStudio.js'
 import { NOTIFY_KEY } from '@/utils/watches.js'
 import { ACTIVITY_SAVER_SETTING, ACTIVITY_MAX_SETTING, DEFAULT_MAX_VERSIONS } from '@/utils/activityVersions.js'
 
@@ -55,8 +55,22 @@ function setDesktopNotify(on) {
   else chrome.permissions.remove({ permissions: ['notifications'] }, () => done(false))
 }
 
-// Query Studio 2 runs are saved unless turned off (user, 2.0.10; the site is a required host).
-const { value: qs2 } = useStoredSetting(QUERY_STUDIO_2_SETTING, true, (v) => v !== false)
+// Saving Query Studio runs: off by default (security review); on asks Chrome for the
+// optional *.herokuapp.com permission, off gives it back (utils/queryStudio.js).
+const qsCapture = ref(false)
+chrome.storage?.local.get(QUERY_STUDIO_SETTING, (r) => {
+  chrome.permissions?.contains(QUERY_STUDIO_PERMISSION, (has) => { qsCapture.value = !!has && r?.[QUERY_STUDIO_SETTING] === true })
+})
+function setQsCapture(on) {
+  const done = (ok) => {
+    void chrome.runtime.lastError
+    qsCapture.value = !!on && !!ok
+    chrome.storage.local.set({ [QUERY_STUDIO_SETTING]: qsCapture.value })
+    if (on && !ok) showToast('Query Studio runs are not saved: Chrome did not get the permission.')
+  }
+  if (on) chrome.permissions.request(QUERY_STUDIO_PERMISSION, done)
+  else chrome.permissions.remove(QUERY_STUDIO_PERMISSION, () => done(false))
+}
 const retentionInput = computed({
   get: () => retentionDays.value,
   set: (v) => { const n = Math.round(Number(v)); if (Number.isFinite(n) && n > 0) retentionDays.value = parseRetentionDays(n) },
@@ -198,10 +212,10 @@ function setDebounce(e) {
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">
-          <div class="text-sm font-medium">Save Query Studio 2 runs</div>
-          <p class="text-xs text-muted-foreground">Queries you run in Query Studio 2 are saved in Saved queries, as Query Studio runs are. On by default.</p>
+          <div class="text-sm font-medium">Save Query Studio runs</div>
+          <p class="text-xs text-muted-foreground">Queries you run in Query Studio and Query Studio 2 are saved in Saved queries, in this browser only. Off by default. Turning it on asks Chrome to let the extension read requests to herokuapp.com, where both Query Studios run; only their "run query" requests are read.</p>
         </div>
-        <Switch v-model="qs2" aria-label="Save Query Studio 2 runs" />
+        <Switch :model-value="qsCapture" aria-label="Save Query Studio runs" @update:model-value="setQsCapture" />
       </div>
       <div class="flex items-start gap-3">
         <div class="flex-1">

@@ -139,8 +139,15 @@ describe('connection status', () => {
 })
 
 describe('Query Studio capture', () => {
+  // Off unless turned on in Settings (security review, 2026-10-28).
+  const loadOn = async (opts) => {
+    const sw = await loadSW(opts)
+    sw.local._saveQueryStudio = true
+    return sw
+  }
+
   it('saves a captured query, then tags it with the current business unit', async () => {
-    const sw = await loadSW({ tabs: [s10Tab], currentBU: { name: 'Acme Child BU', accountId: 5100123 } })
+    const sw = await loadOn({ tabs: [s10Tab], currentBU: { name: 'Acme Child BU', accountId: 5100123 } })
     await sw.captureQuery('SELECT 1 AS x')
     await flush()
     const rec = sw.local.sql_1700000000000
@@ -149,38 +156,39 @@ describe('Query Studio capture', () => {
   })
 
   it('keeps the captured query when the business unit lookup fails', async () => {
-    const sw = await loadSW({ tabs: [s10Tab], currentBU: null })
+    const sw = await loadOn({ tabs: [s10Tab], currentBU: null })
     await sw.captureQuery('SELECT 2 AS y')
     await flush()
     expect(sw.local.sql_1700000000000.queryText).toBe('SELECT 2 AS y')
     expect(sw.local.sql_1700000000000.businessUnit).toBeUndefined()
   })
 
-  it('saves Query Studio 2 runs (feedback #32), body as in its HAR', async () => {
+  it('saves nothing while the setting is off (the default)', async () => {
     const sw = await loadSW({ tabs: [s10Tab] })
+    await sw.captureQuery('SELECT 7', 1700000000005)
+    await flush()
+    expect(sw.local.sql_1700000000005).toBeUndefined()
+  })
+
+  it('saves Query Studio 2 runs (feedback #32), body as in its HAR, on any querystudio2 host (#1014)', async () => {
+    const sw = await loadOn({ tabs: [s10Tab] })
     await sw.captureQuery('SELECT 3 AS z', 1700000000001, {
       url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/create',
       extra: { fieldOverrides: [{ name: 'z', type: 'Text', maxLength: 255 }], tab: 0 },
     })
+    await sw.captureQuery('SELECT 8', 1700000000006, { url: 'https://querystudio2-prod-0a1b2c3d4e5f.herokuapp.com/query/create' })
     await flush()
     expect(sw.local.sql_1700000000001.queryText).toBe('SELECT 3 AS z')
+    expect(sw.local.sql_1700000000006.queryText).toBe('SELECT 8')
   })
 
-  it('skips Query Studio 2 runs when turned off in Settings', async () => {
-    const sw = await loadSW({ tabs: [s10Tab] })
-    sw.local._saveQueryStudio2 = false
-    await sw.captureQuery('SELECT 5', 1700000000003, { url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/create' })
-    await sw.captureQuery('SELECT 6', 1700000000004)
-    await flush()
-    expect(sw.local.sql_1700000000003).toBeUndefined()
-    expect(sw.local.sql_1700000000004.queryText).toBe('SELECT 6')
-  })
-
-  it('ignores other Query Studio 2 requests', async () => {
-    const sw = await loadSW({ tabs: [s10Tab] })
+  it('ignores other Heroku apps and other Query Studio requests', async () => {
+    const sw = await loadOn({ tabs: [s10Tab] })
     await sw.captureQuery('SELECT 4', 1700000000002, { url: 'https://querystudio2-dev-89f7e4653c61.herokuapp.com/query/validate' })
+    await sw.captureQuery('SELECT 9', 1700000000007, { url: 'https://someone-else.herokuapp.com/query/create' })
     await flush()
     expect(sw.local.sql_1700000000002).toBeUndefined()
+    expect(sw.local.sql_1700000000007).toBeUndefined()
   })
 
   it('saves and renames records sent by the app', async () => {

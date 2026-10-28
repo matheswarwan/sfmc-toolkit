@@ -7,7 +7,7 @@
 import { storageGet, storageSet, delay } from './chromeAsync.js'
 import { resolveStack } from './stack.js'
 import { fetchCurrentBusinessUnit } from './businessUnit.js'
-import { QUERY_STUDIO_2_SETTING, isQueryStudio2 } from '../utils/queryStudio.js'
+import { QUERY_STUDIO_SETTING, isQueryStudioUrl } from '../utils/queryStudio.js'
 
 const decoder = new TextDecoder('utf-8')
 
@@ -48,7 +48,9 @@ export async function tagBusinessUnit(id) {
 // webRequest.onBeforeRequest for POST /query/create in Query Studio 1 and 2
 // (QUERY_STUDIO_CREATE_URLS in utils/queryStudio.js)
 export async function captureQueryStudio(details) {
-  if (details.method !== 'POST' || !details.requestBody?.raw?.[0]?.bytes) return
+  if (details.method !== 'POST' || !details.requestBody?.raw?.[0]?.bytes || !isQueryStudioUrl(details.url)) return
+  // Off unless the user turned it on (Settings > Running queries).
+  if ((await storageGet('local', [QUERY_STUDIO_SETTING]))[QUERY_STUDIO_SETTING] !== true) return
   let queryText
   try {
     queryText = JSON.parse(decoder.decode(new Uint8Array(details.requestBody.raw[0].bytes))).querytext
@@ -56,10 +58,6 @@ export async function captureQueryStudio(details) {
     return
   }
   if (!queryText) return
-  if (isQueryStudio2(details.url)) {
-    const prefs = await storageGet('local', [QUERY_STUDIO_2_SETTING])
-    if (prefs[QUERY_STUDIO_2_SETTING] === false) return
-  }
   const ts = details.timeStamp
   const id = 'sql_' + ts
   await saveRecords({
