@@ -55,6 +55,15 @@ describe('feedback worker', () => {
     expect((await worker.fetch(new Request('https://w.example/other'), {})).status).toBe(404)
   })
 
+  it('runs the retention cleanup after a post', async () => {
+    const db = fakeDb()
+    const waits = []
+    await worker.fetch(post({ message: 'm', app: 'toolkit' }), { FEEDBACK_DB: db }, { waitUntil: (p) => waits.push(p) })
+    await Promise.all(waits)
+    expect(waits).toHaveLength(1)
+    expect(db.calls.some((c) => c.sql.startsWith('DELETE FROM fb_toolkit WHERE'))).toBe(true)
+  })
+
   it('never stores the IP address', async () => {
     const db = fakeDb()
     await worker.fetch(post({ message: 'm', app: 'toolkit' }), { FEEDBACK_DB: db })

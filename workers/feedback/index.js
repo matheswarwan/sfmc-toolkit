@@ -17,8 +17,9 @@
 // Privacy (security review, 2026-10-28): the sender's IP address is not stored (the
 // `ip` column stays for old rows and is written as NULL). Toolkit metadata is cut to
 // the fields the Toolkit sends since 2.0.18, so older versions' business unit names,
-// SFMC paths and error texts are not stored either. A daily cron (`scheduled`)
-// deletes rows and screenshots older than RETENTION_DAYS.
+// SFMC paths and error texts are not stored either. Rows and screenshots older than
+// RETENTION_DAYS are deleted after each new post (the account has no free cron
+// trigger left; `scheduled` does the same if a cron is added later).
 
 const LIMITS = { message: 2000, details: 5000, screen: 200, version: 40, app: 40, kind: 20, name: 100, email: 200, metadata: 20000, screenshot: 1_900_000 }
 const SCREENSHOT_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
@@ -89,7 +90,7 @@ export function validate(body) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url)
     if (request.method === 'OPTIONS') return cors(null, 204)
     if (request.method !== 'POST' || url.pathname !== '/feedback') return cors({ error: 'Not found' }, 404)
@@ -115,10 +116,12 @@ export default {
       await env.FEEDBACK_DB.prepare(`INSERT INTO ${table}_screenshots (feedback_id, data_url, created_at) VALUES (?, ?, ?)`)
         .bind(id, v.screenshot, now).run()
     }
+    // Retention: delete what is past RETENTION_DAYS, after answering.
+    ctx?.waitUntil?.(deleteOldFeedback(env.FEEDBACK_DB, now).catch((e) => console.warn('Retention cleanup failed:', e.message)))
     return cors({ ok: true, id }, 200)
   },
 
-  // Daily: delete feedback older than RETENTION_DAYS (wrangler.toml [triggers]).
+  // If a cron trigger is added in wrangler.toml: delete feedback older than RETENTION_DAYS.
   async scheduled(event, env) {
     await deleteOldFeedback(env.FEEDBACK_DB, Date.now())
   },
