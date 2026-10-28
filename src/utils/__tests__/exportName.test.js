@@ -4,9 +4,9 @@ describe('export file names (feedback #39)', () => {
   beforeEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
 
   it('is business unit, what, date and time', async () => {
-    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage: (m, cb) => cb({ data: { name: 'Bottle Stop', accountId: 1 } }) } })
+    vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage: (m, cb) => cb({ data: { name: 'Northwind', accountId: 1 } }) } })
     const { exportBaseName } = await import('../exportName.js')
-    expect(await exportBaseName('s13', 'data-extensions-orders', new Date(2026, 9, 20, 5, 3))).toBe('Bottle_Stop_data-extensions-orders_2026-10-20_0503')
+    expect(await exportBaseName('s13', 'data-extensions-orders', new Date(2026, 9, 20, 5, 3))).toBe('Northwind_data-extensions-orders_2026-10-20_0503')
   })
 
   it('leaves the business unit out when there is no stack, and uses the stack when the BU cannot be read', async () => {

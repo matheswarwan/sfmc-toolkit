@@ -1,5 +1,5 @@
 # Deployed at https://query-saver-feedback.mathes-btech.workers.dev (the extension posts there).
-# From this folder: CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c npx wrangler deploy
+# From this folder: CLOUDFLARE_ACCOUNT_ID=<account id> npx wrangler deploy
 name = "query-saver-feedback"
 main = "index.js"
 compatibility_date = "2024-01-01"

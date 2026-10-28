@@ -1,32 +1,23 @@
-# SFMC Toolkit
+# Marketing Cloud Toolkit
 
-A Chrome extension for Salesforce Marketing Cloud. It combines SFMC Query Saver and SFMC Automation Viewer in one full-tab app, and replaces SFMC Query Saver in the Chrome Web Store (version 2.0.0 is published as an update to that listing, so its users keep their data):
+A Chrome extension for Salesforce Marketing Cloud (SFMC), in one full-tab app. It was published as SFMC Query Saver until version 1.4.0; from 2.0.0 it is Marketing Cloud Toolkit, an update to the same Chrome Web Store item, so existing users keep their data.
 
-- **Queries:** saved queries (captured from Query Studio), Run Query (up to 6 SQL panels with lint, autocomplete and run-to-DE), and a visual Query Builder.
-- **Automation:** automations with schedules, notifications and every activity's details; activities by type.
-- **Journey:** journeys drawn like the Journey Builder canvas (horizontal or vertical) with each step's content; journey entry events.
-- **Data:** data extensions (local, Shared and Synchronized) with fields, folder paths, query building and Excel export.
-- **Content:** CloudPages with URLs and folder paths; saved versions of Content Builder emails, with revert.
+- **Queries:** saved queries, Run Query (up to 6 SQL panels with lint, autocomplete and run-to-DE), and a visual Query Builder.
+- **Automation:** automations with schedules, notifications and every activity's details; activities by type; templates.
+- **Journey:** journeys drawn like the Journey Builder canvas with each step's content; journey entry events.
+- **Data:** data extensions (local, Shared and Synchronized) with fields, folder paths, query building, Where used and Excel export; Create DE.
+- **Content:** CloudPages with URLs and code; optional saved versions of Content Builder emails, with revert.
 
-It uses your existing Marketing Cloud login. It never asks for or stores credentials.
+It uses your existing Marketing Cloud login. It never asks for or stores credentials, has no analytics, and sends SFMC data only to SFMC.
 
-## Status
-
-Version 2.0.0 is the first release. It is published as an update to the SFMC Query Saver listing on the Chrome Web Store. How it was built:
-
-| Step | What | State |
-|---|---|---|
-| 1 | Scaffold: build, service worker, app shell, Settings | done |
-| 2 | Queries: Saved, Workspace, Builder; backup export and import | done |
-| 3 | Emails | done |
-| 4 | Data Extensions | done |
-| 5 | Automations and Activities | done |
-| 6 | Journeys and CloudPages | done |
-| 7 | Search, Features and To do pages, first release | done |
+- Privacy policy: [PRIVACY.md](PRIVACY.md) (hosted at https://marketing-cloud-toolkit.mathes.dev/privacy)
+- Security: [SECURITY.md](SECURITY.md), [docs/security-summary.md](docs/security-summary.md) (permissions, data flows, admin controls)
+- Organizations: [docs/enterprise-deployment.md](docs/enterprise-deployment.md) (force-install, policies)
+- Changes: [CHANGELOG.md](CHANGELOG.md)
 
 ## Install
 
-From the Chrome Web Store (the listing that was SFMC Query Saver), or unpacked:
+From the Chrome Web Store (the listing that was SFMC Query Saver), from a release zip (GitHub Releases), or built from source:
 
 ```bash
 npm install
@@ -53,6 +44,8 @@ The connection menu in the top bar shows the stack, the business unit and each a
 | `npm run build` | Builds the app (`app.html`) and the service worker into `dist/` |
 | `npm run dev` | Rebuilds the app on change (run `npm run build` once first for the service worker) |
 | `npm test` | Runs the tests (vitest) |
+| `npm run package` | Builds and zips reproducibly, prints the zip's SHA-256 |
+| `npm run privacy` | Renders PRIVACY.md to `public/privacy.html` and `site/public/privacy.html` |
 
 Layout:
 
@@ -73,3 +66,7 @@ The store text, single-purpose statement, permission justifications and data-use
 ## Feedback
 
 Use **Send feedback** in the app, or email mathes.btech@gmail.com.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

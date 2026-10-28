@@ -116,10 +116,10 @@ describe('deSearchTerms (feedback #22)', () => {
 
   it('finds text in the middle of a name with name=%text% (feedback #34)', async () => {
     vi.resetModules()
-    const calls = stub((url) => (url.includes('name=%25120%25') ? { count: 1, items: [{ id: '9', name: 'BS_Klaviyo_120D_Snapshot' }] } : { count: 0, items: [] }))
+    const calls = stub((url) => (url.includes('name=%25120%25') ? { count: 1, items: [{ id: '9', name: 'Loyalty_120D_Snapshot' }] } : { count: 0, items: [] }))
     const { searchLocalDEs } = await import('../deApi.js')
     const r = await searchLocalDEs('s13', '120')
-    expect(r.items.map((d) => d.name)).toEqual(['BS_Klaviyo_120D_Snapshot'])
+    expect(r.items.map((d) => d.name)).toEqual(['Loyalty_120D_Snapshot'])
     expect(calls).toHaveLength(1)
     vi.unstubAllGlobals()
   })
@@ -144,7 +144,7 @@ describe('fetchDERowCount (feedback #46)', () => {
     const calls = []
     vi.stubGlobal('chrome', { runtime: { lastError: null, sendMessage(msg, cb) {
       calls.push(msg.url)
-      cb({ data: msg.url.includes('/bad') ? { name: 'x' } : { name: 'BS_Klaviyo_All_Profiles_Stage', totalRowCount: 601597 } })
+      cb({ data: msg.url.includes('/bad') ? { name: 'x' } : { name: 'Loyalty_All_Profiles_Stage', totalRowCount: 601597 } })
     } } })
     const { fetchDERowCount } = await import('../deApi.js')
     expect(await fetchDERowCount('s13', '6c9d95e6-40cc')).toBe(601597)

@@ -1,5 +1,5 @@
 // File names for downloads (feedback #39): <business unit>_<what>_<date>_<time>,
-// for example Bottle_Stop_data-extensions-orders_2026-10-20_0553.md.
+// for example Northwind_data-extensions-orders_2026-10-20_0553.md.
 import { fetchCurrentBU } from './sfmcApi.js'
 import { safeFileName } from './exportDoc.js'
 

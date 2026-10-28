@@ -7,7 +7,7 @@ const SCRIPT = readFileSync(join(process.cwd(), 'public/automationPanel.js'), 'u
 const AUTOMATION = {
   name: 'Hot_Price_Audience', status: 6, lastRunTime: '2026-10-20T10:00:00Z', lastRunStatus: 'Complete', key: 'k1',
   schedule: { scheduleStatus: 'Scheduled', scheduledTime: '2026-10-21T10:00:00Z' },
-  steps: [{ name: 'Build', activities: [{ objectTypeId: 300, name: 'BS_SFMC_Engaged_120D' }, { objectTypeId: 42, name: 'Weekly email' }] }],
+  steps: [{ name: 'Build', activities: [{ objectTypeId: 300, name: 'Loyalty_Engaged_120D' }, { objectTypeId: 42, name: 'Weekly email' }] }],
 }
 
 function page(url, { setting, viewerTab } = {}) {
@@ -37,7 +37,7 @@ describe('Automation Summary tab (feedback #45)', () => {
     expect(text).toContain('Hot_Price_Audience')
     expect(text).toContain('Scheduled')
     expect(text).toContain('SQL Query')
-    expect(text).toContain('BS_SFMC_Engaged_120D')
+    expect(text).toContain('Loyalty_Engaged_120D')
     root.querySelector('.btn').click()
     await tick()
     expect(sent.at(-1)).toEqual({ type: 'OPEN_APP', path: '/automations/MHlaTDByMVFK' })

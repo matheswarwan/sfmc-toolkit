@@ -724,7 +724,7 @@ export async function searchDEsGlobal(stack, name, page = 1, pageSize = 25) {
 
 /**
  * Local DEs whose name contains `name` (case-insensitive, taken literally). The core
- * `name=%text%` search came back empty on s10 for "National_Database" (feedback
+ * `name=%text%` search came back empty on s10 for "Master_Subscribers" (feedback
  * #89), so when it finds nothing, fails or is ignored (returns names without the
  * text), Contact Builder's host is asked the same, then with `$search` (matches from
  * the start of a word, as the Data Extensions page does). Results are matched here.

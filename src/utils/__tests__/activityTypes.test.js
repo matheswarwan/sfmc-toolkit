@@ -63,9 +63,9 @@ describe('activityTypes', () => {
 describe('links and run data (feedback #35 to #37)', () => {
   it('describes the SQL target DE and how to run the activity', async () => {
     const { describeActivity } = await import('../activityTypes.js')
-    const d = describeActivity(300, { name: 'Q', queryDefinitionId: 'q1', queryText: 'SELECT 1', targetName: 'BS_X', targetId: 't1', targetKey: 'k1', targetUpdateTypeId: 0 }, 's13')
-    expect(d.deRefs).toEqual({ Target: { name: 'BS_X', id: 't1', key: 'k1' } })
-    expect(d.run).toMatchObject({ queryDefinitionId: 'q1', sql: 'SELECT 1', targetName: 'BS_X' })
+    const d = describeActivity(300, { name: 'Q', queryDefinitionId: 'q1', queryText: 'SELECT 1', targetName: 'Target_DE', targetId: 't1', targetKey: 'k1', targetUpdateTypeId: 0 }, 's13')
+    expect(d.deRefs).toEqual({ Target: { name: 'Target_DE', id: 't1', key: 'k1' } })
+    expect(d.run).toMatchObject({ queryDefinitionId: 'q1', sql: 'SELECT 1', targetName: 'Target_DE' })
   })
   it('leaves out DE refs without a name, and has none for other types', async () => {
     const { describeActivity } = await import('../activityTypes.js')

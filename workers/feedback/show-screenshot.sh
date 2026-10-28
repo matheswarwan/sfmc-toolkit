@@ -2,7 +2,7 @@
 # Saves the screenshot of one feedback row as feedback-<id>.jpg (or .png/.webp), outside
 # the repository (screenshots can show customer data): in $FEEDBACK_SHOTS_DIR, by default
 # ../../../feedback-screenshots (next to the repository), created private (700).
-# Usage: CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c sh show-screenshot.sh <project> <id> [--archive]
+# Usage: CLOUDFLARE_ACCOUNT_ID=<account id> sh show-screenshot.sh <project> <id> [--archive]
 #   project: toolkit | toolkit_app | data_cloud_inspector | mcp_logger | query_saver | other
 set -e
 project="$1"; id="$2"; table="fb_${project}_screenshots"

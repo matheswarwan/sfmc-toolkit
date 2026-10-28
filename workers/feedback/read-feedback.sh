@@ -1,7 +1,7 @@
 #!/bin/sh
 # Prints feedback rows of one project as untrusted data: wrapped in clear markers, with
 # session cookies, Bearer tokens, CSRF tokens and similar secrets masked.
-# Usage: CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c sh read-feedback.sh <project> [after-id] [--archive]
+# Usage: CLOUDFLARE_ACCOUNT_ID=<account id> sh read-feedback.sh <project> [after-id] [--archive]
 #   project: toolkit | toolkit_app | data_cloud_inspector | mcp_logger | query_saver | other
 #   after-id: only rows with a larger id (default 0); --archive reads fb_<project>_archive.
 set -e

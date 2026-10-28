@@ -21,6 +21,8 @@ Security and privacy review (October 2026). Details: `docs/security-summary.md`,
 
 **Fixed:** #1013 Reorder columns on Data Extensions; #1014 Query Studio 2 no longer tied to one Heroku host name.
 
+**Other:** the creator credit shows the full name (Created by Matheswaran Kanagarajan, Ateko). The source is MIT licensed.
+
 ## 2.0.17 (2026-10-27)
 
 Marketing Cloud Toolkit 2.0.17. No permission changes.

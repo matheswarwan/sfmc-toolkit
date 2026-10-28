@@ -38,7 +38,7 @@ export function cloudPageSearchBody(query, page = 1, pageSize = CP_PAGE_SIZE) {
 }
 
 // A published landing page keeps its address in `content`, as a JSON string such as
-// {"url":"https://...pub.s4.sfmc-content.com/1ibaq3af2d4"} (feedback #51).
+// {"url":"https://...pub.s4.sfmc-content.com/welcome-page"} (feedback #51).
 function urlFromContent(content) {
   let c = content
   if (typeof c === 'string') {

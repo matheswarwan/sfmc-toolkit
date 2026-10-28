@@ -82,7 +82,7 @@ export async function searchLocalDEs(stack, query, page = 1) {
   const has = (d, text) => String(d.name || '').toLowerCase().includes(text.toLowerCase())
   let data
   // `name=%text%` finds the text anywhere in the name ("120" in
-  // "BS_Klaviyo_120D_Snapshot", feedback #34); $search does not.
+  // "Loyalty_120D_Snapshot", feedback #34); $search does not.
   if (term && !nameSearchIgnored.has(stack)) {
     data = await get(`&name=${encodeURIComponent(`%${term}%`)}`)
     if (data.items.length && !data.items.some((d) => has(d, term))) {
