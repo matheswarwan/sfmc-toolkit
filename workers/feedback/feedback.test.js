@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import worker, { validate, guarded, tableFor, UNTRUSTED_NOTICE } from './index.js'
+import worker, { validate, guarded, tableFor, UNTRUSTED_NOTICE, toolkitMetadata, deleteOldFeedback, FEEDBACK_TABLES, RETENTION_DAYS } from './index.js'
 const G = (t) => `${UNTRUSTED_NOTICE}\n${t}`
 
 function fakeDb() {
@@ -27,7 +27,7 @@ describe('feedback worker', () => {
     const db = fakeDb()
     await worker.fetch(post({ message: 'm', details: 'd', kind: 'problem', app: 'toolkit', metadata: { stack: 's10' }, screenshot: PNG }), { FEEDBACK_DB: db })
     expect(db.calls[0].sql).toContain('INSERT INTO fb_toolkit ')
-    expect(db.calls[0].args.slice(0, 10)).toEqual([G('m'), G('d'), 'problem', 'unknown', 'unknown', 'toolkit', null, null, '{"stack":"s10"}', 1])
+    expect(db.calls[0].args.slice(0, 10)).toEqual([G('m'), G('d'), 'problem', 'unknown', 'unknown', 'toolkit', null, null, '{"stack":"s10","recentErrors":[]}', 1])
     expect(db.calls[1].sql).toContain('INSERT INTO fb_toolkit_screenshots ')
     expect(db.calls[1].args.slice(0, 2)).toEqual([41, PNG])
   })
@@ -53,5 +53,32 @@ describe('feedback worker', () => {
   it('answers CORS preflight and nothing else', async () => {
     expect((await worker.fetch(new Request('https://w.example/feedback', { method: 'OPTIONS' }), {})).status).toBe(204)
     expect((await worker.fetch(new Request('https://w.example/other'), {})).status).toBe(404)
+  })
+
+  it('never stores the IP address', async () => {
+    const db = fakeDb()
+    await worker.fetch(post({ message: 'm', app: 'toolkit' }), { FEEDBACK_DB: db })
+    expect(db.calls[0].args[10]).toBeNull()
+    expect(JSON.stringify(db.calls)).not.toContain('1.2.3.4')
+  })
+
+  it('keeps only the Toolkit metadata fields, even from older versions', () => {
+    const old = {
+      appVersion: '2.0.17', section: '/automations/5f2e8c1a-0000-4000-8000-123456789abc', stack: 's7', businessUnit: 'Acme Child BU',
+      recentApiCalls: [{ path: 'mc.s7.exacttarget.com/cloud/fuelapi/automation/v1/automations/x' }],
+      recentApiErrors: [{ method: 'GET', path: 'mc.s7.exacttarget.com/x', status: 404, error: 'DE not found: Loyalty' }],
+    }
+    const out = toolkitMetadata(old)
+    expect(out).toEqual({ appVersion: '2.0.17', section: '/automations/:id', stack: 's7', recentErrors: [{ area: 'other', status: 404 }] })
+  })
+
+  it('deletes rows and screenshots older than the retention period, never the id placeholders', async () => {
+    const db = fakeDb()
+    const now = Date.UTC(2026, 9, 28)
+    await deleteOldFeedback(db, now)
+    expect(db.calls).toHaveLength(FEEDBACK_TABLES.length * 2)
+    expect(db.calls[0].sql).toContain('DELETE FROM fb_toolkit_screenshots WHERE feedback_id IN (SELECT id FROM fb_toolkit WHERE created_at > 0 AND created_at < ?)')
+    expect(db.calls[1].sql).toContain('DELETE FROM fb_toolkit WHERE created_at > 0 AND created_at < ?')
+    expect(db.calls[1].args[0]).toBe(now - RETENTION_DAYS * 86400000)
   })
 })

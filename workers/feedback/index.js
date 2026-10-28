@@ -13,6 +13,12 @@
 // Screenshots (JPEG/PNG/WebP data URLs, up to 1.9 MB) go to their own table, so
 // feedback queries stay readable; there is deliberately no way to read them back
 // over HTTP (they can show customer data). Use show-screenshot.sh.
+//
+// Privacy (security review, 2026-10-28): the sender's IP address is not stored (the
+// `ip` column stays for old rows and is written as NULL). Toolkit metadata is cut to
+// the fields the Toolkit sends since 2.0.18, so older versions' business unit names,
+// SFMC paths and error texts are not stored either. A daily cron (`scheduled`)
+// deletes rows and screenshots older than RETENTION_DAYS.
 
 const LIMITS = { message: 2000, details: 5000, screen: 200, version: 40, app: 40, kind: 20, name: 100, email: 200, metadata: 20000, screenshot: 1_900_000 }
 const SCREENSHOT_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/
@@ -35,12 +41,29 @@ export function tableFor(app) {
   return TABLES[app] || 'fb_other'
 }
 
+// Toolkit metadata keeps only these fields (utils/feedbackMeta.js in the extension).
+const TOOLKIT_APPS = new Set(['toolkit', 'toolkit-app'])
+const TOOLKIT_META_KEYS = ['appVersion', 'section', 'stack', 'theme', 'browser', 'language', 'window', 'time']
+export function toolkitMetadata(meta) {
+  if (!meta || typeof meta !== 'object') return null
+  const out = {}
+  for (const k of TOOLKIT_META_KEYS) if (typeof meta[k] === 'string' || typeof meta[k] === 'number') out[k] = meta[k]
+  const errs = Array.isArray(meta.recentErrors) ? meta.recentErrors : Array.isArray(meta.recentApiErrors) ? meta.recentApiErrors : []
+  out.recentErrors = errs.slice(0, 5).map((e) => ({
+    area: typeof e?.area === 'string' && /^[a-z-]{1,30}$/.test(e.area) ? e.area : 'other',
+    status: Number.isInteger(e?.status) ? e.status : null,
+  }))
+  // Older versions sent the section with record ids in it.
+  if (typeof out.section === 'string') out.section = out.section.split(/[?#]/)[0].split('/').map((x, i) => (i > 1 && x && (/[\d_.%]/.test(x) || x.length > 24) ? ':id' : x)).join('/')
+  return out
+}
+
 export function validate(body) {
   const message = text(body?.message, LIMITS.message)
   if (!message) return { error: 'message is required' }
   let metadata = null
   if (body.metadata != null) {
-    metadata = JSON.stringify(body.metadata)
+    metadata = JSON.stringify(TOOLKIT_APPS.has(body.app) ? toolkitMetadata(body.metadata) : body.metadata)
     if (metadata.length > LIMITS.metadata) return { error: 'metadata is too large' }
   }
   let screenshot = null
@@ -85,7 +108,7 @@ export default {
     const res = await env.FEEDBACK_DB
       .prepare(`INSERT INTO ${table} (message, details, kind, screen, version, app, name, email, metadata, has_screenshot, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(guarded(r.message), guarded(r.details), r.kind, r.screen, r.version, r.app, r.name, r.email, r.metadata, v.screenshot ? 1 : 0,
-        request.headers.get('CF-Connecting-IP') ?? null, now)
+        null, now)
       .run()
     const id = res?.meta?.last_row_id ?? null
     if (v.screenshot && id != null) {
@@ -94,6 +117,34 @@ export default {
     }
     return cors({ ok: true, id }, 200)
   },
+
+  // Daily: delete feedback older than RETENTION_DAYS (wrangler.toml [triggers]).
+  async scheduled(event, env) {
+    await deleteOldFeedback(env.FEEDBACK_DB, Date.now())
+  },
+}
+
+export const RETENTION_DAYS = 180
+export const FEEDBACK_TABLES = [
+  'fb_toolkit', 'fb_toolkit_app', 'fb_data_cloud_inspector', 'fb_mcp_logger', 'fb_query_saver', 'fb_other',
+  'fb_toolkit_archive', 'fb_toolkit_app_archive', 'fb_data_cloud_inspector_archive', 'fb_mcp_logger_archive', 'fb_query_saver_archive', 'fb_other_archive',
+]
+
+/** Deletes rows (and their screenshots) created more than RETENTION_DAYS before `now`. Rows with created_at 0 are the id placeholders. */
+export async function deleteOldFeedback(db, now) {
+  const cutoff = now - RETENTION_DAYS * 24 * 60 * 60 * 1000
+  const deleted = {}
+  for (const t of FEEDBACK_TABLES) {
+    try {
+      await db.prepare(`DELETE FROM ${t}_screenshots WHERE feedback_id IN (SELECT id FROM ${t} WHERE created_at > 0 AND created_at < ?)`).bind(cutoff).run()
+      const r = await db.prepare(`DELETE FROM ${t} WHERE created_at > 0 AND created_at < ?`).bind(cutoff).run()
+      deleted[t] = r?.meta?.changes ?? 0
+    } catch (e) {
+      deleted[t] = `failed: ${e.message}` // a table that does not exist yet
+    }
+  }
+  console.log('Feedback retention cleanup', JSON.stringify(deleted))
+  return deleted
 }
 
 function cors(body, status) {

@@ -1,26 +1,33 @@
 import { describe, it, expect } from 'vitest'
-import { collectFeedbackMetadata, metadataLines } from '../feedbackMeta.js'
+import { collectFeedbackMetadata, metadataLines, routePattern, apiArea } from '../feedbackMeta.js'
 
-describe('feedback metadata', () => {
-  it('collects only technical details', () => {
-    const m = collectFeedbackMetadata({ route: '/journeys/j1', stack: 's10', businessUnit: 'Acme', theme: 'dark',
-      apiErrors: [{ method: 'GET', path: 'jbinteractions.s10.marketingcloudapps.com/fuelapi/x', status: 401, error: 'no' }], now: new Date('2026-10-14T00:00:00Z') })
-    expect(m).toMatchObject({ section: '/journeys/j1', stack: 's10', businessUnit: 'Acme', theme: 'dark', time: '2026-10-14T00:00:00.000Z' })
-    expect(Object.keys(m)).toEqual(['appVersion', 'section', 'stack', 'businessUnit', 'theme', 'browser', 'language', 'window', 'screen', 'time', 'recentApiErrors', 'recentApiCalls'])
-    const lines = Object.fromEntries(metadataLines(m))
-    expect(lines['App Version']).toBe('unknown')
-    expect(lines['API error 1']).toBe('GET jbinteractions.s10.marketingcloudapps.com/fuelapi/x (401): no')
+describe('feedback technical details', () => {
+  const meta = collectFeedbackMetadata({
+    route: '/automations/5f2e8c1a-0000-4000-8000-123456789abc?tab=steps', stack: 's7', theme: 'dark',
+    businessUnit: 'Acme Child BU', apiCalls: [{ method: 'GET', path: 'mc.s7.exacttarget.com/cloud/fuelapi/automation/v1/automations/abc' }],
+    apiErrors: [{ method: 'GET', path: 'mc.s7.exacttarget.com/cloud/fuelapi/internal/v1/customobjects/Loyalty_Members', status: 404, error: 'DE not found: Loyalty_Members' }],
+    now: new Date('2026-10-28T00:00:00Z'),
   })
-  it('lists recent API calls with status, time and counts', () => {
-    const m = collectFeedbackMetadata({ apiCalls: [
-      { method: 'GET', path: 'x/automations?$top=50&$skip=50', status: 200, ms: 120, items: 0, total: 80 },
-      { method: 'GET', path: 'x/filters', status: 400, ms: 30, error: 'Order field is invalid' },
-    ] })
-    const lines = Object.fromEntries(metadataLines(m))
-    expect(lines['API call 1']).toBe('GET x/automations?$top=50&$skip=50 (200, 120 ms) 0 items, total 80')
-    expect(lines['API call 2']).toBe('GET x/filters (400, 30 ms) failed: Order field is invalid')
+  it('leaves out the business unit, SFMC paths, record names and error text', () => {
+    const text = JSON.stringify(meta)
+    for (const s of ['Acme', 'Loyalty', 'exacttarget', 'fuelapi', '5f2e8c1a', 'DE not found']) expect(text).not.toContain(s)
+    expect(meta.recentErrors).toEqual([{ area: 'customobjects', status: 404 }].map((e) => ({ ...e, area: apiArea('fuelapi/internal/v1/customobjects/x') })))
+    expect(meta.section).toBe('/automations/:id')
+    expect(meta).not.toHaveProperty('businessUnit')
+    expect(meta).not.toHaveProperty('recentApiCalls')
   })
-  it('says when there were no API errors', () => {
-    expect(Object.fromEntries(metadataLines(collectFeedbackMetadata({})))['Recent API errors']).toBe('none')
+  it('names the API area only', () => {
+    expect(apiArea('mc.s7.exacttarget.com/cloud/fuelapi/automation/v1/queries/x')).toBe('automation')
+    expect(apiArea('mc.s7.marketingcloudapps.com/contactsmeta/fuelapi/data-internal/v1/customobjects/x')).toBe('customobjects')
+    expect(apiArea('somewhere/else')).toBe('other')
+  })
+  it('keeps simple routes and drops ids', () => {
+    expect(routePattern('/queries/saved')).toBe('/queries/saved')
+    expect(routePattern('/emails/email_123')).toBe('/emails/:id')
+    expect(routePattern('/saved-activities/activity_query_abc')).toBe('/saved-activities/:id')
+  })
+  it('lists the details for the preview', () => {
+    const lines = metadataLines(meta)
+    expect(lines.find(([k]) => k === 'Recent errors')[1]).toMatch(/404/)
   })
 })

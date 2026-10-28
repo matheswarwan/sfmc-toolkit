@@ -1,14 +1,18 @@
 <script setup>
 // Feedback: what happened, more details, an optional marked-up screenshot, and
-// optional technical details (shown before sending). Goes to the feedback worker
-// (workers/feedback), which SFMC Query Saver used too.
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+// optional technical details. Goes to the feedback worker (workers/feedback), which
+// SFMC Query Saver used too. Security review, 2026-10-28: technical details and
+// screenshots are opt-in, a screenshot must be checked (Hide, Crop) and confirmed,
+// another tab is captured only after a customer-data warning, and Send first shows
+// the exact payload. Admin policies can turn the form, the details or screenshots off.
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { X, Camera, MonitorUp, ImageUp, Trash2, Loader2, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import ScreenshotEditor from '@/components/feedback/ScreenshotEditor.vue'
 import { useStack } from '@/composables/useStack.js'
 import { useTheme } from '@/composables/useTheme.js'
-import { fetchCurrentBU, recentApiErrors, recentApiCalls } from '@/utils/sfmcApi.js'
-import { collectFeedbackMetadata, metadataLines } from '@/utils/feedbackMeta.js'
+import { recentApiErrors } from '@/utils/sfmcApi.js'
+import { collectFeedbackMetadata, metadataLines, routePattern } from '@/utils/feedbackMeta.js'
+import { policy } from '@/utils/policy.js'
 import { loadFeedbackContact, saveFeedbackContact } from '@/utils/feedbackContact.js'
 import { capturePage, captureDisplay, loadImage, fileToDataUrl, toUploadableDataUrl } from '@/utils/screenshot.js'
 
@@ -25,10 +29,9 @@ const message = ref('')
 const details = ref('')
 const name = ref('')
 const email = ref('')
-const includeMeta = ref(true)
+const includeMeta = ref(false)
 const showMeta = ref(false)
-const bu = ref(null)
-const state = ref('idle') // idle | sending | sent | error
+const state = ref('idle') // idle | review | sending | sent | error
 const sendError = ref('')
 const sentNote = ref('') // e.g. the screenshot could not be attached
 
@@ -38,17 +41,21 @@ const capturing = ref(false)
 const hidden = ref(false) // while capturing this page
 const shotError = ref('')
 const fileInput = ref(null)
+const otherTabWarn = ref(false) // the customer-data warning before capturing another tab
+const shotChecked = ref(false) // the user confirmed the screenshot shows no customer data
 
 onMounted(async () => {
   window.addEventListener('paste', onPaste)
   loadFeedbackContact().then((c) => { if (!name.value) name.value = c.name; if (!email.value) email.value = c.email })
-  if (stack.value) { try { bu.value = (await fetchCurrentBU(stack.value))?.name || null } catch { /* leave it out */ } }
 })
 onUnmounted(() => window.removeEventListener('paste', onPaste))
 
 const meta = computed(() => collectFeedbackMetadata({
-  route: props.screen, stack: stack.value, businessUnit: bu.value, theme: currentTheme.value, apiErrors: recentApiErrors(), apiCalls: recentApiCalls(),
+  route: props.screen, stack: stack.value, theme: currentTheme.value, apiErrors: recentApiErrors(),
 }))
+const metaAllowed = computed(() => !policy.disableFeedbackMetadata)
+const shotsAllowed = computed(() => !policy.disableScreenshots)
+watch(image, () => { shotChecked.value = false })
 const metaLines = computed(() => metadataLines(meta.value))
 
 async function captureThisPage() {
@@ -68,6 +75,7 @@ async function captureThisPage() {
 }
 
 async function captureOther() {
+  otherTabWarn.value = false
   shotError.value = ''
   capturing.value = true
   try {
@@ -90,35 +98,50 @@ function onPaste(e) {
   if (item) { e.preventDefault(); useFile(item.getAsFile()) }
 }
 
-async function submit() {
+// Send shows the exact payload first (state 'review'); Send now posts it.
+const payload = ref(null)
+const payloadPreview = computed(() => {
+  if (!payload.value) return ''
+  const { screenshot, ...rest } = payload.value
+  return JSON.stringify({ ...rest, screenshot: screenshot ? `[image, ${Math.round(screenshot.length * 0.75 / 1024)} KB, shown above]` : null }, null, 2)
+})
+const shotPreview = computed(() => payload.value?.screenshot || '')
+
+function review() {
   if (!message.value.trim()) return
-  state.value = 'sending'
+  if (image.value && !shotChecked.value) return
   sendError.value = ''
+  sentNote.value = ''
+  // A picture that includes images from other sites can't be exported by the
+  // browser; send the feedback anyway, without it, rather than not at all.
+  let screenshot = null
+  if (shotsAllowed.value && image.value && editor.value) {
+    try { screenshot = toUploadableDataUrl(editor.value.getResult()) } catch (e) { sentNote.value = `The screenshot could not be attached (${e.message}).` }
+  }
+  payload.value = {
+    message: message.value.trim(),
+    details: details.value.trim() || null,
+    kind: kind.value,
+    // Same table as SFMC Query Saver; the prefix and `app` tell the two apart.
+    screen: `toolkit/${routePattern(props.screen).replace(/^\/+/, '')}`,
+    app: 'toolkit',
+    version: chrome?.runtime?.getManifest?.()?.version ?? 'unknown',
+    name: name.value.trim() || null,
+    email: email.value.trim() || null,
+    metadata: includeMeta.value && metaAllowed.value ? meta.value : null,
+    screenshot,
+  }
+  state.value = 'review'
+}
+
+async function submit() {
+  if (!payload.value || policy.disableFeedback) return
+  state.value = 'sending'
   try {
-    // A picture that includes images from other sites can't be exported by the
-    // browser; send the feedback anyway, without it, rather than not at all.
-    let screenshot = null
-    sentNote.value = ''
-    if (image.value && editor.value) {
-      try { screenshot = toUploadableDataUrl(editor.value.getResult()) } catch (e) { sentNote.value = `The screenshot could not be attached (${e.message}).` }
-    }
-    const version = chrome?.runtime?.getManifest?.()?.version ?? 'unknown'
     const res = await fetch(FEEDBACK_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: message.value.trim(),
-        details: details.value.trim() || null,
-        kind: kind.value,
-        // Same table as SFMC Query Saver; the prefix and `app` tell the two apart.
-        screen: `toolkit/${props.screen.replace(/^\/+/, '')}`,
-        app: 'toolkit',
-        version,
-        name: name.value.trim() || null,
-        email: email.value.trim() || null,
-        metadata: includeMeta.value ? meta.value : null,
-        screenshot,
-      }),
+      body: JSON.stringify(payload.value),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     saveFeedbackContact({ name: name.value, email: email.value })
@@ -151,7 +174,24 @@ const KINDS = [
         <button class="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm" @click="emit('close')">Close</button>
       </div>
 
-      <form v-else class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="submit">
+      <div v-else-if="state === 'review' || state === 'sending'" class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3 text-sm">
+        <p class="font-medium">This is exactly what will be sent to the Toolkit's feedback service:</p>
+        <pre class="max-h-72 overflow-auto rounded-md border border-border bg-muted/40 p-2 font-mono text-[11px] whitespace-pre-wrap break-all" data-testid="feedback-payload">{{ payloadPreview }}</pre>
+        <div v-if="shotPreview">
+          <p class="text-xs text-muted-foreground mb-1">The screenshot, as it will be sent:</p>
+          <img :src="shotPreview" alt="Screenshot to be sent" class="max-h-64 rounded-md border border-border" />
+        </div>
+        <p v-if="sentNote" class="text-xs text-amber-700 dark:text-amber-400">{{ sentNote }}</p>
+        <p class="text-xs text-muted-foreground">It is kept for 180 days and read only by the developer. Nothing else is sent.</p>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" class="h-9 px-4 rounded-md border border-border text-sm hover:bg-accent disabled:opacity-50" :disabled="state === 'sending'" @click="state = 'idle'">Back</button>
+          <button type="button" class="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50 flex items-center gap-1.5" :disabled="state === 'sending'" @click="submit">
+            <Loader2 v-if="state === 'sending'" class="h-4 w-4 animate-spin" /> Send now
+          </button>
+        </div>
+      </div>
+
+      <form v-else class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="review">
         <p class="text-xs text-muted-foreground">Or email <a href="mailto:mathes.kanagarajan@cloudkettle.com" class="text-primary hover:underline">mathes.kanagarajan@cloudkettle.com</a>, or reach out on <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="text-primary hover:underline">LinkedIn</a>.</p>
         <div class="flex gap-2" role="radiogroup" aria-label="Kind of feedback">
           <button v-for="k in KINDS" :key="k.id" type="button" role="radio" :aria-checked="kind === k.id"
@@ -170,13 +210,13 @@ const KINDS = [
             :placeholder="kind === 'problem' ? 'Steps to get there, what you expected, the exact error text…' : ''" />
         </label>
 
-        <section>
+        <section v-if="shotsAllowed">
           <div class="font-medium">Screenshot <span class="text-xs font-normal text-muted-foreground">(optional)</span></div>
           <div v-if="!image" class="mt-1.5 flex flex-wrap gap-2">
             <button type="button" class="flex items-center gap-1.5 h-8 px-3 rounded-md border border-border text-xs hover:bg-accent disabled:opacity-50" :disabled="capturing" @click="captureThisPage">
               <Loader2 v-if="capturing" class="h-3.5 w-3.5 animate-spin" /><Camera v-else class="h-3.5 w-3.5" /> Capture this page
             </button>
-            <button type="button" class="flex items-center gap-1.5 h-8 px-3 rounded-md border border-border text-xs hover:bg-accent disabled:opacity-50" :disabled="capturing" @click="captureOther">
+            <button type="button" class="flex items-center gap-1.5 h-8 px-3 rounded-md border border-border text-xs hover:bg-accent disabled:opacity-50" :disabled="capturing" @click="otherTabWarn = true">
               <MonitorUp class="h-3.5 w-3.5" /> Capture another tab or window…
             </button>
             <button type="button" class="flex items-center gap-1.5 h-8 px-3 rounded-md border border-border text-xs hover:bg-accent" @click="fileInput?.click()">
@@ -185,21 +225,31 @@ const KINDS = [
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFile" />
             <span class="self-center text-xs text-muted-foreground">or paste one (Ctrl+V)</span>
           </div>
+          <div v-if="otherTabWarn && !image" class="mt-1.5 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-xs space-y-2" role="alert">
+            <p><b>Another tab can show customer data.</b> A Marketing Cloud page often shows subscriber names, e-mail addresses or data extension rows. Capture only what is needed, then use Hide and Crop to remove anything private before sending.</p>
+            <div class="flex gap-2">
+              <button type="button" class="h-7 px-3 rounded-md border border-border hover:bg-accent" @click="otherTabWarn = false">Cancel</button>
+              <button type="button" class="h-7 px-3 rounded-md bg-primary text-primary-foreground" @click="captureOther">Continue</button>
+            </div>
+          </div>
           <p v-if="shotError" class="mt-1 text-xs text-red-600">{{ shotError }}</p>
           <div v-if="image" class="mt-1.5">
             <ScreenshotEditor ref="editor" :image="image" />
             <div class="flex items-center gap-2 mt-1.5">
-              <p class="flex-1 text-xs text-amber-700 dark:text-amber-400">Screenshots can show customer data. Draw over anything private before you send.</p>
+              <label class="flex-1 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                <input v-model="shotChecked" type="checkbox" class="mt-0.5" />
+                <span>I checked the picture: it shows no customer data (names, e-mail addresses, IDs, data extension rows), or I covered it with Hide or cut it away with Crop.</span>
+              </label>
               <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="image = null"><Trash2 class="h-3.5 w-3.5" /> Remove</button>
             </div>
           </div>
         </section>
 
-        <section>
+        <section v-if="metaAllowed">
           <label class="flex items-start gap-2">
             <input v-model="includeMeta" type="checkbox" class="mt-1" />
-            <span><span class="font-medium">Include technical details</span><br />
-              <span class="text-xs text-muted-foreground">Version, browser, the section you are on, stack and business unit, and the last failed SFMC calls (no SQL or data).</span></span>
+            <span><span class="font-medium">Include technical details</span> <span class="text-xs text-muted-foreground">(optional)</span><br />
+              <span class="text-xs text-muted-foreground">Version, browser, the section you are on (without record IDs), stack, and the status codes of the last failed calls. Never business unit, MID, SQL, results, record names or SFMC addresses.</span></span>
           </label>
           <button v-if="includeMeta" type="button" class="mt-1 ml-6 flex items-center gap-1 text-xs text-primary hover:underline" :aria-expanded="showMeta" @click="showMeta = !showMeta">
             <ChevronDown v-if="showMeta" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" /> See exactly what is sent
@@ -219,9 +269,8 @@ const KINDS = [
         <p v-if="state === 'error'" class="text-sm text-red-600" role="alert">Could not send ({{ sendError }}). Please try again.</p>
         <div class="flex justify-end gap-2 pt-1">
           <button type="button" class="h-9 px-4 rounded-md border border-border text-sm hover:bg-accent" @click="emit('close')">Cancel</button>
-          <button type="submit" class="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50 flex items-center gap-1.5" :disabled="!message.trim() || state === 'sending'">
-            <Loader2 v-if="state === 'sending'" class="h-4 w-4 animate-spin" /> Send
-          </button>
+          <button type="submit" class="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!message.trim() || (image && shotsAllowed && !shotChecked)"
+            :title="image && shotsAllowed && !shotChecked ? 'Tick the screenshot check first' : 'See exactly what is sent, then send'">Review and send</button>
         </div>
       </form>
     </div>

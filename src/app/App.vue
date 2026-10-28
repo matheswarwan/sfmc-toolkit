@@ -11,6 +11,7 @@ import WhatsNew from '@/components/shell/WhatsNew.vue'
 import UpdateBanner from '@/components/shell/UpdateBanner.vue'
 import NoticesMenu from '@/components/shell/NoticesMenu.vue'
 import ThemeSwitcher from '@/components/ui/ThemeSwitcher.vue'
+import { policy } from '@/utils/policy.js'
 import FeedbackModal from '@/components/modals/FeedbackModal.vue'
 import UsagePanel from '@/components/usage/UsagePanel.vue'
 import { useUsage, targetTitle } from '@/composables/useUsage.js'
@@ -75,7 +76,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
         </button>
         <ConnectionMenu />
         <NoticesMenu />
-        <button class="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent" title="Send feedback" @click="showFeedback = true">
+        <button v-if="!policy.disableFeedback" class="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent" title="Send feedback" @click="showFeedback = true">
           <MessageSquare class="h-4 w-4" />
         </button>
         <ThemeSwitcher />
@@ -96,6 +97,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
     <ToastHost />
     <WhatsNew />
     <UpdateBanner />
-    <FeedbackModal v-if="showFeedback" :screen="route.path" @close="showFeedback = false" />
+    <FeedbackModal v-if="showFeedback && !policy.disableFeedback" :screen="route.path" @close="showFeedback = false" />
   </div>
 </template>
