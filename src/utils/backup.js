@@ -8,7 +8,7 @@
 export const BACKUP_FORMAT = 'sfmc-query-saver-backup'
 export const BACKUP_VERSION = 1
 
-// Settings worth carrying over. Session state (stack, CSRF tokens, analytics id,
+// Settings worth carrying over. Session state (stack, CSRF tokens, the old analytics id,
 // "seen" flags) is left out.
 export const BACKUP_SETTINGS = [
   '_emailSaverEnabled', '_emailSaveDebounce', '_reuseQueryDE', 'cardSize',

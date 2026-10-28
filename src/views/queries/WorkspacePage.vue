@@ -10,7 +10,6 @@ import Button from '@/components/ui/button/Button.vue'
 import { useWorkspace, LAYOUT_PRESETS } from '@/composables/useWorkspace.js'
 import { useStack } from '@/composables/useStack.js'
 import { showToast } from '@/composables/useToast.js'
-import { trackEvent } from '@/utils/analytics.js'
 import { openTab } from '@/utils/openTab.js'
 
 const route = useRoute()
@@ -31,7 +30,6 @@ async function applyRoute() {
   if (!ready.value) {
     await restore(typeof ws === 'string' ? ws : null)
     ready.value = true
-    trackEvent('query_workspace_open', { panels: panels.value.length })
   }
   if (id || sql) {
     const r = await openInPanel({ id: typeof id === 'string' ? id : null, sql: typeof sql === 'string' ? sql : null })

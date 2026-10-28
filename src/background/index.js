@@ -8,7 +8,6 @@
 //   SFMC_WARM_UP { stack, force }                     start the missing app sessions when at least one exists
 //   SFMC_FETCH { url, method, body, bootstrap }       → { data } or { error, code, status }
 //   SAVE_RECORDS { records }, RENAME_QUERY { id, name }, IMPORT_SHARED_QUERY { records }
-//   TRACK_EVENT { clientId, name, params }
 //   WATCH_CHECK { stack, force }, WATCH_BADGE          watched automations (watches.js)
 //   OPEN_APP { path }                                 open app.html#<path> (Automation Summary tab, dashboard card)
 //   DASHBOARD_SUMMARY { stack, force }                automations and journeys for the dashboard card (dashboard.js)
@@ -30,7 +29,6 @@ import { sfmcFetch } from './fetchProxy.js'
 import {
   saveRecords, renameQuery, captureQueryStudio, captureEmail, loadEmailSaverPrefs, applyEmailSaverPrefs,
 } from './capture.js'
-import { sendAnalyticsEvent } from './analytics.js'
 import { queryTabs, createTab, storageGet } from './chromeAsync.js'
 import { nextTo } from '../utils/openTab.js'
 import { openSfmcLink } from './deepLinks.js'
@@ -146,7 +144,6 @@ const handlers = {
   SAVE_RECORDS: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
   IMPORT_SHARED_QUERY: async (m) => { await saveRecords(m.records || {}); return { status: 'OK' } },
   RENAME_QUERY: async (m) => { await renameQuery(m.id, m.name); return { status: 'OK' } },
-  TRACK_EVENT: (m) => { sendAnalyticsEvent(m); return null },
   SFMC_CONTEXT_CAPTURED: (m) => {
     captureContext(m.context)
     // An SFMC page loaded: check watched automations (at most every 15 minutes).

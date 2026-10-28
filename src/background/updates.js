@@ -11,7 +11,8 @@ function note(version) {
 export function watchForUpdates() {
   chrome.runtime.onUpdateAvailable?.addListener((details) => note(details?.version))
   // The new version is running: nothing is waiting any more.
-  chrome.runtime.onInstalled?.addListener(() => chrome.storage.local.remove(UPDATE_KEY))
+  // Also drops the random id the removed Google Analytics events used (2.0.18).
+  chrome.runtime.onInstalled?.addListener(() => chrome.storage.local.remove([UPDATE_KEY, 'sfmcqs_analytics_cid']))
   try {
     chrome.runtime.requestUpdateCheck?.((status, details) => {
       void chrome.runtime.lastError

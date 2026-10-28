@@ -1,5 +1,4 @@
 import { ref, computed, watch, onMounted, onUnmounted, unref } from 'vue'
-import { trackEvent } from '../utils/analytics.js'
 import { extractDataExtensions, extractSelectColumns, inferSelectColumnDetails } from '../utils/sqlParser.js'
 import { planUnderscoreRenames, wrapWithRenamedColumns } from '../utils/columnNames.js'
 import { DATA_VIEW_FIELDS, isSkippableDE } from '../utils/dataViews.js'
@@ -230,7 +229,6 @@ export function useQueryPanel(options) {
     if (!queryText.value.trim()) return
     resultsMode.value       = 'validating'
     validationResults.value = null
-    trackEvent('validate')
 
     try {
       const qaId   = await getAnyQueryActivityId(stack.value)
@@ -396,7 +394,6 @@ export function useQueryPanel(options) {
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       const data = await res.json()
       shareUrl.value = data.url
-      trackEvent('share_query')
     } catch (err) {
       shareError.value = err.message || 'Failed to generate share link.'
     } finally {
@@ -523,7 +520,6 @@ export function useQueryPanel(options) {
     if (isRunning.value) return
     if (fromStep <= 0 || !runText) runText = typeof opts?.sql === 'string' && opts.sql.trim() ? opts.sql : queryText.value
     isRunning.value        = true
-    trackEvent('run_start', { from_step: fromStep })
     resultsMode.value      = 'running'
     completedSummary.value = null
     const callsAtStart     = sfmcCallCount()
@@ -730,7 +726,6 @@ export function useQueryPanel(options) {
       const s = totalSec % 60
       completedSummary.value =
         `Completed in ${m > 0 ? `${m}m ` : ''}${s}s · ${(totalRowCount.value ?? resultRows.value.length).toLocaleString()} rows · ${sfmcCallCount() - callsAtStart} SFMC calls`
-      trackEvent('run_complete', { duration_s: totalSec, row_count: totalRowCount.value ?? resultRows.value.length })
       isRunDetailsOpen.value = false
       isResultsOpen.value    = true
       resultsMode.value = 'results'
@@ -764,7 +759,6 @@ export function useQueryPanel(options) {
         stepStatuses.value = Array(5).fill('pending')
       } else {
         if (runningIdx !== -1) setStep(runningIdx, 'error', err.message)    }
-      trackEvent('run_fail', { step: runningIdx, reason: err.message === 'SESSION_EXPIRED' ? 'session_expired' : 'error' })
     } finally {
       isRunning.value = false
     }
@@ -913,7 +907,6 @@ export function useQueryPanel(options) {
     deleteError.value = null
     try {
       await deleteDE(run.stack || stack.value, run.deId)
-      trackEvent('delete_de')
       runs.value = runs.value.map(r => r.runId === runId ? { ...r, deId: null, deKey: null } : r)
       if (runId === currentRunId.value) { createdDeId.value = null; createdDeKey.value = null }
       const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
@@ -933,7 +926,6 @@ export function useQueryPanel(options) {
     deleteError.value = null
     try {
       await deleteQueryActivity(run.stack || stack.value, run.activityId)
-      trackEvent('delete_activity')
       runs.value = runs.value.map(r => r.runId === runId ? { ...r, activityId: null } : r)
       if (runId === currentRunId.value) { createdActivityId.value = null }
       const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
@@ -965,11 +957,9 @@ export function useQueryPanel(options) {
     try {
       if (deleteDe && run.deId) {
         await deleteDE(run.stack || stack.value, run.deId)
-        trackEvent('delete_de')
       }
       if (deleteActivity && run.activityId) {
         await deleteQueryActivity(run.stack || stack.value, run.activityId)
-        trackEvent('delete_activity')
       }
       runs.value = runs.value.filter(r => r.runId !== runId)
       if (runId === currentRunId.value) {
@@ -978,7 +968,6 @@ export function useQueryPanel(options) {
       const updated = { ...queryRecord.value, runs: Array.from(runs.value) }
       queryRecord.value = updated
       await new Promise(resolve => chrome.storage.local.set({ [queryId]: updated }, resolve))
-      trackEvent('delete_run')
     } catch (e) {
       deleteError.value = 'Failed to delete: ' + e.message
     }
@@ -989,7 +978,6 @@ export function useQueryPanel(options) {
       await navigator.clipboard.writeText(text)
       copiedText.value = text
       setTimeout(() => { copiedText.value = null }, 1500)
-      trackEvent('copy_artifact')
     } catch {}
   }
 

@@ -32,8 +32,7 @@
     "https://querystudio.herokuapp.com/*",
     "https://querystudio2-dev-89f7e4653c61.herokuapp.com/*",
     "https://sfmc-share-worker.mathes-btech.workers.dev/*",
-    "https://query-saver-feedback.mathes-btech.workers.dev/*",
-    "https://www.google-analytics.com/*"
+    "https://query-saver-feedback.mathes-btech.workers.dev/*"
   ],
   "content_scripts": [
     {

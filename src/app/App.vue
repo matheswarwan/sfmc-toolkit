@@ -17,7 +17,6 @@ import { useUsage, targetTitle } from '@/composables/useUsage.js'
 import { useStack } from '@/composables/useStack.js'
 import { sendToBackground } from '@/utils/messaging.js'
 import { useTheme } from '@/composables/useTheme.js'
-import { trackEvent } from '@/utils/analytics.js'
 import { preloadWhenIdle } from '@/utils/preloadOverviews.js'
 
 const route = useRoute()
@@ -48,7 +47,6 @@ function onKey(e) {
 onMounted(() => {
   useTheme().loadTheme()
   window.addEventListener('keydown', onKey)
-  trackEvent('app_open')
 })
 onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
