@@ -1,5 +1,5 @@
 // Where used data saved between tabs and sessions (feedback #26): one record per
-// stack, business unit and source, in IndexedDB (the extension has unlimitedStorage).
+// stack, business unit and source, in IndexedDB (the browser's site storage quota, not chrome.storage's 10 MB).
 // Values are structured-cloned, so Maps and Sets survive. Where IndexedDB is missing
 // (tests, a locked-down browser) it keeps the data in memory for this page only.
 const DB = 'toolkit-where-used'

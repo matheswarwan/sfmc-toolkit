@@ -4,6 +4,7 @@
 // Storage keys and shapes are SFMC Query Saver's (`sql_<ts>`, `email_<assetId>`), so
 // a Query Saver backup imports unchanged.
 
+import { makeRoom, EMAIL_MAX_VERSIONS } from './storageRoom.js'
 import { storageGet, storageSet, delay } from './chromeAsync.js'
 import { resolveStack } from './stack.js'
 import { fetchCurrentBusinessUnit } from './businessUnit.js'
@@ -152,6 +153,7 @@ export async function captureEmail(details) {
     assetBody,
     stack,
   }
+  await makeRoom(JSON.stringify(version).length)
   const prev = (await storageGet('local', key))[key]
   await saveRecords({
     [key]: {
@@ -174,7 +176,7 @@ export async function captureEmail(details) {
       modifiedDate: asset.modifiedDate || null,
       isFavourite: prev?.isFavourite || false,
       timeStamp: prev?.timeStamp || now,
-      versions: [version, ...(Array.isArray(prev?.versions) ? prev.versions : [])],
+      versions: [version, ...(Array.isArray(prev?.versions) ? prev.versions : [])].slice(0, EMAIL_MAX_VERSIONS),
     },
   })
 }
