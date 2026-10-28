@@ -5,14 +5,19 @@
 // captured passively here and kept per stack for 14 minutes. It is scoped to
 // exacttarget.com: marketingcloudapps.com apps use their own `_csrf` cookie and must
 // never write into this cache.
+//
+// Kept in memory and chrome.storage.session (memory only, cleared when the browser
+// closes), so a restarted service worker still has it; never in chrome.storage.local
+// (security review, 2026-10-28). Older versions kept it in local: removed on load.
 
-import { storageGet, storageSet, getCookie } from './chromeAsync.js'
+import { storageGet, storageSet, storageRemove, getCookie } from './chromeAsync.js'
 
 const MAX_AGE = 14 * 60 * 1000
 const csrfCache = {} // { [stack]: { token, capturedAt } }
 
 export async function restoreCsrfTokens() {
-  const { _csrfTokens: stored = {} } = await storageGet('local', '_csrfTokens')
+  storageRemove('local', '_csrfTokens')
+  const { _csrfTokens: stored = {} } = await storageGet('session', '_csrfTokens')
   const now = Date.now()
   for (const [stack, entry] of Object.entries(stored)) {
     if (entry?.csrfToken && now - (entry.csrfCapturedAt || 0) < MAX_AGE) {
@@ -25,9 +30,9 @@ export async function rememberCsrf(stack, token) {
   if (!stack || !token || token === csrfCache[stack]?.token) return
   const capturedAt = Date.now()
   csrfCache[stack] = { token, capturedAt }
-  const { _csrfTokens: stored = {} } = await storageGet('local', '_csrfTokens')
+  const { _csrfTokens: stored = {} } = await storageGet('session', '_csrfTokens')
   stored[stack] = { csrfToken: token, csrfCapturedAt: capturedAt }
-  await storageSet('local', { _csrfTokens: stored })
+  await storageSet('session', { _csrfTokens: stored })
 }
 
 export function getCoreCsrf(stack) {
