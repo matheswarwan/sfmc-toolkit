@@ -5,3 +5,9 @@ legacy/
 **/.DS_Store
 .claude/
 .npm-cache/
+
+# Feedback screenshots and temp files (can show customer data)
+workers/**/*.jpg
+workers/**/*.png
+workers/**/*.webp
+workers/**/.shot.json
